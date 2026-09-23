@@ -4,6 +4,7 @@
 
 ## 阅读入口
 
+- [项目上下文](project-context.md)：目标、已确定约定、资料现状与后续问题。
 - [模块关系与完整映射](module-map.md)：包含关系、接口关系、归档位置及待确认项。
 - [资料来源](sources.md)：本地 SDMA 项目的只读参考与公开架构资料。
 - [SDMA 外部项目入口](SDMA/README.md)：FE、BE、TBE 的详细研究继续在独立项目维护。
@@ -45,8 +46,10 @@
 
 ## 原始文件与 Markdown
 
-UTCL2、HUBS 已新增 5 份资料的 Markdown 转换结果，见各模块入口。原始 PPTX/PDF 统一平铺归档在 original_file；模块内 assets 为图像资源目录，不是子模块目录。
+UTCL2、HUBS 保留了五份资料的 223 个图像资源（含 155 页完整页面预览），但五份转换后的 Markdown 正文目前在本地和 GitHub 均缺失。用户已选择只同步当前已有文件，不补回正文。可从 [UTCL2](UTCL2/README.md) 与 [HUBS](HUBS/README.md) 入口查看现有页面图片；`assets/` 是资源目录，不是子模块目录。
 
 `original_file/` 中的文件仅供本地查看，不得上传 GitHub（包括私有仓库）或其他云端服务；已通过 `.gitignore` 排除。云端环境中无法打开指向这些本地原件的链接。
 
-[转换校验报告](conversion-report.md) · [来源与哈希清单](source-manifest.json)
+[历史转换报告](conversion-report.md) · [历史来源与哈希清单](source-manifest.json)。这些记录描述当时的转换结果，当前资料可用性以 [项目上下文](project-context.md) 和 [来源登记](sources.md) 为准。
+
+GitHub 仓库：[niyingsong123/soc_study](https://github.com/niyingsong123/soc_study)。本地项目只关联 `soc_repo`；独立的 `sdma_repo` 继续在另一个项目管理。

@@ -1,20 +1,26 @@
-# Markdown 转换校验报告
+# Markdown 转换校验报告（历史记录）
 
 日期：2026-09-23。范围：UTCL2 与 HUBS 新增的 3 份 PPTX、2 份 PDF。已有 README.md 保留；SDMA 独立项目未参与转换或移动。
 
-## 结果
+## 当前状态说明
 
-五份资料均已生成 Markdown，原件已平铺归档到 original_file。原件保留原名和字节内容。对应的页面图像与原始嵌入图像位于各模块 assets 目录，属于 Markdown 必需资源。
+2026-09-23 核对当前仓库时，五份 Markdown 正文均缺失，223 个图像资源保留；用户已选择只同步当前文件，不补回正文。因此，下文的“通过”和全文比对数量仅保留为当时的转换记录，不表示当前正文仍存在或已重新通过全文校验。原件继续只保存在本地 `original_file/`。
 
-| 来源 | 转换文档 | 页数 | PPT 原生表格 | 有备注的页数 | 校验 |
+本次整理不重写历史 SHA-256 数据、不重新转换原件。当前可读入口见 [项目上下文](project-context.md)、[UTCL2](UTCL2/README.md) 和 [HUBS](HUBS/README.md)。
+
+## 当时的转换结果
+
+当时的记录为：五份资料完成 Markdown 转换，原件平铺归档到 `original_file/`，保留原名和字节内容；页面图像与原始嵌入图像保存在各模块 `assets/`。下表保留历史数量，正文路径当前均缺失。
+
+| 来源 | 原 Markdown 路径 | 页数 | PPT 原生表格 | 有备注的页数 | 历史校验 |
 | --- | --- | --- | --- | --- | --- |
-| C01 | [tb_mm_utcl2.pptx](UTCL2/tb_mm_utcl2.md) | 49 | 14 | 3 | 通过 |
-| C02 | [UTCL2 结构和使用简介 by Wang Junmin.pptx](UTCL2/UTCL2%20%E7%BB%93%E6%9E%84%E5%92%8C%E4%BD%BF%E7%94%A8%E7%AE%80%E4%BB%8B%20by%20Wang%20Junmin.md) | 38 | 0 | 12 | 通过 |
-| C03 | [utcl2_top.pdf](UTCL2/utcl2_top.md) | 1 | 0 | 0 | 通过 |
-| C04 | [UTCL2地址翻译及预取技术介绍.pdf](UTCL2/UTCL2%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91%E5%8F%8A%E9%A2%84%E5%8F%96%E6%8A%80%E6%9C%AF%E4%BB%8B%E7%BB%8D.md) | 26 | 0 | 0 | 通过 |
-| C05 | [MMHUB_introduction.pptx](HUBS/MMHUB_introduction.md) | 41 | 22 | 1 | 通过 |
+| C01 | `UTCL2/tb_mm_utcl2.md`（当前缺失） | 49 | 14 | 3 | 当时记录为通过 |
+| C02 | `UTCL2/UTCL2 结构和使用简介 by Wang Junmin.md`（当前缺失） | 38 | 0 | 12 | 当时记录为通过 |
+| C03 | `UTCL2/utcl2_top.md`（当前缺失） | 1 | 0 | 0 | 当时记录为通过 |
+| C04 | `UTCL2/UTCL2地址翻译及预取技术介绍.md`（当前缺失） | 26 | 0 | 0 | 当时记录为通过 |
+| C05 | `HUBS/MMHUB_introduction.md`（当前缺失） | 41 | 22 | 1 | 当时记录为通过 |
 
-## 已完成的校验
+## 当时记录的校验
 
 - 原页数与 Markdown 页标题、逐页预览数量一致：155 页，其中 PPTX 128 页、PDF 27 页，包含空白页和隐藏页。
 - 将 PPTX 原始文字节点、备注以及 PDF 文本层逐项与 Markdown 比对：6,445 段均可在转换结果中找到。

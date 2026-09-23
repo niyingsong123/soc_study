@@ -10,6 +10,8 @@ FE（Front End）、BE（Back End）、TBE（Tile Back End）属于 SDMA 研究�
 
 ## 外部入口
 
+独立 `sdma_repo` 已取消与 SOC 项目的附加关联。以下链接仅在本地对应目录存在时可用；本 GitHub 仓库不包含这些外部文件，详细研究仍在独立项目维护。
+
 - [项目首页](../../sdma_repo/README.md)
 - [项目上下文](../../sdma_repo/docs/project-context.md)
 - [shaobo 架构](../../sdma_repo/docs/context/shaobo.md)

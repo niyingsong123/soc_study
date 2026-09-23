@@ -8,14 +8,17 @@
 
 学习客户端共享、翻译 miss、权限/异常和 invalidation。谁负责页表遍历、遍历单元是否在 UTCL2 内，均需目标设计资料。关联：[UTCL1](../UTCL1/README.md)、[HUBS](../HUBS/README.md)。
 
+## 资料现状
 
-## 已转换资料
+历史转换记录对应的 Markdown 正文目前缺失，用户已选择只同步现有文件，不补回正文。页面预览和嵌入图像仍保留在 `assets/`；下表提供当前可读入口。原始 PPTX/PDF 仅保存在本地 `original_file/`，不得上传 GitHub。
 
-以下原始资料已转换为 Markdown；原件统一归档于项目根目录 original_file。图片保存在本目录 assets，移动 Markdown 时需同时保留配套图片。此前入口中的待确认项属于初始化记录，本次转换不替代按产品/版本进行的架构核验。
+| 来源 | 原 Markdown 文件与当前状态 | 页数 | 现有图像 |
+| --- | --- | --- | --- |
+| C01 | `tb_mm_utcl2.md`（缺失） | 49 | [全部图像](assets/tb_mm_utcl2/) · [第一页](assets/tb_mm_utcl2/slide-001.png) |
+| C02 | `UTCL2 结构和使用简介 by Wang Junmin.md`（缺失） | 38 | [全部图像](assets/UTCL2%20%E7%BB%93%E6%9E%84%E5%92%8C%E4%BD%BF%E7%94%A8%E7%AE%80%E4%BB%8B%20by%20Wang%20Junmin/) · [第一页](assets/UTCL2%20%E7%BB%93%E6%9E%84%E5%92%8C%E4%BD%BF%E7%94%A8%E7%AE%80%E4%BB%8B%20by%20Wang%20Junmin/slide-001.png) |
+| C03 | `utcl2_top.md`（缺失） | 1 | [全部图像](assets/utcl2_top/) · [第一页](assets/utcl2_top/page-001.png) |
+| C04 | `UTCL2地址翻译及预取技术介绍.md`（缺失） | 26 | [全部图像](assets/UTCL2%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91%E5%8F%8A%E9%A2%84%E5%8F%96%E6%8A%80%E6%9C%AF%E4%BB%8B%E7%BB%8D/) · [第一页](assets/UTCL2%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91%E5%8F%8A%E9%A2%84%E5%8F%96%E6%8A%80%E6%9C%AF%E4%BB%8B%E7%BB%8D/page-001.png) |
 
-- [tb_mm_utcl2.md](tb_mm_utcl2.md)：49 页，[原件](../original_file/tb_mm_utcl2.pptx)。
-- [UTCL2 结构和使用简介 by Wang Junmin.md](UTCL2%20%E7%BB%93%E6%9E%84%E5%92%8C%E4%BD%BF%E7%94%A8%E7%AE%80%E4%BB%8B%20by%20Wang%20Junmin.md)：38 页，[原件](../original_file/UTCL2%20%E7%BB%93%E6%9E%84%E5%92%8C%E4%BD%BF%E7%94%A8%E7%AE%80%E4%BB%8B%20by%20Wang%20Junmin.pptx)。
-- [utcl2_top.md](utcl2_top.md)：1 页，[原件](../original_file/utcl2_top.pdf)。
-- [UTCL2地址翻译及预取技术介绍.md](UTCL2%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91%E5%8F%8A%E9%A2%84%E5%8F%96%E6%8A%80%E6%9C%AF%E4%BB%8B%E7%BB%8D.md)：26 页，[原件](../original_file/UTCL2%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91%E5%8F%8A%E9%A2%84%E5%8F%96%E6%8A%80%E6%9C%AF%E4%BB%8B%E7%BB%8D.pdf)。
+页面图片保留原资料的视觉内容，本次上下文整理不新增目标芯片的架构结论。来源原名及证据边界见 [资料登记](../sources.md)。
 
-[转换校验报告](../conversion-report.md) · [来源与哈希清单](../source-manifest.json)
+[项目上下文](../project-context.md) · [历史转换报告](../conversion-report.md) · [历史来源与哈希清单](../source-manifest.json)
