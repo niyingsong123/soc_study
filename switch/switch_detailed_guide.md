@@ -1,1712 +1,1412 @@
 # 从可实现微架构理解 Switch：NoC Router、Die-to-Die 与 SDMA
 
-> 版本：2.0；研究与重构日期：2026-09-24。
+> 版本：2.1；第二轮 Router 专项深化日期：2026-09-24。
 >
-> 阅读目标：不只是认识 routing、VC、credit 等名词，而是能够在白板上画出一个可以继续细化成 RTL 的 Router，说明每个缓冲区、状态寄存器、仲裁器和接口在什么时刻更新；再把这个 Router 接到跨 die 网关，解释一笔 SDMA 事务的完整数据路径、阻塞原因和延迟。
+> 研究进度：第一轮综合基线与第二轮 Router 专项已完成；第三至第六轮尚未完成。版本号、R0/R1 设计编号不代表研究轮次。
 >
-> 范围：片内 NoC 与封装内 die-to-die。板级 PCIe switch、以太网 switch、多节点 scale-out fabric 不在本篇展开。本文不是 AMD 某代 GPU 的内部设计说明，不把教学参数冒充厂商实现。
+> 阅读目标：能够在白板上画出一个可以继续细化成 RTL 的 Router，说明缓冲区、状态、仲裁与接口在什么时刻更新；再连接跨 die 网关，解释一笔 SDMA 事务的数据路径、阻塞原因和延迟。
+>
+> 范围：片内 NoC 与封装内 die-to-die。板级 PCIe switch、以太网与多节点 scale-out 暂不展开。本文不是 AMD 某代 GPU 的内部设计说明，教学参数不能冒充厂商实现。
+>
+> 版本保留：[第一轮完整原稿](switch_detailed_guide_v2.0.md) 以原 Git blob 留存，内容未删改。本稿重整前 37 章并在第 38—49 章展开第二轮成果；需要查阅第一轮的完整展开说明时使用历史原稿，不把两个版本当作两套并行设计。
 
-## 摘要：先确定我们到底要“实现什么”
+## 摘要：先确定要实现什么
 
-一个能工作的互联，必须同时解决三种问题。第一是运输问题：数据从哪个输入进入、从哪个输出离开。第二是资源问题：下游没空间、多个输入抢一个输出、事务超过缓冲容量时，状态如何保持一致。第三是语义问题：响应属于谁、写入何时算完成、发生重放会不会执行两次、请求和响应会不会相互等死。
+互联必须同时解决运输、资源和语义问题：数据从哪进、从哪出；竞争或下游没空间时怎样保存状态；响应属于谁、写入何时完成、重放是否重复执行、请求和响应是否互相等死。
 
-本文先定义一套小而完整的**参考设计 R0**：二维 mesh、五端口 Router、输入排队、四个 VC、128-bit 数据 flit、信用流控、确定性 XY 路由、分离的 VC allocation 和 switch allocation。然后用明确的寄存器、事件和时序把它补齐。R0 承载有限的非一致性读写事务，不实现完整 CHI 一致性协议。之后扩展出**双 die 参考设计 R1**，加入网关、整包资源预留、可靠链路教学协议和跨网络依赖隔离。
+本文定义参考设计 R0：二维 mesh、五端口 Router、输入排队、四 VC、128-bit 数据 flit、信用流控、XY 路由、独立 VA 与 SA。R0 承载有限的非一致性读写，不实现完整 CHI。一套双 die 参考设计 R1 加入网关、整包资源预留、教学可靠链路和跨网络依赖隔离。
 
-阅读时区分三个标签：
+第二轮在第 38—49 章继续下钻 Router 的事件提交、allocator、SRAM/共享池、credit 周转和失败路径，并提供真正运行的有限缓冲 mesh 模型。它们是同一篇研究正文的续章，不是另一套互相矛盾的 Switch 定义。第一轮系统、D2D、SDMA 主线在第 1—37 章保留并整理。
 
-- **【来源事实】**：来自协议文档、原始论文或已阅读的公开实现，附参考编号。
-- **【本文设计】**：为构造自洽微架构而选择的参数、包格式和状态机；不是标准要求，也不声称是唯一方案。
-- **【推导/检查】**：从已声明假设得到的计算、反例或可执行检查；不等同于流片验证。
-
-经典 VC Router 的结构可以在 Peh/Dally、Mullins 等原始论文中找到；BookSim 和 Garnet 提供进一步对照。需要特别注意，**不同实现可以把 VA 与 SA 合并**，因此下面的分离流水线是一种教学基线，不是“所有 Router 都必须这样做”。[R1][R2][R3][R4]
+全文区分：**来源事实**（附编号）、**本文设计**（明确选择的参考参数/格式）、**推导与检查**（声明假设下的分析和实验）。经典 Router 可参考原始论文和公开模型；实际实现也可以合并 VA/SA，分离流水不是所有产品的强制结构。[R1][R2][R3][R4]
 
 ## 阅读路线
 
-| 层次 | 对应章节 | 读完应能回答的问题 |
+| 层次 | 章节 | 目标 |
 |---|---|---|
-| 全局定位 | 1—3 | NoC、Router、crossbar、网关和 PHY 分别在哪一层？ |
-| 数据与端点 | 4—6 | 包长什么样？Requester 怎样进入网络？ |
-| Router 核心 | 7—15 | FIFO、RC、VA、SA、crossbar、credit 怎样逐拍协同？ |
-| 网络正确性与实现 | 16—21 | 如何处理拥塞、死锁、QoS、ordering、CDC 和异常？ |
-| 性能建模 | 22—23 | 首 flit、尾 flit、吞吐和 outstanding 怎样计算？ |
-| D2D | 24—30 | 多 die 怎样连接？CRC、重放、网关和 PHY 如何配合？ |
-| 系统闭环 | 31—35 | 如何算 SDMA 的端到端代价，并配置、验证和调试？ |
-| 证据与局限 | 36—37 | 读了哪些资料？哪些已检查，哪些不能冒称完成？ |
+| 系统与数据 | 1—6 | 层级、参考参数、包格式、NI 与目标 |
+| Router 基线 | 7—15 | FIFO、RC、VA、SA、crossbar、credit 与逐拍行为 |
+| 正确性与实现 | 16—21 | HOL、死锁、QoS、ordering、优化、CDC/复位 |
+| 性能 | 22—23 | 首/尾 flit、吞吐、三种 BDP |
+| D2D | 24—30 | 网关、重组、重放、PHY、跨 die 依赖 |
+| SDMA 与验证 | 31—37 | 完整算例、契约、软件、基线检查与来源 |
+| **第二轮核心** | **38—45** | **事件原子性、allocator/存储细节、失败路径与资源依赖** |
+| **第二轮执行证据** | **46—49** | **有限缓冲模型、实际测试、资料对照和进度** |
 
----
+# 第一部分：整体层次
 
-# 第一部分：先建立整体层次
+## 1. Switch 不是固定层级的名字
 
-## 1. Switch 不是一个固定层级的名字
-
-### 1.1 从系统一直打开到门级功能块
+### 1.1 从系统打开到数据选择器
 
 ```text
 Package / System
-|
 +-- Die A
 |   +-- CPU / GPU / SDMA / other requesters
-|   +-- Address translation / protection, where required
-|   +-- Network Interface, NI / NIU
+|   +-- Translation / protection where required
+|   +-- NI / NIU
 |   +-- On-die NoC
 |   |   +-- Router
-|   |   |   +-- Input ports and VC FIFOs
-|   |   |   +-- Route computation, RC
-|   |   |   +-- Virtual-channel allocator, VA
-|   |   |   +-- Switch allocator, SA
-|   |   |   +-- Crossbar and pipeline registers
-|   |   |   +-- Output-VC ownership and credit state
-|   |   +-- Forward links and reverse credit links
+|   |   |   +-- input ports and VC FIFOs
+|   |   |   +-- route computation (RC)
+|   |   |   +-- virtual-channel allocation (VA)
+|   |   |   +-- switch allocation (SA)
+|   |   |   +-- crossbar / pipeline registers
+|   |   |   +-- output-VC ownership / credit state
+|   |   +-- forward links / reverse credits
 |   +-- D2D gateway / protocol bridge
-|   +-- Link adapter
+|   +-- link adapter
 |   +-- PHY
-|
 +========== package channel ==========
-|
 +-- Die B: PHY -> adapter -> gateway -> NoC -> NI -> memory side
 ```
 
-这里有三个容易混淆的“交换”。Router 中的 **crossbar** 是数据选择矩阵；**NoC Router** 除了 crossbar，还包含排队、路由、流控和资源状态；系统中的 **D2D switch/gateway** 可能连接多个 NoC 或 D2D 端口，决定一笔事务应去哪个 die。一个点对点 D2D 链路本身不必具有多目的地交换能力。
+crossbar 是选择矩阵；Router 还含排队、路由、流控和状态；D2D switch/gateway 可能连接多个 NoC/D2D 端口，选择目的 die。点对点链路本身不必具有多目的地交换能力。问“有几个 buffer”之前，必须先指明方框。
 
-因此，问“switch 有几个 buffer”之前，先问指的是哪一个方框。问“switch 是否支持一致性”也要分清：是运输一致性消息，还是自己承担目录、snoop、home-node 和完成语义。
+运输一致性消息与承担 directory、home-node、snoop 和完成语义也不同。不能因网络能送某种消息，就认为 Router 实现了其全部协议。
 
-### 1.2 UCIe 链路不是一个天然的多端口路由器
+### 1.2 UCIe 不天然等于多端口路由器
 
 ```text
-Die A                                                    Die B
-Requester -> NI -> NoC -> Gateway -> Protocol/Adapter -> PHY
-                                                           ||
-                                                        Package
-                                                           ||
-Memory   <- NI <- NoC <- Gateway <- Protocol/Adapter <- PHY
+Die A: Requester -> NI -> NoC -> Gateway -> Protocol/Adapter -> PHY
+                                                               ||
+                                                            Package
+                                                               ||
+Die B: Memory   <- NI <- NoC <- Gateway <- Protocol/Adapter <- PHY
 ```
 
-UCIe 的协议层、D2D Adapter 和物理层是不同职责；协议复用也不等于按任意目的地址选择 die。若要做多端口 die 互联，路由决策仍必须放在网关、上层 fabric 或专用交换节点中。[R10]
-
-在完整一致性系统中，还可能出现 `CHI -> CHI-C2C -> transport`。Arm 的系统架构资料明确把 CHI-C2C 封装与所选传输层分开，UCIe streaming 是其中一种运输选择。不能据此假定“把普通 CHI 信号直接接到任意 UCIe PHY 就兼容”。[R12]
+UCIe 分层中的协议、Adapter 和 PHY 职责不同；协议复用也不等于任意 die 路由。[R10] CHI-C2C 还把一致性消息封装与所选 transport 分开，不能把普通 CHI 信号直接接任意 UCIe PHY 就当作兼容。[R12]
 
 ## 2. 为什么不能只用几组 MUX
 
-假设 SDMA 和 CPU 都要访问两个存储控制器。两个请求去不同控制器时，最好同时通过；去同一控制器时，只能仲裁；某控制器暂停时，不能丢掉已经接受的数据；读结果晚回来时，还要找到原来的 requester 和 transaction。
-
 ```text
-                 +------ MC0
-SDMA ----+       |
-         +-- SWITCH
-CPU -----+       |
-                 +------ MC1
+SDMA --+             +-- MC0
+       +-- SWITCH ---+
+CPU ---+             +-- MC1
 
-Case A: SDMA -> MC0, CPU -> MC1 : 可以并行
-Case B: SDMA -> MC0, CPU -> MC0 : 输出冲突
-Case C: MC0 stopped            : 必须缓存并反压
-Case D: responses return      : 必须恢复来源与事务身份
+Different outputs: parallel
+Same output: arbitrate
+Target stopped: buffer and backpressure
+Response returns: recover source and transaction identity
 ```
 
-单个组合 MUX 只解决“本周期选哪一根线”。它没有保存未完成包、响应归属、下游空间和异常恢复状态。因此，真正的互联微架构是 **MUX 数据面 + 分布式资源管理 + 端到端事务管理**。
+组合 MUX 只解决本周期选哪根线，不保存未完成包、响应归属和下游空间。真正互联是数据选择、分布式资源管理与端到端事务管理的组合。
 
-点对点连接并不是错误方案。IP 很少、带宽独占、物理距离短时，它可能更合适。NoC 的价值是使连接、并行性和物理布局可扩展，不是保证所有场景都比直连延迟低。
+直连不一定错误：IP 少、距离短、带宽独占时可能更合适。NoC 改善扩展与物理集成，不保证比直连更低延迟。
 
-## 3. 先把 R0 的边界和参数固定下来
+## 3. 固定 R0 的边界与参数
 
-以下全部为【本文设计】。把参数固定下来，后面的“什么时候满”“谁更新哪个计数器”才有确定答案。
+以下为本文设计，后续算例必须沿用这些选择，不可把论文或产品参数随意混入。
 
-| 项目 | R0 选择 | 设计含义 |
+| 项目 | 选择 | 含义 |
 |---|---|---|
-| 拓扑 | 单 die 4×4 mesh | 无环回边，不是 torus |
-| Router 端口 | N/E/S/W/Local，最多五入五出 | 每个方向分别有发送和接收通路 |
-| 数据宽度 | 128 bit，即 16 B/flit | 不包含 valid、VC、H/T 边带 |
-| 传输速率 | 每输出每周期最多一个 flit | 示例频率 1 GHz，不是时序收敛结果 |
-| VC | 每物理输入四个 | 请求 VN 两个 VC；响应 VN 两个 VC |
-| Buffer | 每 VC 八个槽 | 寄存器式 FIFO，先不假定 SRAM 宏 |
-| 包占有规则 | 一个 VC 同时归一个 packet | 直到 tail 被本 Router 取走 |
-| 输出 VC 复用 | 等下游返回 tail-free indication | 不在本端 tail 发出时立刻重新分配 |
-| 路由 | XY，先 X 后 Y | head 计算，body/tail 继承 |
-| 仲裁 | VA 与 SA 分离；SA 为两级 RR | packet 级资源和 flit 级带宽分开 |
-| 数据可靠性 | 正常工作时片内 flit 不丢失 | 检测到内部严重错误进入受控故障处理 |
-| 事务 | 16 B 对齐，长度为 16 B 的倍数，最多 256 B | 不支持任意 byte enable、原子、snoop、多播 |
-| 地址 | 已完成必要翻译的 48-bit 目标地址 | Router 不执行页表遍历 |
-| ordering | 普通流允许独立事务乱序；ordered 流由 NI 限制并发 | 不把 FIFO 顺序误当完整内存模型 |
+| 拓扑 | 单 die 4×4 mesh | 无 wraparound，不是 torus |
+| 端口 | N/E/S/W/Local，最多五入五出 | 各方向收发分别有通路 |
+| 数据 | 128 bit = 16 B/flit | 不含 valid、VC、H/T 边带 |
+| 速率 | 每输出每周期最多一 flit，示例 1 GHz | 不是 STA 结果 |
+| VC | 每输入四个 | 请求 VN 两个，响应 VN 两个 |
+| Buffer | 每 VC 八槽，寄存器 FIFO | 不是未说明端口的 SRAM 宏 |
+| input VC 占有 | 一个 VC 同时归一个 packet | local tail pop 后可释放 |
+| output VC 复用 | 等下游 tail-free credit | 不在本端 tail 发出时立即复用 |
+| 路由 | XY，先 X 再 Y | head 计算，body/tail 继承 |
+| 仲裁 | 独立 VA；SA 两级 RR | packet 资源与 flit 带宽分开 |
+| 事务 | 16 B 对齐、16 B 倍数、最多 256 B | 不含任意 byte enable、原子、snoop、多播 |
+| 地址 | 已完成所需翻译的 48-bit 地址 | Router 不执行页表遍历 |
+| ordering | 普通事务可独立乱序；ordered 流限制并发 | 不把 FIFO 当完整内存模型 |
+| 错误模型 | 正常片内 flit 不丢失；严重异常受控恢复 | 不表示物理电路永不出错 |
 
-每方向的输入和输出是两条逻辑通路。一个 Router 可以同时从 West 接收、向 West 发送；这不意味着同一条单向线在两个方向共用。
+一个 Router 同时从 West 接收和向 West 发送使用不同逻辑方向。R0 扩展成完整 CHI 还需要节点职责、一致性状态与消息依赖；装得下字段不等于实现协议。
 
-R0 只实现有限的非一致性读写运输。若扩展为 CHI，必须增加协议节点职责、消息依赖、更多资源类别和一致性状态机；“能装下 CHI 字段”远远不等于“实现 CHI”。
+# 第二部分：数据包与端点
 
----
-
-# 第二部分：先确定包，再确定端点
-
-## 4. Transaction、packet、flit、物理传输不是同一个东西
+## 4. Transaction、packet、flit 与物理传输
 
 ```text
-SDMA command: copy a large region
-       |
-       +-- read transaction 0
-       +-- read transaction 1
-       +-- write transaction 0
-       +-- completion / fence sequencing
+SDMA command
+ +-- read transactions
+ +-- write transactions
+ +-- completion/fence sequencing
 
-One transaction
-       +-- request packet
-       +-- response packet
-
-One data packet, R0 example
-       [HEAD][DATA0][DATA1] ... [DATA15, TAIL]
-          |      |                         |
-          +------ each item is one flit ---+
-
-One flit
-       +-- may fit one link transfer
-       +-- or be serialized into several physical transfers
+One transaction -> request packet + response packet
+One data packet -> [HEAD][DATA0] ... [DATA15 / TAIL]
+One flit        -> one or more physical transfer units
 ```
 
-一个 transaction 可以产生多个 packet；一个 packet 可以有多个 flit；一个 flit 是否能在一个物理周期送完，取决于链路宽度与时钟。`phit` 常被用来描述一次物理传输单元，但并非所有规范使用这个名字或同一个粒度。
+transaction 可产生多个 packet；packet 可分为多个 flit；flit 是否一拍送完取决于通路宽度与时钟。phit 常用来表示物理传输粒度，但并非各规范都使用相同名字或大小。
 
-R0 规定 128-bit flit 一周期通过一条 128-bit 数据通路。以后若把链路缩成 32 bit，一 flit 需要四个传输节拍；除非提高频率或并行通道数，带宽就会降低。
+R0 一条 128-bit 通路一拍一 flit；若只改成 32-bit 通路，通常需四个传输节拍，不能仍假定原带宽。
 
-### 4.1 R0 的 128-bit head 格式
+### 4.1 原创 128-bit head 格式
 
-下面是原创教学格式，**不是 AXI、CHI 或 UCIe 的标准 flit**。
+这不是 AXI、CHI 或 UCIe 标准格式。
 
 ```text
-127                    112 111             100 99           92
-+-----------+-------------+-------------------+------+------+
-| DstID 8   | SrcID 8     | TransactionID 12  | Op 4 | QoS4 |
-+-----------+-------------+-------------------+------+------+
-91         84 83       80 79                              32
-+------------+-----------+----------------------------------+
-| Length-1 8 | Attr 4    | Address 48                       |
-+------------+-----------+----------------------------------+
-31                      16 15             8 7              0
-+-------------------------+----------------+----------------+
-| Context 16              | Epoch 8        | Status 8       |
-+-------------------------+----------------+----------------+
+127:120  119:112  111:100  99:96  95:92  91:84  83:80
+ DstID    SrcID     TxnID    Op     QoS    Len-1   Attr
+79:32                    31:16       15:8       7:0
+ Address                  Context    Epoch      Status
 ```
 
-| 位域 | 宽度 | 本文定义 |
+| 字段 | 宽度 | 定义 |
 |---|---:|---|
-| `[127:120] DstID` | 8 | `die[3:0], y[1:0], x[1:0]`，目的 NI/节点 |
-| `[119:112] SrcID` | 8 | 同样编码源 NI，不一定直接等于一个软件 queue |
-| `[111:100] TransactionID` | 12 | 在源 NI 的有效事务集合内标识一次事务 |
-| `[99:96] Op` | 4 | 0 读请求，1 写请求，2 读响应，3 写响应，4 错误响应 |
-| `[95:92] QoS` | 4 | 预留分类；R0 纯 RR，不假装已经提供带宽保证 |
-| `[91:84] Length-1` | 8 | 请求/数据响应的有效字节数减一；无数据确认忽略该域 |
-| `[83:80] Attr` | 4 | 示例：ordered、privileged、两位安全域标签 |
-| `[79:32] Address` | 48 | 目标地址；响应可按规则回送或置零 |
-| `[31:16] Context` | 16 | NI 分配的上下文标签，不代表直接采用 AMD VMID/PASID |
-| `[15:8] Epoch` | 8 | 区分受控重启前后的事务世代 |
-| `[7:0] Status` | 8 | 请求置零，响应表示成功或错误类别 |
+| DstID / SrcID | 各 8 | `die[3:0],y[1:0],x[1:0]`，指 NI/节点 |
+| TransactionID | 12 | 在源 NI 有效事务集合中标识一次事务 |
+| Op | 4 | 0 读请求，1 写请求，2 读响应，3 写响应，4 错误 |
+| QoS | 4 | 预留分类；基线 RR 不冒充带宽保证 |
+| Length-1 | 8 | 有效字节数减一；无数据确认忽略 |
+| Attr | 4 | 示例 ordered、privileged、两位安全域 |
+| Address | 48 | 目标地址；响应按规则回送或置零 |
+| Context | 16 | NI 分配的上下文标签，不直接等于 AMD VMID/PASID |
+| Epoch | 8 | 受控重启世代，回绕前需排除旧包 |
+| Status | 8 | 请求置零；响应表明结果 |
 
-`SrcID` 表示 NI。如果多个 requester 汇聚到一个 NI，NI 要把 `(requester, original ID, ordering stream)` 映射成内部 TransactionID，并保存反向映射。Router 不必为每一个软件队列认识一套身份。
+多个 requester 汇入一个 NI 时，NI 保存原 requester/ID/ordering stream 与内部 TransactionID 的映射。Router 不必按软件 queue 名称分配固定 FIFO。有限位宽 epoch 不是无限期防旧包机制，回绕必须配合系统生命周期。
 
-`Epoch` 不是无限有效的防旧包机制。八位会回绕；重新使用一个 epoch 前，必须保证旧世代包已经清除，或通过更大的世代空间和系统重置协议避免别名。
-
-### 4.2 H/T 和 VC 为什么放在边带
-
-R0 的单跳接口为：
+### 4.2 单跳边带
 
 ```text
 Forward: valid, data[127:0], vc[1:0], head, tail
 Reverse: credit_valid, credit_vc[1:0], vc_free
 ```
 
-head/tail 使 Router 不必解码业务 Op 才能判断包边界。VC 让接收 Router 知道当前 flit 应进入哪个输入 FIFO。VC 是**单跳资源编号**：R0 的 West.VC1 可以映射到下一个 Router 的 East.VC0，没有必要端到端保持 VC1。
+H/T 表示包边界，VC 指定接收 FIFO。VC 编号逐跳重新分配，不是端到端身份。FIFO 按 VC 分 bank，因此每槽存 128-bit data 加 H/T，不必再存自身 bank 号。
 
-FIFO 已经按 VC 分银行，因此每个槽存 `128-bit data + H + T`，而不必再保存自己的 bank 编号。原始容量为：
+裸存储：`5×4×8×130=20,800 bit=2,600 B`。不含指针、route、head cache、credit、流水寄存器、ECC 与实现浪费，不是最终面积。
 
-```text
-5 ports × 4 VCs × 8 slots × 130 bits = 20,800 bits = 2,600 bytes
-```
-
-这没有计入 head 缓存、指针、路由状态、credit、流水寄存器、ECC 和实现浪费，更不是最终芯片面积。
-
-### 4.3 四种包长度例子
+### 4.3 包长度
 
 ```text
-Read request, 256 B requested:
-  [H=T=1, Op=ReadReq, Length-1=255]                  1 flit
-
-Write request, 256 B data:
-  [H=1,T=0][16 B] ... [last 16 B,T=1]             17 flits
-
-Read response, 256 B data:
-  [H=1,T=0][16 B] ... [last 16 B,T=1]             17 flits
-
-Write acknowledgement / error:
-  [H=T=1, Op=WriteRsp or Error]                     1 flit
+256 B ReadReq:   [HEAD_TAIL, Length-1=255]                  1 flit
+256 B WriteReq:  [HEAD][16 B] ... [last 16 B,TAIL]         17 flits
+256 B ReadRsp:   [HEAD][16 B] ... [last 16 B,TAIL]         17 flits
+WriteRsp/Error:  [HEAD_TAIL]                               1 flit
 ```
 
-注意读请求的 `Length-1=255` 不表示该请求包本身有 256 B 数据；它表示要读多少数据。包的实际 flit 数由 Op 与长度共同确定。NI 在注入前检查合法性，Router 的包边界检查再防止畸形 H/T 序列。
+读请求里的长度是请求读取的数据量，不代表请求包携带那些数据。实际包长由 Op 与长度共同确定。256 B 数据包经过主数据通路共 272 B，效率 `256/272=94.12%`，尚未计空拍等开销。
 
-256 B 数据使用 `16 B header + 256 B data = 272 B` 主数据通路流量，效率是 `256/272 = 94.12%`，还未计边带、空周期或其他业务。
-
-## 5. NI：不能把所有复杂性都推给 Router
+## 5. NI：事务管理不能都推给 Router
 
 ```text
 Requester interfaces
-  | address / command / data / original ID
-  v
+      |
++-----v---------------------------------------------------+
+| admission / alignment / address and protection checks    |
+| address-to-DstID map; transaction table / ID translation |
+| ordered-stream issue gate; response reservations        |
+| packetizer -> VN/VC injection                           |
+| depacketizer <- response buffers -> completion delivery  |
 +---------------------------------------------------------+
-| NI                                                      |
-|  Admission / range / alignment / permission checks       |
-|  Address-to-destination map                             |
-|  Transaction table and ID translation                   |
-|  Ordered-stream issue gate                              |
-|  Request packet buffers / response reservations          |
-|  Packetizer -> VN/VC injection arbiter                   |
-|  Depacketizer <- response buffers <- response link        |
-|  Completion / error delivery                            |
-+---------------------------------------------------------+
-  | packet flits + local credit contract
-  v
-Router Local port
+      |
+Router Local interface
 ```
 
-### 5.1 事务表究竟保存什么
+### 5.1 事务表
 
-【本文设计】每个有效表项至少包含：`valid、source requester、original ID、context、epoch、op、destination、expected response bytes、received bytes、response-buffer slot、ordering stream、completion state`。
+每有效项至少保存原 requester/ID、context、epoch、op、目的地、预期/已收字节、响应 buffer slot、ordering stream 和 completion 状态。在不可撤销地接受新事务时就必须落实表项，不能先承诺再发现没空间。
 
-表项在**接收 requester 的新事务之前或同一次不可撤销接受事件中**分配。不能先告诉 requester 已接受，下一拍才发现没有表项。对于读事务，还必须保证将来有地方接收结果。
+请求离开 NI 后表项仍然有效；完整响应按上层规则交付、错误收尾完成后才复用 ID。响应 head 到达不等于所有 body 已被接收。
 
-事务表的生命周期比一个 Router VC 长。请求离开本 NI 的 Local port 后，事务表依然有效；只有完整响应按上层接口规则交付、错误收尾完成，才能复用 ID。看到响应 head 就释放表项，会让后续 body 找不到接收位置。
+### 5.2 保守注入规则
 
-### 5.2 一种保守、容易实现的注入规则
+写请求在 NI 收齐 payload 后再注入；读请求在分配完整返回空间后再注入。这样 head 已占网络资源却无限等本地数据的风险限制在 NI 之前。
 
-R0 选择：写请求在 NI 内收齐整个有效载荷后再注入；读请求分配完整返回数据空间后再注入。这样一个 Router 已经收到了 head，却永远等不到本地 requester 产生 tail 的风险被限制在 NI 之前。
+代价是 NI 包级 buffer 与首包延迟。流式写可优化，但要重新定义生产者前进、取消包与部分状态释放规则。
 
-代价是 NI 需要包级缓冲，首包延迟更长。以后可以改成流式写入，但必须重新规定：生产者是否保证前进、可暂停多久、其他 VC 能否旁路、取消事务时怎样释放已占用网络资源。
-
-### 5.3 请求和响应的资源必须分开考虑
+### 5.3 响应空间与请求资源
 
 ```text
-Bad dependency:
-  response FIFO full
-       -> wait for new write request to leave
-       -> new write blocked by request network
-       -> request network waiting for responses to drain
+Bad cycle:
+response cannot enter -> waits for write issue
+write issue blocked -> request network waits for response drain
 
 R0 rule:
-  read response reservation exists before read issue
-  response ejection does not require issuing another request
+reserve response space before read issue
+response ejection must not require issuing another request
 ```
 
-SDMA 可以在响应被接收之后再等待写出机会，但不能因为写口堵塞，就把已经承诺接收的所有读响应空间都拿走。将数据临时存在 SDMA 自有搬运缓冲里，是切断这种依赖的一种方式。
+SDMA 可把已收数据放自己的搬运 buffer，再等写口；不能因写拥塞撤销已承诺的读返回空间。第二轮第 42、45 章进一步讨论共享容量如何破坏这种隔离。
 
-### 5.4 ordered 流如何简化
+### 5.4 ordered 流
 
-R0 不在所有 Router 里实现复杂 reorder buffer。对于标为 ordered 的 `(requester, context, stream)`，NI 同时最多放行一个需要完成顺序的事务；得到定义的完成后再发下一个。普通独立事务允许多 outstanding，响应由事务表匹配。
+对需要保持完成顺序的 `(requester,context,stream)`，最简实现同一时刻只放行一个相关事务，定义的完成后再发下一个。普通独立流可多 outstanding。
 
-这会降低 ordered 流吞吐，但其语义简单。它不是完整 AXI ordering 的替代品，也不自动保证跨两个独立 requester 的全局顺序。
+这不是完整 AXI 的替代品，不自动提供不同 requester 间全局排序；它只是使 R0 的有限子集语义明确。
 
-## 6. 一个最小可工作的目标端
-
-目的 NI 也不是“去掉包头就结束”。它至少需要：包重组、合法性检查、目标接口转换、返回路径信息、响应空间和错误响应能力。
+## 6. 目标端的最小闭环
 
 ```text
-NoC ejection
-  -> reserve request slot
-  -> reconstruct address / data / source / txn
-  -> target access
-  -> wait for target-defined completion
-  -> construct response {Dst=original Src, Txn=original Txn}
-  -> response VN injection
+ejection -> reserve request slot -> reconstruct packet
+         -> access target -> wait for defined completion
+         -> response {Dst=old Src, Txn=old Txn} -> Response VN
 ```
 
-为了建立最小闭环，可以先把 target 定义成一个受控 SRAM 控制器：读在数据取出后响应；写在数据写入该 SRAM 且后续该控制器读能观察到后响应。若替换成缓存、DRAM 控制器或带 posted-write 的桥，就必须重新声明 completion point。
+目标 NI 需要重组、合法性检查、接口转换、返回信息、响应空间及错误能力。可先把 target 定义为受控 SRAM：读数据取出后响应；写入完成且随后该控制器的读可见后响应。
 
-对无法译码、越权或不支持的事务，目标 NI 返回可关联到原事务的错误；内部 Router 不能随手丢掉一个 body flit 后假装后续包仍然完整。
+换成缓存、DRAM、posted-write 桥，就须重新声明完成点。非法地址/权限/操作可返回相关 ErrorRsp；Router 内部损坏包边界不能靠随便丢一个 body 处理。
 
----
+# 第三部分：Router 基线
 
-# 第三部分：真正打开 Router
-
-## 7. Router 的数据面与控制面
+## 7. 数据面与控制面
 
 ```text
-                          CONTROL
-             +----------------------------------+
-             | RC -> VA -> SA-I -> SA-II         |
-             | route  owner  nomination  grant   |
-             +------------+---------------------+
-                          | grants / selections
-                          v
-IN0 -> [VC0..VC3 FIFO] -> [VC select] --+
-IN1 -> [VC0..VC3 FIFO] -> [VC select] --+
-IN2 -> [VC0..VC3 FIFO] -> [VC select] --+-> [5 x 5 XBAR] -> ST/LT -> OUTs
-IN3 -> [VC0..VC3 FIFO] -> [VC select] --+
-IN4 -> [VC0..VC3 FIFO] -> [VC select] --+
-                    DATA
+             RC -> VA -> SA-I -> SA-II
+                        |          |
+                        +-- grants +
+                              |
+IN0 -> [VC0..3 FIFO] -> VC MUX-+
+IN1 -> [VC0..3 FIFO] -> VC MUX-+
+IN2 -> [VC0..3 FIFO] -> VC MUX-+-> 5x5 XBAR -> ST/LT -> OUTs
+IN3 -> [VC0..3 FIFO] -> VC MUX-+
+IN4 -> [VC0..3 FIFO] -> VC MUX-+
 
-Upstream credits <- input pop          downstream credits
-                                      -> output-VC state
+input pop -> upstream credit
+returned downstream credit -> output-VC state
 ```
 
-图中的箭头不是说数据先经过 RC 再经过 VA 算法本体。数据主要留在 FIFO，RC/VA/SA 操作的是 header、状态和请求向量。只有获得最终传输资格后，数据才被读出并通过 crossbar。
+数据通常留在 FIFO；RC/VA/SA 处理头信息、状态和请求向量。获得最终资格后才读出并经过 crossbar。五输入可同时各收一 flit，五输出也可同时各送一 flit，但每物理输入和输出本拍都最多参与一次传输。
 
-五个输入可以同时各接收一个 flit，五个输出也可能同时各发送一个 flit。但同一个物理输入，R0 每拍只能选一个 VC 读出；同一个输出每拍只能有一个赢家。这两个约束必须由仲裁器共同保证。
-
-## 8. Input port 与 VC FIFO：多个 requester 是否有独立 buffer
-
-### 8.1 requester、input port、VC 不是一一对应
+## 8. Input VC FIFO 与 requester 的关系
 
 ```text
-Requester A --+
-Requester B --+-> upstream NI/router -> one physical link -> Input West
-Requester C --+                                         |
-                                                        +-- Req VC0 FIFO
-                                                        +-- Req VC1 FIFO
-                                                        +-- Rsp VC2 FIFO
-                                                        +-- Rsp VC3 FIFO
+Requester A/B/C -> upstream NI/router -> one West input
+                                          +-- Req VC0
+                                          +-- Req VC1
+                                          +-- Rsp VC2
+                                          +-- Rsp VC3
 ```
 
-West 输入的流量可能来自很多远端 requester。这里的四个 FIFO 按 VC 区分，不按 requester 名称永久分配。一个 packet 获得某 VC 后，暂时独占该 VC；释放后，另一 requester 的 packet 可以使用它。
+一个输入汇聚多个来源；四个 VC 不等于四个 requester。packet 临时占一个 VC，释放后可供另一来源使用。VF/租户隔离需 NI 队列、quota 或资源分区，不能从 VC 数直接推断。
 
-如果必须防止某 VF/租户垄断资源，应在 NI、VC 分配或 shared-buffer quota 中增加隔离规则。仅仅看见“每输入四个 VC”不能推出“支持四个 requester”或“每 requester 有四个 FIFO”。
+### 8.1 每 VC 状态
 
-### 8.2 每个输入 VC 保存哪些状态
+| 状态 | 用途/更新 |
+|---|---|
+| mem、rd_ptr、wr_ptr、occupancy | 数据/队列位置，按 push/pop 更新 |
+| packet_state | IDLE、RC、WAIT_VA、ACTIVE |
+| route_out、assigned_outvc | RC 与 VA 的已提交结果 |
+| VN、head_sent | 类别与包首是否已发送 |
+| QoS/age | 可选调度信息 |
+| 边界/错误状态 | 检查非法 head/body/tail |
 
-| 状态 | 用途 | 典型更新事件 |
-|---|---|---|
-| `mem[0..7]` | 存 128-bit data 与 H/T | 合法 flit 到达 |
-| `rd_ptr/wr_ptr` | FIFO 读写位置 | pop / push |
-| `occupancy` | 当前存储槽数，0—8 | `push - pop` |
-| `packet_state` | IDLE、RC、WAIT_VA、ACTIVE | head、route、VA、tail |
-| `route_out` | 该包选择的输出端口 | RC 成功 |
-| `assigned_outvc` | 下游已分配 VC | VA grant |
-| `vn` | 请求/响应类别 | head 检查/端口约束 |
-| `head_sent` | head 是否已离开 | head 的 SA commit |
-| `packet_qos/age` | 可选 QoS/等待信息 | head 到达、等待、释放 |
-| `boundary/error state` | 检测非法包序列 | 每次 push/pop |
+occupancy=0 不等于 IDLE：head 已走、body 暂未到时，route 和 ownership 仍必须保留。
 
-`occupancy==0` **不意味着 VC 空闲**。如果 head 已经发送、body 还没到，这个 VC 依然属于原 packet，route 和 assigned_outvc 必须保留。
-
-### 8.3 FIFO 的同拍 push/pop
+### 8.2 同拍 push/pop
 
 ```text
-occupancy_next = occupancy + push - pop
-rd_ptr_next    = pop  ? (rd_ptr + 1) mod D : rd_ptr
-wr_ptr_next    = push ? (wr_ptr + 1) mod D : wr_ptr
+count_next = count + push - pop
+rd_next = pop  ? (rd+1) mod D : rd
+wr_next = push ? (wr+1) mod D : wr
 ```
 
-四种情况分别是保持、只写、只读、同时读写。计数器应能表示 0 到 D，因此 D=8 时 occupancy 需要四位，不是三位。指针可以用三位，但两者的用途不同。
+D=8 的指针三位，表示 0—8 的 count 需四位。满时一进一出是否可接受，要按接口承诺；上游不能借一个尚未返回的本拍 pop 擅自发 flit。
 
-“满时同拍出一项又进一项”是否允许，取决于接收侧契约。R0 的上游依据已经获得的 credit 发送，因此**不能依赖一个尚未返回的本拍 pop 来冒险发送**。接收 FIFO 应承受所有合法已预留在途 flit，而不是靠组合 READY 在最后一刻补救。
+### 8.3 存储端口是架构的一部分
 
-### 8.4 为什么这里先选择寄存器 FIFO
+寄存器 FIFO 可提供组合队头；同步 SRAM 可能需要额外读阶段、预取、bank 仲裁和明确的同址读写语义。第 41 章进一步给出 head cache、landing register、复制/搬移式预取的区别，第 42 章展开真实共享池。
 
-浅、宽 FIFO 可以用寄存器和组合读构成，队头可供仲裁准备。若换成同步 SRAM，地址提交到数据出现可能额外一拍；还必须解决多个 VC 队头预取、bank 冲突、读写端口数量和 read-during-write 语义。
-
-因此，`D=8` 的抽象容量不够定义硬件。还要说清楚存储端口和读延迟，否则“SA 后立刻把数据送 crossbar”可能没有数据可用。R0 假设每输入可获得所选 VC 的队头，采用显式 ST 寄存器接住数据；SRAM 优化需要重新画流水线。
-
-## 9. Route Computation：选择方向，而不是分配资源
-
-### 9.1 XY 的组合逻辑
+## 9. RC：选择方向，不分配空间
 
 ```text
-if dst.x > current.x: East
-else if dst.x < current.x: West
-else if dst.y > current.y: North
-else if dst.y < current.y: South
+if dst.x > x: East
+elif dst.x < x: West
+elif dst.y > y: North
+elif dst.y < y: South
 else: Local
 ```
 
-此处 North 取 y 增大方向，是本文约定，不是所有网格图的通用坐标约定。
+North 对应 y 增大是本文坐标约定。NI 做 Address->DstID，Router 做 DstID+当前位置->下一跳；每个中间 Router 不必存全系统地址表。
 
-路由结果保存为 `route_out`。对于同一个 packet，body 和 tail 不重新根据业务地址计算方向。否则它们可能和 head 分离，破坏路径、缓冲占有和包边界。
+RC 结果保存，body/tail 继承，不独立改道。NI 检查目的节点有效性，边界 Router 禁止向不存在端口送包。异常时任意绕路可能破坏 XY 的依赖约束。
 
-### 9.2 Address decode 与 RC 分工
+Adaptive routing 还需拥塞信息、选择规则、escape 资源和依赖证明；本轮不以一个“选较空队列”替代完整设计。
 
-NI 把地址范围转换成 `DstID`，例如确定该地址属于哪个 memory-side NI。Router 用 DstID 决定下一跳。这样每个中间 Router 不必都保存完整系统地址映射。
+## 10. VA：预订下一 Router 的 VC
 
 ```text
-Address -> NI address map -> DstID
-DstID + local coordinates -> Router RC -> output port
+input West.VC0 -> East output -> next router West.{VC0,VC1}
+
+VA: reserve one downstream VC for a packet
+SA: reserve one actual cycle of physical bandwidth
 ```
 
-这是 R0 的选择。实际互联也可以用地址、source route、查表或混合方式路由，但必须在设计中选定，不能一句“按地址或 ID 都可以”之后省掉具体实现。
+每输出 VC 保存 IDLE/RESERVED/DRAIN_WAIT、owner 与 credit。它是下游输入资源的本地镜像。credit 回到 D 时，packet 仍可能未发 tail，因此 ownership 不能只从 credit 推断。[R6]
 
-### 9.3 无效目的地如何处理
+R0 简单算法：每 WAIT_VA input VC 提名一个合法空闲 output VC；每被提名 output VC 做 RR；赢家同边沿更新双方映射。输入 VC 不会拿到两个 grant，输出 VC 不会被重复授予。不同输入 VC 可同时拿同一物理输出的不同 VC，但不承诺同拍送数据。
 
-NI 注入前检查目的节点是否存在。边界 Router 禁止向不存在的 N/E/S/W 端口发包。检测到内部路由矛盾时，记录错误并进入受控处理，而不是任意改道。临时改变方向可能破坏 XY 的死锁约束。
+候选选择需轮转/前进规则；匹配可能非最优。多拍 VA 要防旧空闲状态导致双重预订。第 39 章给出矩阵、位宽和 reservation 的进一步实现细节。
 
-### 9.4 自适应路由增加了什么
+## 11. SA：解决本周期真实冲突
 
-如果 RC 可以从 East/North 两个最短方向择优，就需要拥塞信息、选择规则、信息时效和安全逃逸路径。动态选择不是简单 `pick smaller occupancy`：两个 Router 看到的状态可能已经过期，路由变化也会改变通道依赖图。
-
-R0 因此先不支持 adaptive routing。先使确定性网络正确，再研究如何增加自适应能力，比从一开始把所有优化混在一起更容易验证。
-
-## 10. Virtual-channel Allocation：预订下一个 Router 的一间“房间”
-
-### 10.1 分配的不是 crossbar 时间片
+eligible 至少需要非空、ACTIVE、route 与 output VC 有效、credit>0、阶段就绪、链路可提交及必要 ordering gate 通过。
 
 ```text
-R0 West.VC0 -- wants East output --> R1 West.{VC0,VC1}
-                                     ^
-                                     only request-VN VCs
-
-VA chooses one downstream VC and records ownership.
-SA later chooses which cycle can carry an actual flit.
+SA-I : choose one eligible VC per physical input
+SA-II: choose one nominated input per physical output
 ```
 
-VA 解决“这个 packet 在下一个 Router 使用哪个 VC”。即使 VA 成功，输出线仍可能被另一 VC 的 flit 占用；即使线空闲，也可能因为没有下游 VC 而无法发送新 head。
+只做每输出 arbiter 可能让同一输入的两个 VC 同拍赢不同输出，但输入只有一个读口。合法 grant 满足每输入/输出的求和均≤1。
 
-### 10.2 每个输出 VC 的状态是远端输入资源的镜像
+示例：I0.VC0->E、I0.VC1->N、I1.VC0->E。如果 SA-I 都提名 E，SA-II 选 I1，N 会闲置；其实 I0->N、I1->E 可以并行。这说明非阻塞 crossbar 不保证 allocator 总找到最好匹配。
 
-本 Router 的 `outvc_state[East][v]` 对应邻居 Router 的 West 输入 VC。R0 至少保存：
+Garnet 有相应两级结构，但它在胜出的 head 路径合并分配 VC，与 R0 独立 VA 不同。[R5] 第 40 章对照 iSLIP、maximal/maximum 与 pointer 更新。
 
-```text
-ownership: IDLE / RESERVED / DRAIN_WAIT
-owner:     (local input port, local input VC)
-credits:   0..D
-```
-
-`ownership` 与 `credits` 必须分开。长包的 head 已被下游转发、所有已发送 body 也被转发时，credits 可以回到 D，但 tail 还没发完，VC 仍属于原包。
-
-这个区别可以在 Garnet 的输出状态与 credit 处理代码中直接看到：收到普通 credit 只增加空间；收到带 free 标志的 credit 才将输出 VC 标记空闲。[R6]
-
-### 10.3 R0 的可实现 VA 算法
-
-把每个等待 VA 的输入 VC 看成一个申请者，总计最多 20 个。每个输出端口有四个 VC，但申请者只能选择其 VN 允许的两个。
-
-一个简单的两步实现是：
+## 12. RR 的 request、grant、commit
 
 ```text
-Step 1: each WAIT_VA input VC nominates one eligible IDLE output VC
-Step 2: each nominated output VC runs RR among its applicants
-Commit: each winner reserves that output VC and updates its own mapping
-```
-
-每个输入 VC 只提名一个目标，因此不会同拍得到两个 grant；每个输出 VC 只有一个仲裁器，因此不会分配给两个输入 VC。不同输入 VC 可以同拍预订同一物理输出的不同 VC，这是合法的，因为 VA 没有承诺它们同拍传数据。
-
-候选 output VC 的选择需要公平轮转或其他前进策略。固定永远选编号最小者可能降低利用率。R0 允许这一级匹配非最优，下一拍重试；不能把这个简单实现描述成 maximum matching。
-
-### 10.4 时钟边界上的原子性
-
-所有仲裁器应读取本拍旧状态，生成 grant，再在同一时钟边界统一更新。不能让软件模型先更新 VC0 的 ownership，后执行的另一个仲裁器却像“提前知道本拍结果”一样重新挑选，除非硬件真的实现了对应的组合级联。
-
-多周期 VA 还需要 reservation 或 grant-valid 检查：某个输出 VC 在请求进入流水线时空闲，不代表两拍后提交时仍空闲。R0 先采用单个 VA 计算阶段与统一提交，避免隐藏这类状态竞争。
-
-## 11. Switch Allocation：解决本周期的真实竞争
-
-### 11.1 什么叫 eligible
-
-一个输入 VC 要申请 crossbar，R0 要同时满足：
-
-```text
-nonempty
-AND packet_state == ACTIVE
-AND route_valid
-AND assigned_output_VC_valid
-AND output_credit > 0
-AND head/body pipeline timing ready
-AND output/link Active
-AND any required ordering gate passed
-```
-
-“FIFO 里有数据”只是其中一个条件。没有 credit 时，它不是一个能够实际发送的候选者。把它不断选为赢家，会制造无效 grant 和带宽空洞。
-
-### 11.2 两级 SA 为什么必不可少
-
-```text
-SA-I: one nomination per physical input
-
-Input0: VC0 -> East, VC1 -> North, VC2 blocked
-             RR picks one VC
-
-SA-II: one winner per physical output
-
-Input0 nomination --+
-Input1 nomination --+--> East arbiter --> one final winner
-Input2 nomination --+
-```
-
-如果只做“每输出一个 arbiter”，Input0 的两个 VC 可能同时赢得 East 和 North。但 R0 Input0 只有一个读口、一条进入 crossbar 的总线，无法真的送两份数据。SA-I 就是为了先满足每输入最多一份数据的约束。
-
-最终 grant 矩阵必须满足：
-
-```text
-for each input i:  sum_o grant[i][o] <= 1
-for each output o: sum_i grant[i][o] <= 1
-```
-
-这使 grant 成为一个输入—输出二分图匹配。Crossbar 非阻塞，指的是一个合法无冲突匹配可以同时通过，不是说它能让多个输入同拍占用一个输出。
-
-### 11.3 三路竞争的逐拍例子
-
-假设三个输入各有一个长期 eligible 的 VC，都去 East，credit 始终足够，East 初始 RR 指针指向 I1。
-
-```text
-cycle       eligible inputs        winner       next pointer
-  0             I0 I1 I2              I1             I2
-  1             I0 I1 I2              I2             I3
-  2             I0 I1 I2              I0             I1
-  3             I0 I1 I2              I1             I2
-```
-
-指针 I3 不要求 I3 有请求；仲裁器从该位置环绕扫描，跳过未申请者。若 cycle 2 East credit 为零，则没有 commit，指针不因一个虚假的“轮到你了”而前进。
-
-### 11.4 简单 SA 并不保证最大吞吐匹配
-
-```text
-I0.VC0 -> East
-I0.VC1 -> North
-I1.VC0 -> East
-
-SA-I chooses: I0.VC0 and I1.VC0
-SA-II gives East to I1
-Result: one transfer; North idle
-
-A better matching exists:
-I0.VC1 -> North, I1.VC0 -> East
-Result: two transfers
-```
-
-这个例子说明：增加 VC 不代表自动吃满输出；仲裁算法可能没有看见某个可行并行组合。可以用迭代匹配、更复杂提名、优先空闲输出或内部 speedup 改善，但要付出逻辑深度、面积或延迟。
-
-Garnet 的公开代码是研究两级仲裁的具体入口：输入选择、输出选择、成功后更新 RR 指针，以及 head 在获得输出机会时分配 VC。它的 VA/SA 组合方式与本文 R0 分离 VA 不同，不能混写成同一个实现。[R5]
-
-## 12. Round-robin 的 RTL 思维方式
-
-### 12.1 最简单的参考逻辑
-
-```text
-winner = NONE
-for offset = 0 .. N-1:
-    k = (pointer + offset) mod N
-    if request[k] and winner == NONE:
-        winner = k
-
-if transfer_commit:
+winner = first asserted request scanning from pointer, wrapping around
+if actual_transfer_commit:
     pointer_next = (winner + 1) mod N
 else:
     pointer_next = pointer
 ```
 
-这是行为描述。综合可用旋转、priority encoder、mask 两次编码等结构实现；不是要求在电路中放一个顺序执行的 CPU 循环。
+可综合实现可用 mask、旋转与优先编码，不是要求电路顺序执行软件循环。没有真实传输时不要按“看起来被选中”更新公平性状态。
 
-### 12.2 request、grant、commit 必须分开
+R0 的 commit 原子 pop、扣下游 credit、更新指针、返回上游槽 credit、锁存 ST 数据/元数据。若输出可停住，则 grant 可能不等于 commit。第 38 章给出完整事件冲突表。
 
-request 是“希望传”；grant 是仲裁器的选择；commit 是“相关数据和资源状态都能不可撤销地前进”。在有输出 skid buffer 或可暂停流水级的设计里，grant 不一定等于 commit。
+孤立、持续可服务的 RR 有轮转公平性；动态完整网络不因此获得固定端到端 deadline。
 
-R0 规定：SA 已确认 credit 并预留后续不可阻塞 ST/LT 槽，最终 grant 在边沿作为 commit。这个边沿统一发生：FIFO pop、下游 credit 扣减、RR 指针推进、返回上游 credit、ST 元数据锁存。
+## 13. Crossbar 与流水元数据
+
+一个直观 5×5、128-bit 实现是每输出一个 5:1 宽 MUX。输入侧先从四个 VC 选一个，因此 VC 增多不必让 crossbar 变成 20×20，但会增加存储、状态与仲裁成本。
+
+ST/LT 必须锁存 data、valid、output、outvc、H/T。tail pop 后本地 VC 可复用，旧 tail 还在 pipeline；若旧 tail 此时回读新的 route，就会误送。
+
+五拍首 flit 延迟不等于每五拍才能发一 flit，流水稳态可以一拍一 flit。反之单拍大组合逻辑可能降低频率，必须以 ns、有效吞吐和物理实现共同评价。
+
+## 14. Credit：分布式容量守恒
 
 ```text
-                 one atomic SA commit event
-                /        |       |         \
-           FIFO pop   credit--   RR++    latch {data,route,VC,H/T}
+A output credit -- charged at SA --> forward ST/LT --> B input FIFO
+        ^                                               |
+        +-------------- reverse credit <------ B pop ----+
 ```
 
-若加入可阻塞输出 FIFO，必须修改 commit 条件；不能仍然在“猜测 grant”时把 FIFO 弹出。
-
-### 12.3 公平性到底保证到哪里
-
-对于一个孤立输出 arbiter，在固定 eligible 集合和持续服务条件下，RR 可给出有限的轮转等待。若有 N 个持续申请者，轮转量级是 N 次成功服务。
-
-但完整两级 SA 中，某 VC 是否能在 SA-I 被提名、下游是否有 credit、所需 VC 是否空闲都在变化。不能据“用了 RR”就宣称每个 requester 必在 N 个墙钟周期内完成。严格 QoS 延迟界需要对注入、所有瓶颈和服务策略一起约束。
-
-## 13. Crossbar 与 ST/LT：数据什么时候真正离开 FIFO
-
-### 13.1 数据矩阵
+credit 是许可而非瞬时下游探测；扣减在不可撤销的 SA commit，不能等真正离开长流水线才扣。
 
 ```text
-             I0      I1      I2      I3      I4
-              |       |       |       |       |
-Output E  <---+-------[selected 128-bit input]----+
-Output N  <---+-------[selected 128-bit input]----+
-Output S  <---+-------[selected 128-bit input]----+
-Output W  <---+-------[selected 128-bit input]----+
-Output L  <---+-------[selected 128-bit input]----+
-```
-
-一个直观实现是每输出一个 5:1、128-bit 宽 MUX，选择 SA 给出的输入。实际物理实现还涉及扇出、布线、时钟和寄存器位置。
-
-VC 增加不一定把 crossbar 变成 20×20。R0 在每个输入先从四个 VC 选一个，再进入 5×5 crossbar。更多 VC 主要增加 FIFO、状态、VC 选择和仲裁成本。
-
-### 13.2 每一级必须锁存与数据一致的元数据
-
-ST/LT 不能只保存 data，还需要保存该 flit 的 output、下游 VC、H/T 和 valid。尤其在 tail 的 SA commit 后，本地 input VC 可以转 IDLE 并被新包复用；旧 tail 仍在 ST/LT 中。若流水线还去读已经被新包改写的 `route_out`，旧 tail 会被送错位置。
-
-这类 bug 的根本原因是混淆“包的当前状态”与“已经离开 FIFO 的 flit 的状态”。
-
-### 13.3 pipeline latency 与 throughput 是不同量
-
-五拍才能把第一个 head 送到下一跳，不代表每五拍只能发一个 flit。只要各级能每拍接受新项，就可以形成流水线，稳定状态每拍一 flit。
-
-相反，把所有组合逻辑塞成一拍，可能降低可达频率，导致以 ns 计的延迟和以 GB/s 计的吞吐都变差。必须看时钟周期，而不只看 stage 数量。
-
-## 14. Credit 流控：用守恒关系防止覆盖下游
-
-### 14.1 credit 代表的是预留许可，不是瞬时探测
-
-```text
-Router A                                      Router B
-output VC state                              input VC FIFO
-C available credits                         D storage slots
-       |                                          |
-       +--- flit, already charged to C ---------->|
-       |                                          | pop
-       |<----- credit for a released slot ---------+
-```
-
-A 无法零延迟看到 B 的占用。它根据初始化得到的 D 个许可，以及后来收到的返回许可发送。在 R0 中，扣减发生在 **SA commit 时**，即 flit 进入不可撤销前向流水线之前；不能等到两拍后 PHY/link 真正发出时才扣，否则流水线中的多份数据可能重复消费同一 credit。
-
-### 14.2 四项守恒
-
-对一个输出 VC 定义：
-
-```text
-C: A 当前可用 credit
-F: 已扣 credit、尚未写入 B FIFO 的前向在途 flit
-Q: B FIFO 中尚未 pop 的 flit
-R: B 已释放、但 credit 还没返回 A 的槽
-
+C = available permissions
+F = charged forward flits, including ST/LT
+Q = downstream stored flits
+R = freed slots whose credits are returning
 C + F + Q + R = D
 ```
 
-R0 所有正常传输动作只在这四项之间搬移一个 token：`C->F->Q->R->C`。任何额外加一次 credit、漏扣一次、丢掉一次返回，都破坏守恒。
+每一步搬 token：C->F->Q->R->C。同拍 send 与 return 可以让 C 不变，但两个事件都须记账；未定义的同拍 credit 旁路不能靠模拟器执行顺序偷偷加入。
+
+普通 pop 返一个 slot；tail pop 返 slot 加 free。input VC 在自己的 tail pop 后空闲；上游 output VC 等 free 真正返回后才复用。BookSim 对不同复用策略有明确区分，R0 选择保守模式。[R3][R19]
+
+每输入每拍最多 pop 一 flit，因此反向每拍一个携带 VC/free 的事件可承载该速率。若提高内部读口或 speedup，也须提高 reverse 带宽或加事件队列。反向 credit 不应依赖会被它自己堵住的普通数据 packet。
+
+第 42—43 章把这一守恒推广到共享容量，并用有限网络检查复算延迟。
+
+## 15. 状态机与逐周期例子
 
 ```text
-C_next = C - send_commit + credit_return
-Q_next = Q + receive_flit - pop
+Input VC:
+IDLE -> RC -> WAIT_VA -> ACTIVE ->(tail pop)-> IDLE
+                        ^  |
+                        +--+ ordinary pop or temporary empty
+
+Output VC:
+IDLE -> RESERVED ->(local tail commit)-> DRAIN_WAIT
+ ^                                           |
+ +-------- downstream free credit -----------+
 ```
 
-同拍 send 和 return 可以让 C 不变，但两个事件都必须被记账。C=0 时是否允许用同拍刚返回的 credit 发出，取决于组合旁路；R0 保守地只用本拍逻辑可见的寄存器状态，不跨未定义时序边界借 credit。
+body 可在 WAIT_VA 时继续进入合法预留空间；ACTIVE 暂时空 FIFO 不释放。HEAD_TAIL 经正常 RC/VA/SA，在第一次 pop 同时结束。IDLE 收 body、ACTIVE 收另一个 head、H/T 数不符都是边界错误。
 
-### 14.3 槽释放与 VC 释放是两个事件
+| 时刻 | head 行为 |
+|---|---|
+| edge 0 | 捕获到输入 FIFO |
+| [0,1] / edge 1 | RC / 保存 route |
+| [1,2] / edge 2 | VA / 保留 output VC |
+| [2,3] / edge 3 | SA / pop、扣 credit、锁存数据 |
+| [3,4] | ST / crossbar |
+| [4,5] / edge 5 | LT / 下一节点捕获 |
 
-- 普通 pop：返还一个 buffer slot，`vc_free=0`。
-- tail/HEAD_TAIL pop：返还一个 slot，并带 `vc_free=1`。
+无竞争、足够 credit 时 body/tail 按一拍间隔跟随。三跳首 flit edge 15，17-flit 包尾 edge 31，不是把 F、H 与所有阶段串行相乘。
 
-本地输入 VC 在自己的 tail pop 后回到 IDLE；上游对该 VC 的 ownership 视图，要等 free indication 到达才改变。某节点发出 tail，只能说明它已经不再需要那个包的本地输入状态，不能说明下一个节点也已经处理完 tail。
+一个 credit 例子：A edge3预留、B edge5收到、edge8 pop、A edge9捕获返回、最早 edge10再次提交，约七拍许可闭环。D=8 只是本例有余量，竞争/长链路可能使其不足。
+
+单 flit 包仍要等 VC 所有权释放。按保守时序，一个 output VC 从 edge2分配到 edge10能再次分配，周转约八拍；一个 VN 仅两个 VC，短包吞吐可能受约2/8 packet/cycle限制。深 buffer 不等于有更多 packet ownership。第二轮模型更精确地区分尾到达、消费与 drain。
+
+# 第四部分：正确性与实现
+
+## 16. HOL、VOQ 与共享存储
 
 ```text
-A sends TAIL -----forward-----> B receives TAIL
-     |                               |
-     |                         B may wait / arbitrate
-     |                               |
-     |                         B pops TAIL
-     |<------ free credit -----------+
-     |
-A can allocate B's VC to a new packet
+[A -> blocked East][B -> free North][C -> free Local]
+ ^ single FIFO can only read A
 ```
 
-BookSim 对“等 tail credit 再复用”和较早复用的策略有所区分。R0 选择前者，换取一个 VC 内不混入多个 packet 的简洁性；这不是唯一合法实现。[R3]
+多个 VC 可把独立 packet 的阻塞分开，但包内 body 不能越过 head。组织选择包括单 FIFO、每输入多 VC、按目的输出 VOQ 和 shared pool。
 
-### 14.4 reverse credit 也要有实现
+VOQ 减少不同目的地 HOL，代价是队列与匹配复杂度。shared buffer 提高容量利用，必须补齐 free list、队列描述符、多口/bank、指针并发更新和最小保留份额。第 41—42 章给出可以继续实现的结构与同拍更新表。
 
-R0 每物理输入每拍最多 pop 一个 flit，因此它每拍最多产生一个返回事件。一条含 VC 编号和 free 标志的专用反向通道能够承载该速率。
+已授出的 credit 是不可随意撤销的容量承诺；某 VC 的空间不能因另一流增加而被直接拿走。更多 buffer 只吸收短突发，不创造持续出口带宽，且可能加大排队延迟。
 
-如果加入多读口或内部 speedup，同拍可能产生多个 credit；此时要增加反向带宽、计数返回或 credit FIFO。不能扩大前向吞吐却忘记返回许可也需要吞吐。
+## 17. Deadlock：画资源等待图
 
-反向 credit 不依赖普通请求/响应 packet 排队。否则“没 credit 导致数据不走，返 credit 的包又被数据堵住”可能形成新的环。
-
-## 15. 把状态机和逐周期例子放在一起
-
-### 15.1 输入 VC 状态机
+把可持有资源作为节点；持有 A 等待 B 就画 A->B。确定性路由中利用无环通道依赖建立死锁规避，是经典设计方法。[R13]
 
 ```text
-IDLE -- legal HEAD arrives --> RC
-RC   -- route committed ----> WAIT_VA
-WAIT_VA -- VA grant --------> ACTIVE
-ACTIVE -- ordinary pop ----> ACTIVE
-ACTIVE -- TAIL pop ---------> IDLE
-```
-
-head 后的 body 可以在 WAIT_VA 时继续进入，只要先前的 credit 合法、FIFO 还有承诺空间。ACTIVE 期间暂时空 FIFO 只是等待后续 flit，不转 IDLE。
-
-H=T=1 的单 flit 包仍然需要 RC、VA 和 SA，但它在第一次 pop 时同时结束。非法序列包括 IDLE 收到 body、ACTIVE 收到另一包的 head、错误 tail 数量以及 VN/VC 不匹配。
-
-### 15.2 输出 VC 状态机
-
-```text
-IDLE -- VA reservation --> RESERVED
-RESERVED -- body/head transmissions --> RESERVED
-RESERVED -- local TAIL commit --> DRAIN_WAIT
-DRAIN_WAIT -- downstream free credit --> IDLE
-```
-
-RESERVED 和 DRAIN_WAIT 都不允许另一个 packet 获得该输出 VC。Credit count 在这些状态中独立增减。R0 的专用反向链路保持相关返回顺序；释放检查还应核对没有未处理的本 VC 前向数据。
-
-### 15.3 一跳的精确定时
-
-规定：edge 0 时 head 已写入输入 FIFO；每个列出的计算区间是一拍，时钟 1 GHz。
-
-```text
-edge / interval     head action
-edge 0              input FIFO captures HEAD
-[0,1]               RC
-edge 1              save route
-[1,2]               VA
-edge 2              reserve downstream VC
-[2,3]               SA
-edge 3              pop, charge credit, latch ST metadata
-[3,4]               crossbar / ST
-[4,5]               forward link / LT
-edge 5              next router captures HEAD
-```
-
-因此本文一跳 head latency 为 5 ns。这里“跳”明确包含本 Router 的处理和一段前向 LT，不可在总公式中再多加一次相同 LT。
-
-在 head 路由和 VC 已确定、无竞争且 credit 充足时，后续 body 只需要可发送资格、SA、ST、LT，并保持包内顺序：
-
-```text
-flit          H     D0    D1    D2    ...   D15/T
-input edge    0      1     2     3    ...     16
-output edge   5      6     7     8    ...     21
-```
-
-三跳同宽流水网络：head 到达 edge 15，最后一项到达 edge 31，而不是 `17 flits × 3 hops × 5 cycles`。后者把能够重叠的流水阶段重复串行化了。
-
-### 15.4 credit RTT 的取点也要明确
-
-在这套流水线里，A 于 edge 3 扣 credit；B 于 edge 5 收到 head，edge 8 pop；假设反向返回一拍，A 于 edge 9 看到 credit，最早在下一次提交边沿 edge 10 再消费该许可。
-
-从 edge 3 的预留到 edge 10 的再次提交，示例 credit reuse 间隔为七拍。为每拍连续发送，需要足够多 token 覆盖这段闭环。D=8 是一个有余量的教学选择，但不保证有竞争或更长反向链路时仍不断流。
-
-### 15.5 小包还有 VC 所有权周转瓶颈
-
-单 flit 包即使只消费一个槽，仍会占用一个 VC 直到 free 返回。按照上面的保守阶段，某个 output VC 从 edge 2 分配，到 edge 9 free 可见、edge 10 能再次完成 VA，周转约八拍。
-
-因此一个 VN 仅两个 VC 时，持续单 flit 包可能受约 `2/8 packet/cycle` 的所有权周转限制，远达不到物理口的一 flit/cycle。这个值是特定无旁路时序下的估算，不是通用标准数值。
-
-这解释了一个反直觉现象：**很多空 buffer slot，不代表可以接收很多新 packet。** 扩大 FIFO 深度、增加 VC 数、提前安全复用 VC、合并 VA/SA，解决的是不同瓶颈。
-
----
-
-# 第四部分：从单 Router 扩展到网络正确性
-
-## 16. HOL、buffer 组织与 area/power 取舍
-
-### 16.1 一个 FIFO 为什么挡住本可前进的数据
-
-```text
-single input FIFO:
- [A -> busy East][B -> free North][C -> free Local]
-  ^ only this item can be selected
-```
-
-如果 B 和 C 在 A 后面，而存储只允许取队头，空闲输出也没有用。增加 VC 可以让互不依赖的 packet 占不同队列，但同一个 packet 内的 body 仍不能绕过自己的 head。
-
-### 16.2 四种常见组织方式的实现差别
-
-| 组织 | 需要保存什么 | 主要好处 | 主要代价 |
-|---|---|---|---|
-| 每输入一个 FIFO | 一个读写队列 | 简单、低状态开销 | HOL 严重 |
-| 每输入多 VC | 每 VC 队列和 packet 状态 | 隔离阻塞、可分资源类 | 更多仲裁与状态，容量可能闲置 |
-| 按目的输出排队 VOQ | 每输入每输出队列/描述符 | 减少不同目的地之间的 HOL | 队列数与匹配复杂度增加 |
-| shared buffer | 公共存储、free list、队列指针、配额 | 容量利用率较高 | 多端口/banking、分配回收、隔离困难 |
-
-shared buffer 不是“把四个 FIFO 改成一块 SRAM”就结束。每个入口可能同拍写入；多个出口可能同拍读出；至少要设计 bank 映射、冲突仲裁、队头缓存、free-list 并发更新以及最小保留份额。
-
-### 16.3 shared buffer 的资源承诺不能随意撤销
-
-若上游已获得八个 credit，表示它可以在未来送来八份已授权 flit。接收方不能因为另一 VC 流量增大，就把这些已承诺槽全拿走。
-
-一种可实现策略是：每 VC 有保证的保留容量，额外容量来自动态池；发出动态 credit 之前就将相应槽或等价 quota 预留。否则 credit 数量与实际可用存储不一致，拥塞时一定会暴露覆盖问题。
-
-### 16.4 更多 buffer 不创造出口带宽
-
-一个输出只能每拍一 flit，持续注入两 flit/cycle，就算加倍 buffer，也只是推迟反压开始。短突发可能受益；长期过载仍需限流、更多物理带宽或改变映射。
-
-深 FIFO 还可能提高负载下的排队时间。选择 D 时应同时看 credit RTT、最大突发、QoS 和面积，而不是笼统地“越大越好”。
-
-## 17. Deadlock：必须画资源依赖，而不只画数据箭头
-
-### 17.1 什么是通道依赖图
-
-把可被持有的通道/VC 资源视为节点。如果 packet 可以持有资源 A，同时等待资源 B，就画 `A -> B`。在适用的确定性路由模型下，用无环依赖约束构建无死锁路由，是经典方法。[R13]
-
-```text
-A holds VC_ab, waits VC_bc
-B holds VC_bc, waits VC_ca
-C holds VC_ca, waits VC_ab
-
 VC_ab -> VC_bc -> VC_ca -> VC_ab
 ```
 
-“每个 FIFO 都很大”“每个 arbiter 都公平”都不能消除已经存在的结构性等待环。
+mesh XY 不允许完成 Y 阶段后回到 X，且无环回边。第一轮脚本枚举4×4所有源目的路径得到48有向通道、68依赖边并可拓扑排序；这只检查该模型，不含复杂 endpoint/协议资源。
 
-### 17.2 R0 的 XY 为什么有帮助
+请求等响应、响应等请求空间可能形成另一类环。R0 分请求/响应 VN，并在 NI 保留响应接收资源，使响应消费不依赖再发新请求。两 VN 并非所有协议的通用答案。第二轮第45章把共享池和 endpoint 等隐藏资源加入分析。
 
-在无环回的二维 mesh 中，XY 不允许完成 Y 阶段后再返回 X 阶段；一个维度内也不会为了最短路径反复改变方向。按这套规则构造出的通道依赖可以无环。
+死锁、饥饿、活锁不同：前者循环等待，第二种某流拿不到服务但别人前进，第三种不断移动/重试却不完成。公平 arbiter 不能消除结构性环，大 buffer 也不能。
 
-本文附带脚本枚举 4×4 mesh 所有源—目的路径：得到 48 个有向物理通道、68 条通道依赖边，拓扑排序成功。它验证的是**这个特定 XY 通道模型**，没有包含一致性控制、复杂端点或任意自适应路由。
+## 18. QoS 不只是四个 bit
 
-### 17.3 路由无死锁不等于协议无死锁
-
-请求网络可能等目标产生响应，而目标响应又等请求网络释放空间。这种 request/response 依赖不一定出现在单纯 XY 路径图里。
-
-R0 把请求和响应放入两个 VN，并给它们独立 VC/buffer 资源；更关键的是 NI 的响应预留和目标端前进约定，防止响应消费再依赖新的请求发出。
+基线 QoS 字段预留，纯 RR 不提供硬实时保证。扩展可由 NI token bucket 限流、output class scheduler、类内 RR 组成。
 
 ```text
-Request VN -> target service -> Response VN -> pre-reserved sink buffer
-                                                  |
-                                                  +-- no dependency back
-                                                      to Request VN for ejection
+NI rate/burst limit -> eligible class selection -> within-class RR
 ```
 
-“分成两个 VN 就保证所有协议无死锁”仍然是错误的。VN 的数量与依赖分配应来自具体协议分析，而不是固定口诀。
+按包、flit、byte 计权重得到不同带宽公平性。固定优先级有饥饿风险。端到端 deadline 还要求每个瓶颈和目标有明确服务约束，单 Router 优先级不够。第40、45章继续讨论匹配与观察指标。
 
-### 17.4 Deadlock、starvation、livelock 不同
+## 19. 对照 AXI、CHI 与公开 NoC
 
-死锁是一个资源循环里谁也不能前进；饥饿是某流长期拿不到服务，但其他流仍在走；活锁是不断移动/重试，却不完成目标。XY 的有界路径可以避免随意绕路，但不能替代公平服务、目标前进和错误超时约定。
+### 19.1 AXI4 桥接
 
-## 18. QoS：要控制“谁可以占多久”，不是只加四个 bit
-
-R0 包头预留 QoS，但基础仲裁只做 RR。以下是【可选扩展设计】，不把“有字段”写成“已保证实时性”。
-
-一个简单扩展可以分成三层：NI 限制注入速率；每输出先选择有资格的 traffic class；类内再做 RR。对 bulk SDMA 使用 token bucket 或带宽配额，对必须及时完成的控制流保留最低服务机会。
+AXI4 有独立读地址、读数据、写地址、写数据、写响应通道；其 ID 与 ordering 有具体约束，不能简化为“相同 ID 所有读写全局自动有序”。AXI4 写数据不靠 WID 任意交织，burst/边界与握手也要遵循规范。[R8]
 
 ```text
-NI token bucket -> per-class eligible set
-                              |
-                              v
-                    class scheduler / weights
-                              |
-                              v
-                        within-class RR
+AW FIFO --+-> write assembler -> internal WriteReq
+W FIFO ---+
+AR FIFO ----> transaction map -> internal ReadReq
+internal responses -> optional reorder -> original R/B interfaces
 ```
 
-token bucket 保存 token 数、补充速率和最大 burst。发出一次数据按字节或 flit 扣 token，不应在一个长包只扣一次“包计数”却宣称字节带宽公平。
+R0 有限桥先保存 AW 上下文、按对应顺序收齐 W，检查对齐/长度后封装。读侧保存 ARID 映射。R0 不含任意 WSTRB、exclusive、所有 burst，因此要限制接受子集或显式转换，不能静默丢属性。
 
-fixed priority 可以降低高优先级延迟，但低优先级有饥饿风险。weighted RR 的权重也必须明确按包、flit 还是 byte 记账：一个 17-flit 包和一个 1-flit 包“各一次”不是相同带宽。
+### 19.2 CHI 只是概念对照，未完成协议实现
 
-硬延迟上界还要求每个瓶颈都提供足够服务，目标控制器也不能无限暂停。单个 Router 的优先级不能推导整条 NoC+D2D+DRAM 路径的 deadline 保证。
+CHI 有 REQ/RSP/SNP/DAT，字段与消息职责不同。旧版 Protocol Bundle Guide 可用于识别接口信息，但其中 C++ 类型不是最新规范线上位宽。[R9]
 
-## 19. 对照真实协议：AXI 与 CHI 应放在哪一层
+REQ涉及操作、地址与事务；RSP涉及控制/完成；DAT含数据身份及状态；SNP涉及一致性请求。链路 credit 与事务级 retry 等资源机制也不能全等同 R0 槽 credit。
 
-### 19.1 AXI4 的关键约束
+运输 CHI 与实现 CHI 不同：后者需节点角色、一致性状态和消息依赖。第三轮仍须锁定协议版本和子集逐项映射。
 
-AXI4 有独立的读地址、读数据、写地址、写数据和写响应通道；通道使用握手，支持事务 ID。写数据没有可用于任意交织写事务的 WID；同 ID ordering 也不能简化成“所有读写自动全局排队”。突发边界、响应和观察点都受规范约束。[R8]
+### 19.3 FlooNoC 的对照价值
 
-R0 接 AXI4 时，一个可行的有限子集桥接方案是：先按 AW 顺序保存写上下文，把对应 W beat 收齐，检查边界和长度，再形成内部写 packet；读侧用事务表映射 ARID 与内部 TransactionID。响应侧恢复 RID/BID，并对要求保持顺序的流设置重排或注入限制。
+FlooNoC 论文与公开 RTL 可用于观察宽链路、端点事务处理、FIFO 与可配置物理/虚拟通道的另一种组织。[R7][R15] 不应把论文版本与后来 main RTL 混成冻结设计，也不应认定所有 NoC 必须窄化序列化。
+
+## 20. 流水优化必须补失败路径
+
+look-ahead 把下一跳 RC 提前，但增加元数据/检查责任；推测 VA+SA 允许并行，却必须在 VA 失败时取消 SA，不 pop、不扣 credit；bypass 需同时满足旧数据顺序、容量、输出空间与唯一接受点。[R1][R2]
+
+合并 VA/SA 改变候选和匹配，Garnet 是具体实例，而不是把基线某阶段“设成零拍”即可。[R5] BookSim 的求值/更新区分也提醒，模拟器不得提前看到本拍尚未提交的状态。[R3]
+
+第44章给出结果表、非推测优先、fallback 和弹性缓冲分支。本轮没有完成这些优化的全网 RTL/仿真实现。
+
+## 21. CDC、reset、电源与错误
+
+跨时钟域宽数据不能每 bit 独立过两级同步。常见异步 FIFO 使用双口存储与同步指针，必须规定编码、满空判断、复位顺序和实际延迟。
 
 ```text
-AW FIFO -----+--> write assembler --> internal WriteReq packet
-W data FIFO -+
-AR FIFO --------> transaction map --> internal ReadReq packet
-
-internal ReadRsp  -> optional reorder -> R channel
-internal WriteRsp -> optional reorder -> B channel
+Clock A write -> dual-clock storage -> Clock B read
+       <------- synchronized pointer views ------->
 ```
 
-这里是桥的参考设计，不是对所有 AXI4 功能的完整实现。R0 没有任意 WSTRB、exclusive 和所有 burst 类型，因此 bridge 必须限定接受子集，或在 NI 中显式转换，不能静默丢弃属性。
+CDC 只吸收有限速率差，长期慢端仍会反压，并可能扩大 credit RTT。reset 时若 A把C重置成D而B保留旧数据，就会覆盖。应先停止注入，drain或协调abort，再共同建立容量和epoch；致命故障需要相关域状态一致恢复。
 
-### 19.2 CHI 的真实消息类别与我们的教学格式
+非法地址是可返回事务错误；FIFO ECC、非法VC、缺tail、credit overflow可能破坏运输完整性。片内可以有parity/ECC/poison/retry，不能笼统说无需可靠性；跨die持续故障也不能无限重放。
 
-Arm 的 CHI 接口资料可见 REQ、RSP、SNP、DAT 四类通道，以及 QoS、目标/来源、事务号、Opcode、地址、响应状态和数据相关标识等信息。不同通道字段不同。本文阅读到的旧版 Protocol Bundle Guide 是模型接口资料，**其中 C++ 参数类型不能直接当作当前 CHI 规范的线上位宽**。[R9]
+# 第五部分：延迟与容量
 
-因此只建立概念对应：
+## 22. 先定义测量边界
 
-| CHI 概念 | 用来理解什么 | 不应作出的推断 |
-|---|---|---|
-| REQ | 操作、地址、事务及排序属性 | 所有请求都与 R0 ReadReq 一样 |
-| RSP | 控制响应与完成相关消息 | 任意 RSP 都表示数据已写到 DRAM |
-| DAT | 数据与数据身份、状态 | 数据 flit 只有纯 payload，没有元数据 |
-| SNP | 一致性 snoop 请求 | 非一致性 R0 已经实现 snoop |
-| 链路信用/事务级机制 | 不同层次的资源控制 | 全都等价于 R0 每 VC 的槽 credit |
+| 指标 | 起止 |
+|---|---|
+| 一跳head | 当前输入捕获到下一跳输入捕获 |
+| 单向首flit | 指定源NI接受/注入点到目标首项到达 |
+| 完整packet | 指定起点到tail接收 |
+| 读事务RTT | 接受请求到完整响应完成 |
+| SDMA copy | 命令定义起点到数据/通知定义完成点 |
 
-R0 Router 只需要识别自己的 transport header 和边带。要运输 CHI，可以封装消息、映射 VN/VC；要实现 CHI，则还需要正确的节点角色、一致性状态和依赖规则。这两件事不能混为一谈。
-
-### 19.3 为什么 FlooNoC 值得作为反例学习
-
-FlooNoC 的论文和公开 RTL 提供了宽物理链路、NI 端事务处理与不同通道组织的实例。当前阅读的 Router RTL 含可配置输入/输出、物理/虚拟通道、FIFO 和路由选择，因此可用于观察参数怎样进入可综合结构。[R7][R15]
-
-它提醒我们：NoC 并不必然依赖窄链路把一切序列化；将复杂顺序处理放在端点，也是一条设计路线。但论文版本与后来 main 分支 RTL 不应混作同一个冻结实现。
-
-## 20. 流水优化：每次减少一拍，都要指出删掉了什么依赖
-
-### 20.1 Look-ahead RC
-
-在上游就计算下一 Router 要使用的方向，随 flit 或状态送过去，减少本跳 RC 等待。代价是更多 metadata/组合计算，且路由表变化、边界条件和拥塞信息时效需要重新处理。
-
-### 20.2 VA/SA 推测并行
-
-head 同时申请 VC 与 crossbar，猜测 VA 会成功。若 SA 成功、VA 失败，不能发送，也不能扣 credit/pop FIFO。应该把推测 grant 取消，避免侵占已能实际发送的 body/tail 服务机会。
-
-Peh/Dally 的工作给出了这种优化的早期具体讨论；Mullins 等进一步研究低延迟控制路径。它们是特定电路与假设下的设计研究，不是“把几个参数设零就能单周期”的证明。[R1][R2]
-
-### 20.3 合并 allocation
-
-另一条路线是先确定输出赢家，再给获胜 head 选择一个可用 VC。这减少了独立 VA 阶段，但也改变了候选判定、匹配质量和拥塞行为。前文读过的 Garnet SA 实现属于值得对照的例子。[R5]
-
-### 20.4 Bypass
-
-如果输入 FIFO 空、输出无竞争、资源许可齐全，可以让刚来的 flit 绕过常规排队路径。必须同时满足：不越过更老的必须排序数据、credit 真实存在、输出 pipeline 有空间、失败时 flit 能落入正确 buffer。
-
-bypass 和正常 FIFO 路径不能同时提交同一个 flit；两条路径合流处需要唯一 commit 点。否则低负载下看似低延迟，拥塞切换时却可能重复或丢包。
-
-### 20.5 不要用模拟器阶段数代替物理时序
-
-BookSim2 专门区分求值和更新阶段，以免模型在同一拍“提前看到”另一个流水级的更新结果。这种模拟顺序错误会把不存在的硬件旁路模拟出来。[R3]
-
-真实评价应比较 `阶段数 × 时钟周期`、稳定吞吐、面积、功耗和验证复杂度。一个两拍低频 Router 未必胜过三拍高频 Router。
-
-## 21. CDC、复位、电源和错误会改变正常流控契约
-
-### 21.1 异步边界
-
-跨时钟域不能把 128-bit data 每 bit 独立过两级同步器。常见结构是双口存储加异步 FIFO 指针同步，或者经过验证的握手机制。指针编码、同步延迟、满空判断与复位顺序必须一起设计。
+PHY datapath latency 不等于远端HBM访问延迟。无竞争、同宽虫洞路径：
 
 ```text
-Clock A               Clock B
-write side -> dual-clock storage -> read side
-   |                               |
-   +-- synchronized pointer view --+
+T_head = injection + H * Lhop + ejection
+T_tail = T_head + (F-1) * flit_service_interval
 ```
 
-CDC FIFO 能吸收有限相位/速率差，不能让长期慢于发送方的接收方无限接收。同步延迟还会扩大 credit 闭环，使原来够用的 D 不再够用。
+要求无credit气泡、排队、速率转换或整包等待。store-and-forward边界须另计完整前段等待；普通流水不能每hop重复增加整包serialization。
 
-### 21.2 复位不是把所有 counter 清零
+有负载时需考虑 admission、VA、SA、credit、conversion、endpoint，但同拍原因可重叠，不能把counter无条件相加。接近瓶颈服务率时backlog难排空；有限FIFO会把等待传回NI/SDMA，而非自动消失。应看offered/admitted/completed和p50/p95/p99，不只看网络内部平均值。
 
-如果 A 忽然把 credit 重置为 D，而 B 仍有旧包，A 会覆盖旧数据。正常重置顺序应先停止新注入，drain 或一致地 abort 在途事务，再让两端建立同一 epoch 和容量初始状态。
+## 23. 三种不同的 BDP
 
-若发生无法 drain 的致命错误，要由系统协议清理相关 Router/NI 的占有和事务表，并向软件报告可能部分完成。不能只清一个 Router，然后假装其他节点的旧状态仍可继续。
-
-### 21.3 错误的层次
-
-地址非法通常是 NI/目标端的可返回事务错误。FIFO parity/ECC、非法 VC、缺失 tail、credit overflow 是互联完整性错误。前者通常可正常生成 ErrorRsp；后者可能已无法保证包边界，需要隔离、诊断和域级恢复。
-
-片内不一定“无需可靠性”：可以做 parity/ECC、端到端校验、poison 或重试。是否需要哪一种，取决于错误模型和产品要求。跨 die 链路也不是必然对所有错误无限重试，持续故障必须退出正常传输。
-
----
-
-# 第五部分：把延迟、带宽和容量算清楚
-
-## 22. 首 flit、尾 flit、事务往返是三个指标
-
-### 22.1 必须先声明测量起止点
-
-| 指标 | 起点 | 终点 |
-|---|---|---|
-| 一跳 head latency | head 写入当前输入 FIFO | head 写入下一跳 FIFO |
-| 单向首 flit 延迟 | 源 NI 接受/注入，需注明 | 目标首 flit 到达 |
-| 单向完整包延迟 | 同上 | tail 到达并完成接收 |
-| read transaction RTT | 源接受读事务 | 完整读响应按接口完成 |
-| SDMA copy latency | 命令达到定义的开始点 | 目标数据与完成通知达到定义点 |
-
-不同论文的 latency 数字若边界不同，不能直接比较。尤其 PHY datapath latency 不等于“SDMA 访问远端 HBM 的延迟”。
-
-### 22.2 无竞争、同宽 wormhole 路径
-
-对 R0，H 跳，每跳 head 固定延迟 `Lhop`，包长 F flits，瓶颈通道每周期一 flit：
+R0裸数据通路单向 `16B/cycle×1GHz=16GB/s`，256B数据packet理想payload约15.06GB/s。五口不能都把完整独占带宽送给同一单口MC，全双工也不能合成单向数字。
 
 ```text
-T_head = T_injection + H × Lhop + T_ejection
-T_tail = T_head + (F - 1) × T_cycle
+Router slot BDP  ≈ flit rate * credit reuse latency
+Transaction BDP  ≈ payload bandwidth * transaction RTT
+Replay BDP       ≈ link byte rate * ACK latency
 ```
 
-这些式子要求没有排队、credit 缺口、速率转换或中途整包等待。R0 的 `H=3,Lhop=5 ns,F=17` 给出网络内 `T_head=15 ns,T_tail=31 ns`。
+第一个约束下一跳许可，第二个约束SDMA/NI未完成事务，第三个约束已发未确认副本。它们可能都叫outstanding，但对象与释放点不同。更多VC也要考虑packet所有权周转；只扩大D未必改善短包。
 
-如果不同链路速率不同，尾部跟随时间由瓶颈服务间隔和中间转换缓冲共同决定，不能把每一段 `F × serialization` 简单相加。只有真正 store-and-forward 的边界才需要等待完整前一段再启动下一段。
+# 第六部分：跨 die 的新增微架构
 
-### 22.3 有负载时如何拆账
+## 24. 网关不是加长导线
 
 ```text
-T_path = fixed_pipeline
-       + source_admission_wait
-       + VC_allocation_wait
-       + switch_arbitration_wait
-       + credit_stall
-       + rate_conversion_wait
-       + endpoint_wait
+Local NoC -> TX gateway -> link/PHY -> RX gateway -> Remote NoC
+               |                          |
+      packet slots/VN isolation     reassembly/new VC injection
+
+local credits      link resources       remote NoC credits
 ```
 
-这些项的观测窗口可能重叠。若一个 VC 同时没有 credit、也没有被 SA-I 选中，不能把同一拍在总 latency 中加两次。实现性能 counter 时应采用互斥的主要阻塞原因，或明确它们是可重叠事件计数而非可直接相加的时长。
+R1暂只支持两die点对点，一packet最多跨一次。网关终止本地VC，在远端重新申请，不保持端到端VC编号。两侧都采用收齐整包后转发，head接受时预留完整packet slot，避免收半包后永远等剩余空间。
 
-### 22.4 为什么接近饱和时延迟上升很快
+更低延迟cut-through可能可行，但要重新分析重放、远端credit、部分包状态和依赖，不能无条件删buffer。
 
-当到达速率接近服务速率，短暂突发造成的 backlog 很难被排空。实际硬件有限 FIFO 最终会反压源端；队列不一定无限长，但等待会转移到 NI、SDMA 和软件队列。
+R1 record增加8B header：version1B、record length2B、VN/class1B、src die1B、dst die1B、flags1B、reserved1B；多字节大端。读请求record24B；256B数据record280B。长度包含整个record。
+
+NoC VC/H/T边带不逐bit原样运输，远端根据合法Op、长度及record边界重建。必须交叉校验长度一致。
+
+## 25. 原创可靠链路 LRP-64
+
+> LRP-64 是教学协议，**不是 UCIe 帧格式，不声称互操作**。用它把CRC、sequence、ACK、replay和接收承诺的关系讲完整；实际UCIe对照见第28章。
+
+### 25.1 80 B cell
 
 ```text
-latency
-  ^                         / heavy contention
-  |                       /
-  |                    __/
-  |___________________/
-  +-----------------------------> offered load
-                 approaching bottleneck capacity
+[12 B header][up to 64 B payload, zero padding][4 B CRC32C]
 ```
 
-这个图是定性关系，不是某个芯片的实测曲线。测量时同时记录 offered load、accepted throughput、完成速率和 p50/p95/p99，不能只展示“进入网络后的平均延迟”来隐藏源端等待。
+| 字节 | 字段 |
+|---|---|
+| 0 | version/type，高4位版本1，低4位Data/ACK/NAK/Credit |
+| 1 | class：0请求、1响应 |
+| 2—3 | 16-bit sequence |
+| 4—5 | ACK-next，累计确认后应发的下一个序号 |
+| 6 | payload length 0—64 |
+| 7 | SOP/EOP/ACK-valid flags |
+| 8—9 | 累计returned-packet-credit total |
+| 10—11 | link epoch |
+| 12—75 | payload/padding |
+| 76—79 | 覆盖前76B的CRC32C，大端编码 |
 
-## 23. 带宽与三种不同的 bandwidth-delay product
+同VN record顺序发送、不交织两个record；不同VN可逐cell交替。每VN独立seq、expected、replay与packet-credit。CRC不是身份认证，不抵抗恶意篡改。
 
-### 23.1 主数据通路峰值
+### 25.2 发送状态
 
-R0 每方向 `16 B/cycle × 1 GHz = 16 GB/s`，这里 GB 使用十进制。对于连续 256 B 数据 packet，扣除 16 B header 后，理想 payload 上限约 `16 × 256/272 = 15.06 GB/s`。
+每VN保存next_sequence、oldest_unacknowledged、32-entry replay ring及指针、replay_cursor、peer returned-credit total、packets_started、control mailbox、timer/retry count/epoch。
 
-这不是一个 Router 五个口都同时送给同一个 MC 的带宽。一个 MC 出口仍只有一个口的服务能力。全双工两方向带宽也不能直接加起来冒充单向复制速率。
+新cell需replay槽、对应远端packet许可和调度服务。不可撤销提交前保存副本，PHY送出不能删除；收到合法窗口内ACK-next才回收。不能直接把任意ACK值当回收指针。
 
-### 23.2 credit BDP
+### 25.3 接收与去重
 
 ```text
-required slot count ≳ flit_rate × credit_reuse_latency
+collect -> CRC/format/epoch check -> compare seq with expected
+  bad CRC: do not trust corrupted header; no commit
+  equal:   commit once; expected++; ACK-next
+  older:   duplicate, no delivery; repeat ACK
+  newer:   missing earlier cell; NAK expected, no commit
 ```
 
-它决定某个链路/VC 需要多少个允许在途的槽许可，单位是 flit slots。还要考虑多个 VC 的分布、所有权周转和是否只有一个流真的可以使用这些容量。
+CRC失败时class/seq也可能坏，不能使用坏header发一个假精确重放命令；可依赖发送超时或可信控制恢复。只有slot已预留且数据真正接管才推进expected，ACK不只是“看见波形”。
 
-### 23.3 transaction BDP
+### 25.4 重放不重新创建事务
+
+首次SOP消耗packet credit；重放沿用原seq，不再次扣逻辑packet许可、不重复副作用。接收slot真正释放才增加returned total。ACK丢失导致的重复cell应被去重。
+
+16-bit序号用模65536比较，未确认窗口须远小于半空间，R1选32cell。epoch重建需双方协调。若接收端在执行副作用后丢失去重状态，链路不能保证跨重启exactly-once，应报告不确定并由上层恢复，不可随意重发MMIO。
+
+## 26. RX packet slots 与 TX replay ring
+
+每VN四个record slot，每槽至少280B，1120B/VN另加状态。状态为FREE->ASSEMBLING->COMPLETE->INJECTING->FREE；只有tail提交到远端NoC、不再读取原槽，才归还packet许可。每class一次重组一个record，其余槽存已完成/待注入包。
+
+接收CRC与写入吞吐必须满足链路速率；packet credit不能解决CRC单元来不及处理一拍数据的问题，需弹性流控或降低速率。
+
+Replay每VN32×80=2560B，两VN5120B另加状态。32GB/s、ACK闭环50ns时线上在途约1600B=20cells，32是余量示例，不是保证所有拥塞都够。
 
 ```text
-required outstanding bytes ≳ target payload bandwidth × transaction RTT
-required transactions ≳ ceil(outstanding bytes / bytes per transaction)
+local credit:      next local FIFO slot
+remote packet credit: remote complete-record capacity
+replay free slot: ability to retain an unacknowledged copy
 ```
 
-它决定 SDMA/NI 为隐藏远端访问延迟需要多少个事务，不是 Router 的 buffer 深度。中间很多 flit 已经离开 Router，事务仍可能在目标控制器执行。
+累计归还避免控制重传重复加许可：`available=K+returned_total-new_packets_started`，K初始4。回绕有界模差、周期刷新和epoch隔离都要定义。
 
-### 23.4 replay BDP
+## 27. 调度、状态和错误恢复
 
 ```text
-replay storage ≳ link transmit rate × acknowledgment latency
+control mailbox ----+
+replay data --------+-> scheduler -> formatter/PHY
+new Request data ---+
+new Response data --+
 ```
 
-它决定已发出但尚不能删除的重放副本需要多大，通常按链路 frame/cell 的字节数计算。它不能替代接收端 packet buffer，也不能直接等同于 NoC credit。
+R1每八个可用发送时隙至少给控制一次机会，两VN控制轮询；累计状态可合并，无控制时让数据使用。ACK/credit发送不依赖普通data packet credit，避免信用耗尽连归还都无法发送。
 
-把这三种 BDP 分开，是分析 SDMA、Router 和 D2D 容量的关键。三个计数器都可能叫“outstanding”，但计量对象和释放事件不同。
-
----
-
-# 第六部分：跨 die 时究竟增加了哪些微架构
-
-## 24. D2D 网关是流控与封装边界，不是一根加长导线
-
-【本文设计 R1】在两个 die 的 NoC 边界加入网关。每个 die 暂只配置一条点对点 D2D 链路，不讨论任意多跳 die 拓扑。
+重放也不能永久压倒响应；持续错误超过门限进入故障，不无限占线。
 
 ```text
-Local NoC                         D2D                         Remote NoC
-       |                                                       ^
-       v                                                       |
-+----------------+       +--------------------+       +----------------+
-| TX gateway     |       | link transport     |       | RX gateway     |
-| packet slots   |------>| framing / replay   |------>| reassembly     |
-| VN separation  |       | PHY / package / PHY|       | packet slots   |
-| route to die   |       | ACK / link control |       | new VC injection|
-+----------------+       +--------------------+       +----------------+
-    local flit credits       own link resources          remote credits
+RESET -> PHY_INIT -> NEGOTIATE -> CREDIT_INIT -> ACTIVE
+                                                |
+                         QUIESCE -> DRAIN -> LOW_POWER
+                              \-> ERROR on unrecoverable condition
 ```
 
-R1 终止本地 VC 关系：网关先接收包，再在远端重新申请 NoC VC。它不会把本地 `VC1` 当作远端永恒有效的资源编号。
+这是参考状态机，不是完整UCIe状态名复刻。quiesce禁新事务但允许旧响应/ACK/replay/drain。无法排空应报告可能部分完成，不能抹掉表项假装旧流量消失。
 
-这可以把短 RTT 的片内流控和长 RTT 的 D2D 可靠传输解耦。代价是网关缓冲、封装、重组和可能的整包等待延迟。
+链路重放重送同一cell并去重；事务重试可能再次访问目标，幂等性、原子与MMIO副作用必须另行分析。
 
-### 24.1 为什么先选择整包网关
+## 28. 真实 UCIe 的已核验范围
 
-为让参考实现容易检查，R1 的发送网关在接受 head 时预留一个足够容纳整个 packet 的 slot；收齐 tail 后，才能开始此包的跨 die 发送。接收网关也收齐完整 record 后再注入远端 NoC。
+官方Hot Chips教程给出Protocol->FDI->D2D Adapter->RDI->PHY分层及相关复用、CRC/retry、状态管理职责。Raw模式不能一概套用Adapter格式化与可靠重放能力；版本和mode必须一起确认。[R10]
 
-不能先接受半个 packet、占住若干槽，后来才发现没有容量存剩余部分，却又等待只有在整包到齐后才释放的资源。这会在网关形成自我阻塞。
+UCIe1.1官方说明补充streaming检错/重放机制，旧模式表不能当作所有后续版本限制。[R11]
 
-更低延迟的 cut-through 网关是可能的，但必须另外证明跨 link 重试、远端 credit 和部分包状态之间不会形成环；不能在没有这些机制时直接删除整包缓冲。
-
-### 24.2 NoC packet 变成跨 die record
-
-R1 添加八字节 record header：`version 1B、record length 2B、VN/class 1B、src die 1B、dst die 1B、flags 1B、reserved 1B`。多字节数使用统一大端编码。这里 length 指整个 record 长度。
-
-```text
-Read request record:
- [8 B record header][16 B NoC head]                  = 24 B
-
-256 B data record:
- [8 B record header][16 B NoC head][256 B data]       = 280 B
-```
-
-NoC 的 VC 与 H/T 边带不原样占用 record 字节；远端依据校验后的 Op、长度和 record 边界重新生成 H/T，并重新申请合适的 VC。接收端必须交叉检查 record 长度与内部包长度一致。
-
-## 25. 给可靠链路一个可追踪的教学实现：LRP-64
-
-> **LRP-64 是本文原创的简化可靠链路协议，不是 UCIe 的帧格式，也不声称与任何 UCIe IP 互操作。** 它用于把 CRC、sequence、ACK、replay、接收资源与 NoC 网关的关系讲清楚。真实 UCIe 的已核验格式另见第 28 章。
-
-### 25.1 固定 80 B cell
-
-```text
-+----------------------+-----------------------------+-----------+
-| 12 B link header     | up to 64 B payload          | CRC32C 4B |
-|                      | unused bytes zero padded    |           |
-+----------------------+-----------------------------+-----------+
-```
-
-| 字节 | 字段 | 参考定义 |
-|---|---|---|
-| 0 | version/type | 高四位版本 1；低四位 Data/ACK/NAK/Credit |
-| 1 | class | 0 请求，1 响应；独立接收/重放状态 |
-| 2—3 | sequence | 16-bit 当前 data cell 序号 |
-| 4—5 | ACK-next | 对方应发送的下一个序号；累计确认 |
-| 6 | payload length | 0—64；最后一个 cell 可不足 64 B |
-| 7 | flags | SOP、EOP、ACK-valid 等 |
-| 8—9 | returned-packet-credit total | 累计归还 packet slot 数 |
-| 10—11 | link epoch | 16-bit 链路世代 |
-| 12—75 | payload/padding | 当前 record 的一段数据 |
-| 76—79 | CRC32C | 覆盖前 76 B；CRC 本身大端编码 |
-
-一个 VN 内，record 的 cells 顺序发送，不交织两个 record；不同 VN 可以在物理链路上交替传 cell。每个 VN 有自己的 sequence、expected、replay 窗口和 packet-credit 计数。
-
-CRC32C 检错不提供身份认证或抗恶意篡改能力。安全标签也不是密码学保护；跨不可信边界还需要额外安全协议。
-
-### 25.2 发送端状态
-
-```text
-Per VN:
-  next_sequence
-  oldest_unacknowledged
-  replay ring[32 cells]
-  replay read / write pointers
-  replay_active and replay_cursor
-  peer returned-credit total
-  packets_started counter
-  pending control mailbox
-  retry timer / retry count / epoch
-```
-
-一个新 data cell 只有在 replay ring 有空间、对应 packet 已获得远端 packet credit、发送调度允许时才可提交。提交时先保存可重发的副本，再允许物理发送，最后推进 `next_sequence`。
-
-“PHY 已发送”不能删除副本。ACK-next 确认其之前所有 cell 已被接收端校验并提交，发送端才回收对应 replay 槽。ACK 必须落在本地合法未确认窗口内，不能不经检查就把任意值当成回收指针。
-
-### 25.3 接收端：CRC 通过后才承诺一次交付
-
-```text
-collect complete cell
-       |
-       v
-CRC / format / epoch check
-       |
-       +-- bad CRC -> do not trust header, do not commit
-       |
-       v
-compare sequence with expected
-       +-- equal  -> commit payload once; expected++ ; ACK-next
-       +-- older  -> duplicate; do not deliver again; repeat ACK-next
-       +-- newer  -> missing earlier cell; do not commit; NAK expected
-```
-
-CRC 失败时连 class、seq 都可能被破坏，因此不能盲目使用坏 header 指定某个重放位置。简化实现可以依赖发送超时，或通过可信链路控制请求重新同步，而不是把损坏内容当控制指令执行。
-
-接收方只在确认 packet slot 已预留且 cell 合法时推进 expected。这样 ACK 的意义不是“我看见线上波形了”，而是“这份数据已经被接收状态机可靠地接管”。
-
-### 25.4 为什么重放不能再次扣逻辑 packet credit
-
-第一次发送 record 的 SOP 时消耗一个远端 packet slot 许可。若第几个 cell CRC 错误，重放的仍是同一个逻辑 packet，不是新 packet。重复扣 packet credit 会逐渐耗尽许可；重复返还 credit 则会超额授权。
-
-R1 因此按**新 packet 的首次 SOP**记 `packets_started`，按接收 packet 真正释放记累计 returned total。replay 用原 sequence，只重复物理运输，不重新创建事务或 packet 资源。
-
-### 25.5 ACK 丢失、序号回绕和接收端复位
-
-ACK 丢失会导致发送方重放已经提交的 cell。接收方通过 expected 检出旧序号，重复 ACK 而不再次交付。否则一次 MMIO 写或非幂等操作可能执行两次。
-
-16-bit 序号采用模 65536 比较，未确认窗口必须远小于半个序号空间；R1 选择 32 cells。世代变化先经过双方重建状态。**若接收端在已执行副作用后丢失去重状态，链路层不能继续声称跨重启 exactly-once**。这时应报告事务状态不确定，由更高层恢复，不可随意重发 MMIO。
-
-## 26. 两种 buffer：接收 packet slot 与发送 replay ring
-
-### 26.1 RX packet slot
-
-R1 每 VN 至少配置四个完整 record slot，每槽可放最大 280 B。每个 VN 的有效存储量至少 `4×280=1120 B`，另外还需要描述符、对齐和 CRC 接收暂存。
-
-一个 slot 可以处于 FREE、ASSEMBLING、COMPLETE、INJECTING。只有对应 record 的 tail 已按远端 NoC Local 接口提交、该槽不再被读，才能回到 FREE 并增加 returned total。
-
-```text
-FREE -> ASSEMBLING -> COMPLETE -> INJECTING -> FREE
-          link RX                  remote NoC
-```
-
-R1 选择每 class 同时重组一个 record，其余槽用于已完成或待注入记录。cell 的 CRC 检查和写入吞吐必须至少跟上声明的接收速率；如果做不到，要增加链路级弹性流控或降低协商速率。packet credit 本身不会修复一个来不及每拍处理数据的 CRC 单元。
-
-### 26.2 TX replay ring
-
-每 VN 32 cells、每 cell 80 B，至少 `2560 B/VN`；两个 VN 共 5120 B 的已发未确认副本容量，另加状态。这些副本可能对应已在对端接收、但 ACK 尚未返回的数据。
-
-```text
-local NoC credit   : free slot at next local router
-remote packet credit: complete record capacity at remote gateway
-replay free entry  : ability to remember unacknowledged transmission
-
-New send may need all relevant resources, but they are not the same counter.
-```
-
-假设 link 32 GB/s，ACK 闭环为 50 ns，则在途线上数据约 1600 B，对 80 B cell 是 20 cells。32-entry ring 留有一定余量，但 ACK 调度拥塞、错误和模式开销都可能增大实际需要。
-
-### 26.3 累计 credit 怎样避免控制包重复导致多加
-
-初始化双方知道 K=4 个接收 slot。发送方可用 packet credit 按下式维护：
-
-```text
-available = K + total_returned_by_peer - total_new_packets_started
-```
-
-线上传回累计计数而不是“无条件加一脉冲”。重复收到同一个累计值，不会再次增加 available。计数回绕采用有界模差值，控制信息必须周期性刷新，且两个世代不能混算。
-
-## 27. 调度、重放和链路状态机
-
-### 27.1 数据流量不能饿死控制流量
-
-```text
-pending ACK / NAK / credit mailbox --+
-replay data -------------------------+--> link scheduler --> formatter / PHY
-new request-VN data -----------------+
-new response-VN data ----------------+
-```
-
-R1 规定每八个可用发送时隙至少提供一次控制服务机会；两个 VN 的控制 mailbox 轮询。控制信息采用可合并的累计状态，避免因大量重复 ACK 把控制 FIFO 填满。无控制待发时，时隙可供数据使用。
-
-控制发送不要求普通数据 packet credit，否则双方都没数据 credit 时，就可能连归还 credit 都发不出。重放也不能无条件永久压倒响应 VN；持续错误超过门限应进入故障状态，而不是无限占用链路。
-
-### 27.2 一个教学链路状态机
-
-```text
-RESET -> PHY_INIT -> PARAM_NEGOTIATE -> CREDIT_INIT -> ACTIVE
-                                                   |
-                         +-------------------------+
-                         v
-                      QUIESCE -> DRAIN -> LOW_POWER
-                         |
-                         +-- unrecoverable / timeout -> ERROR
-```
-
-这是 R1 的抽象状态机，不是 UCIe 标准状态名的完整复刻。ACTIVE 前必须已确定版本、速率、容量、epoch 和控制通路。QUIESCE 禁止新事务，但仍允许在途响应、ACK、重放和资源释放。
-
-若 DRAIN 超时，软件需要知道哪些事务可能部分完成。不能因为进入低功耗就抹掉 replay ring、packet slot 和 NI outstanding 表，然后等待旧响应自己消失。
-
-### 27.3 链路层 retry 不等于事务层 retry
-
-链路重放重送同一 cell，接收端消除重复，事务通常只交付一次。事务层重试可能重新访问目标，必须考虑幂等性、写副作用、原子和已经执行但响应丢失等问题。
-
-这个区别直接影响 SDMA 的 fault recovery：普通内存复制可以采用某种软件恢复策略，不代表门铃、寄存器写、原子操作都能照搬。
-
-## 28. 对照真实 UCIe：哪些细节已经有可靠来源
-
-### 28.1 分层与模式
-
-UCIe consortium 的 Hot Chips 2023 教程给出 `Protocol -> FDI -> D2D Adapter -> RDI -> PHY` 的分层，以及 adapter 的相关 CRC/retry、复用和链路管理职责。**Raw 模式不能一概套用 adapter 格式化与可靠重放的结论**，上层承担什么必须按模式确认。[R10]
-
-UCIe 1.1 的官方说明另外介绍了 streaming 协议可使用的检错/重放机制。因此不能把旧版 streaming-only-raw 的模式表当成以后所有版本的约束。[R11]
-
-### 28.2 一个已核验的实际 flit：68 B Format 2
-
-Hot Chips 教程明确展示：在其指定的 PCIe non-Flit/CXL.io 68B 使用场景下，64 B 协议信息加上 2 B adapter header 与 2 B CRC，形成 68 B 格式；CRC 覆盖 header 和协议信息。[R10]
+教程指定的68B Format2示例：
 
 ```text
 [2 B adapter header][64 B protocol information][2 B CRC]
-                         = 68 B
 ```
 
-线上/内部宽接口可能连续打包多个这样的格式，不能推断“68 B 必须占一个 64 B 总线周期”。还存在不同 256 B 格式，不能统一假设所有版本都具有同样的 payload 字节数。
+适用该指定PCIe non-Flit/CXL.io场景，CRC覆盖header与协议信息。64/68只是这一层效率，不是SDMA用户payload效率；不同256B格式不能一律假设相同有效字节。它与LRP-64只是对照，绝不兼容。[R10]
 
-这里的 `64/68` 只是这一层协议信息效率，不是 SDMA 用户数据效率；协议信息内部仍可能有地址、TLP/header 等开销。也不能把该格式直接替换成前面的 LRP-64：两者的用途是对照，不是兼容。
+未逐项取得/核验全部正式版本条文，因此不把假定CRC多项式、seq位宽、完整FDI/RDI时序、训练FSM或retry窗口写成标准事实。第四轮需要锁定版本和模式继续核验。
 
-### 28.3 本稿没有冒称完成的标准细节
-
-本次未取得并逐项核验所有目标版本的完整 UCIe/CHI 合规条文，因此不提供假定为标准的 CRC 多项式、全部 sequence 位宽、retry-window 上限、完整 FDI/RDI 时序表、训练状态转换或所有 256 B 格式。
-
-工程实现时应先锁定版本和模式，再从正式规范取得这些参数。本文用有明确标签的原创 R1 补足微架构理解，不用二手网站上的零散字段假装标准已经查全。
-
-## 29. PHY：不仅是 serializer
-
-### 29.1 向下打开物理路径
+## 29. PHY 不仅是 serializer
 
 ```text
-Link cells / protocol data
-          |
-      width adaptation
-          |
-      byte/lane striping
-          |
-      scramble / lane mapping
-          |
-      TX circuits / forwarded timing
-          || package channel ||
-      RX sampling / alignment
-          |
-      lane reconstruction / deskew
-          |
-      link data output
+link data -> width adaptation -> lane striping / mapping
+          -> TX circuits / timing -> package -> RX sampling
+          -> alignment/deskew -> lane reconstruction -> link data
 ```
 
-UCIe 官方电气教程介绍了其封装、转发时钟、训练和相关物理考虑；协议教程还给出 lane 映射、重排、修复/降宽及链路状态的职责。具体可用能力随封装配置和规范版本变化。[R14][R10]
+具体lane、训练、时钟、修复/降宽能力依封装与版本。官方电气/协议教程可定位这些职责，不应把其PHY指标当SDMA远端内存延迟。[R14][R10]
 
-### 29.2 lane 与内部 flit 宽度不等价
+裸带宽 `L lanes × per-lane bit rate / 8`，还未扣编码/空闲/错误；与NoC宽度×时钟之间可能有gearbox与不同频域。D2D不自动等于长距离以太网SerDes。
 
-若有 L 条数据 lane，每 lane 有效 bit rate 为 r，先不计编码、空闲和错误：
+训练/唤醒与稳态packet延迟分开报告。传播约L/v，serialization是有效位数通过带宽的时间，deskew是对齐等待；短走线不代表Adapter、CDC、校验总延迟都低。
 
-```text
-B_raw = L × r / 8
-```
+## 30. 跨 die 重新做依赖分析
 
-这不是 `NoC flit width × NoC clock` 的另一种写法。二者中间可能有 gearbox、不同频率、多个模块和打包开销。
+两个分别无死锁NoC连接后可形成跨边界等待环，模块化chiplet研究也专门讨论这一问题。[R16]
 
-D2D 也不应自动被想象成一套与长距离以太网完全相同的 SerDes。时钟方式、距离、封装电气和训练目标不同，PHY 固定延迟必须取具体实现的数据。
-
-### 29.3 training 为什么不应计入每一个 packet 的稳态延迟
-
-训练建立能够可靠采样的链路状态；正常 ACTIVE 传输不应为每个 packet 重做完整训练。可以分开报告 cold-start latency、低功耗唤醒延迟、retrain 停顿和 steady-state data latency。
-
-如果 benchmark 第一次搬运包含链路唤醒，而后续搬运不包含，平均值会受测试方法显著影响。
-
-### 29.4 propagation、serialization 和 deskew 分开
-
-封装传播约为 `T_prop = length / propagation_velocity`，由实际通道决定。Serialization 是把有效位数送过有限 lane 带宽所需时间；deskew 则需要等待相对晚到的 lane 并重新对齐。
-
-走线很短只说明传播可能很小，不说明 adapter buffering、CDC、CRC 或训练状态带来的延迟都小。不能用 `L/v` 代替整个 PHY 延迟。
-
-## 30. 跨 die 后必须重做死锁分析
-
-把两个各自无死锁的 NoC 接起来，可能增加跨边界等待环；这也是模块化 chiplet 互联研究专门讨论的问题。[R16]
-
-R1 采用一个保守的【本文设计】约束：每个 packet 最多跨 die 一次，并把本地资源分成 PRE 和 POST 两阶段。
+R1保守规则：单packet最多跨die一次，资源分PRE/POST，禁止POST返回PRE或再次D2D。
 
 ```text
 PRE NoC -> TX gateway -> D2D -> RX gateway -> POST NoC -> endpoint
-
-Forbidden for the same packet:
-POST -> PRE
-POST -> another D2D crossing
 ```
 
-实现上把 R0 的 VC 类别扩展为 `2 VN × 2 phase × 2 VC = 8 VC/input`；PRE/POST 使用独立 buffer/ownership 资源。源端远程包使用 PRE，到远端重新注入为 POST；本地包选定一个不会造成反向依赖的本地阶段。头格式不必新增 phase 位，可以由注入端与 VC 类别产生可信 phase metadata。
+按2VN×2phase×2VC扩为8VC/input，独立buffer/ownership。源远程包PRE、远端重注入POST；phase可由可信注入/VC类别产生，不必改原head。各阶段内部仍XY，网关TX/RX和请求/响应资源分开，控制流有进展机会。
 
-每阶段内部保持 XY；网关 TX/RX 存储、请求/响应存储分离；控制 ACK/credit 有独立前进机会。这样可以按资源阶段单向增加来构造无环依赖论证，而不是允许包跨 die 后任意返回旧资源类别。
+这是可用于构造无环依赖的参考约束，不是全系统证明；NI、目标与SDMA消费也须纳入。脚本未形式化验证整个R1。多次die跳转或多gateway需重做阶段规则。
 
-这仍需把 NI、目标控制器和 SDMA 响应消费依赖纳入系统检查。本文脚本只检查单 die XY 图，没有宣称对 R1 全部 RTL 状态空间完成形式化证明。若要支持多次 die 跳转或更多 gateway，需要重新设计阶段规则，不能机械复用“一次跨越”的结论。
+# 第七部分：SDMA 系统闭环
 
----
+## 31. 219 ns 的声明假设算例
 
-# 第七部分：用一笔 SDMA 远端访问把全部模块连起来
+全部数值是教学假设，不是量产芯片测量。SDMA读远die256B，两die各三个R0 hop，网关两侧整包接收，目标服务从完整请求到完整数据可用。
 
-## 31. 219 ns 算例：所有假设都摊开
-
-> 本节全部数值为 R0/R1 的教学假设，不是 AMD、Arm、UCIe 或任何量产芯片的测量。
-
-考虑 Die A 的 SDMA 读取 Die B 的 256 B 数据。两个 die 各经过三个 R0 Router hop；D2D 网关两侧均整包接收后再发送；目标服务时间从完整请求接收后开始，到完整 256 B 数据可用于响应为止。
-
-### 31.1 固定项与每包项分开
-
-| 项目 | 假设 |
+| 固定项 | ns |
 |---|---:|
-| 源 NI 固定处理 | 2 ns |
-| 源 die 首 flit 网络延迟 | 3×5=15 ns |
-| 两端 gateway 固定处理合计 | 4 ns |
-| D2D 固定流水合计 | 8 ns，包含本例 PHY/CDC/校验固定项，不含线上 serialization |
-| 目标 die 首 flit 网络延迟 | 15 ns |
-| 目标 NI 固定处理 | 2 ns |
-| D2D raw bandwidth | 32 GB/s，即 32 B/ns |
-| target service | 80 ns |
-| 排队、错误、唤醒 | 本例均不发生 |
+| 源NI | 2 |
+| 源die首flit网络 | 15 |
+| 两端gateway固定合计 | 4 |
+| D2D固定含PHY/CDC/校验，不含serialization | 8 |
+| 目标die首flit网络 | 15 |
+| 目标NI | 2 |
+| 单向固定合计 | 46 |
 
-单向固定项合计：`2+15+4+8+15+2 = 46 ns`。固定 PHY/CDC 项在真实异步系统可能是一个范围；本例只是选定一个预算值。
+D2D raw32B/ns；target80ns；无排队、错误、唤醒。
 
-### 31.2 读请求单向延迟
+请求24B record占一80B cell：`46+80/32=48.5ns`。
 
-读请求 NoC packet 是一个 flit；D2D record 24 B，放进一个 LRP cell，线上 80 B。
+响应17flit在源NoC首项后多16ns收齐；record280B占五cell=400B；远端重新注入NoC尾部再16ns：`46+16+400/32+16=90.5ns`。
 
-```text
-T_request = 46 + 80/32 = 48.5 ns
-```
+读RTT=`48.5+80+90.5=219ns`。没有重复加LT，也没有每hop重复加整包serialization。两段16ns来自明确的整包网关边界。
 
-### 31.3 读数据响应单向延迟
+目标12GB/s，即12B/ns，需要2628B在途，`ceil(2628/256)=11`事务只是初始BDP估计。NI空间、ID、MC队列、gateway与replay可能先限流。
 
-响应 packet 有 17 flits。因为发送 gateway 等整包，源 NoC 需要在首 flit 后再等 16 ns；因为接收 gateway 收完整 record 才注入远端 NoC，远端尾部也需要 16 ns。
+R0有效payload上限约15.06GB/s；LRP在此包长下理想`32×256/400=20.48GB/s`，未扣控制时隙。因此更可能先受NoC口限制，不能拿raw D2D32GB/s直接当SDMA可用带宽。
 
-D2D record 为 280 B，需要 `ceil(280/64)=5` cells，线上 400 B：
+## 32. SDMA 与互联需要签清楚的契约
+
+### 32.1 返回空间
 
 ```text
-T_response = 46 + 16 + 400/32 + 16 = 90.5 ns
+free slot -> read issued / response reserved
+          -> partial response -> data ready to write
+          -> write issued -> completion accounted -> reusable
 ```
 
-于是：
+哪些阶段共享存储、何时可覆盖须明确。Routercredit只保护下一跳FIFO，不替代SDMA读返回预留。
+
+### 32.2 包大小与并发
+
+大包降低header比例，也更久占packet VC/replay/目标空间。flit级仲裁允许其他VC穿插，packet lock则可能加大他人等待。应联动扫包长、outstanding、吞吐和尾延迟，而不是“大burst一定好”。
+
+queue数、transactionID数、NI表项数和RouterVC数不同；VC不是VMID。context隔离要靠可信权限、quota与注入策略，不能只加标签。
+
+### 32.3 完成与 fence
 
 ```text
-Read RTT = 48.5 + 80 + 90.5 = 219 ns
+C0 accept command
+C1 leave SDMA/NI
+C2 leave local NoC
+C3 remote link accepts validated data
+C4 target accepts operation
+C5 target-defined ordering/visibility achieved
+C6 completion reaches SDMA
+C7 software observes record/interrupt
 ```
 
-这个算式不把同一段 LT 加两次，也没有给每个 NoC hop 都重复增加整包 serialization。新增的两段 16 ns，来自**明确声明的整包网关边界**。
+linkACK不等于C5，FIFO空不等于C6。fence等哪个集合在哪一点完成，必须由具体指令与系统模型定义。Router不自动实现GCR、cache flush、IOMMU/TLB invalidation；可运输相关消息，但语义在相应模块，不推测AMD专有packet完成点。
 
-### 31.4 到底需要多少 outstanding
+### 32.4 Preemption/reset 与流量方向
 
-若目标有效读 payload 带宽为 12 GB/s：
+停止issue后旧响应仍在途，必须drain、保存可恢复状态或按架构abort，不能过早复用ID/context。晚到响应不得交给新context。
+
+复制N字节的读写是否共享同一瓶颈方向取决于拓扑。按每个cut统计read request/data与write data/response，不能总把全双工相加或机械除二。
+
+## 33. 软件与硬件协同
 
 ```text
-inflight bytes >= 12 B/ns × 219 ns = 2628 B
-transactions   >= ceil(2628/256)  = 11
+clock/reset -> linkActive -> epoch/credit init -> route/protection
+            -> NI/response resources ready -> SDMA enable
 ```
 
-11 是无排队假设下的初始容量估算，不是满足所有 workload 的设计保证。ID、NI 返回空间、目标队列、网关 packet credit、replay window、实际负载延迟都可能提出更高要求或先形成瓶颈。
+动态路由、端口禁用或quota缩小不得撤销已承诺资源；可quiesce/drain再改，在线无停顿需要版本化与更多证明。
 
-### 31.5 检查目标带宽有没有超过路径上限
+Linux DMA API区分CPU与DMA地址、映射生命周期和同步；coherent映射也不替代必要的内存屏障。[R17] 发布descriptor、敲doorbell、读取completion须用目标平台规则，不因NoC保序或D2DCRC就省软件排序。
 
-R0 对连续 256 B 数据包的单方向 payload 理想上限约 15.06 GB/s。LRP 对这个 record 的理想用户数据效率为 `256/400`，乘 32 GB/s 得 20.48 GB/s，尚未计控制时隙与空闲。
+建议能力寄存器含ports/VC/depth/maxpacket/ID容量；配置包括address map、权限、rate/weight、quiesce/drain；错误记录source/VC/epoch/syndrome；性能记录byte/flit、stall与latencyhistogram。它们是参考组，不是实际厂商地址。
 
-所以本例首先可能受 NoC 口限制，而不是 raw D2D lane 带宽限制。若盲目拿 32 GB/s 当 SDMA 可获得的复制带宽，outstanding 再多也达不到。
+观察链：`offered -> admitted -> routed -> VA granted -> SA committed -> sent -> acknowledged -> completed`。仅transmittedbytes无法定位慢在谁。
 
-## 32. SDMA 设计者需要和互联团队签清楚哪些契约
+# 第八部分：检查与验证边界
 
-### 32.1 Read issue 与 response storage
-
-SDMA 发读请求之前，至少要确认事务表和返回数据缓冲有容量。这里的“预留”可以是实际 slot，也可以是经过证明的分层配额，但不能只是期待写通路很快会空出来。
-
-一个有用的内部状态划分是：
+## 34. 不变量与定向场景
 
 ```text
-free read slot
- -> issued, response reserved
- -> response partially received
- -> data ready for write
- -> write issued
- -> write completion accounted
- -> slot reusable
+0<=occupancy<=D; 0<=credit<=D
+one grant per physical input/output
+one owner per output VC
+no pop without data; no send without reserved space
+no body/tail starting an IDLE packet
+old tail carries old metadata after input VC reuse
 ```
 
-其中哪些阶段共享存储、哪些允许覆盖，需要在 SDMA 微架构中明确。Router 的 credit 只保护下一跳 FIFO，不会自动保护 SDMA 的搬运缓冲。
+READY/VALID接口在停顿时保持payload；这条规则不能不加区分地套到纯credit驱动接口。
 
-### 32.2 Burst/packet size
+必须覆盖HEAD_TAIL、body间歇、tail在ST而新head到、同拍credit+send、全输入抢一输出、一个输入多VC抢不同输出、VN隔离、quiesce、CRC/ACK丢失/重复和epoch旧响应。
 
-大包减少 header 比例，却更久占用 packet VC、replay 空间和目标缓冲。若 flit-level arbitration，其他 VC 可以在包中间获得输出；若采用 packet lock，长包会增加他人阻塞时间。
+Liveness需要环境前进假设：目标最终处理、链路恢复或报告错误、eligible流最终服务、控制有机会。随机没卡住不等于死锁证明，安全性断言也不自动证明活性。
 
-因此，不能脱离 packet/flit 级仲裁策略说“大 burst 一定更高效”。实际应扫包大小与并发，观察吞吐、尾延迟、VC 周转和其他业务受影响程度。
+## 35. 第一轮检查与第二轮升级
 
-### 32.3 多 queue、VM/VF 与身份空间
-
-SDMA queue 数、transaction ID 数、NI 表项数、Router VC 数是四种不同资源。多个 queue 可以共享同一个物理口和 VC 池；一个 queue 可以使用许多 transaction IDs；VC 不代表 VMID。
-
-上游身份在 NI 映射，权限由可信逻辑核验。跨 context 的公平和隔离可能需要专用配额、注入限流与性能计数，而不仅是给 packet 增加一个 context 字段。
-
-### 32.4 Fence、flush 与 completion
-
-至少区分以下时刻：
-
-```text
-C0: requester/SDMA accepts command
-C1: request leaves SDMA/NI
-C2: last request flit leaves local NoC
-C3: remote gateway validates and accepts link data
-C4: target accepts operation
-C5: target-defined ordering/visibility condition met
-C6: response/completion delivered to SDMA
-C7: completion record / interrupt observed by software
-```
-
-link ACK 通常对应某个接收/校验承诺，不等于 C5；FIFO 空也不等于 C6。SDMA fence 等待哪个集合达到哪个点，必须由具体指令与系统内存模型定义。
-
-同样，Router 不会因为运输一个写包就自动执行 GCR、cache flush 或 IOMMU/TLB invalidation。它可能承载相关控制消息，但缓存和翻译维护的语义属于相应模块及协议。本文不推断任何 AMD 特定 packet 的完成点。
-
-### 32.5 Preemption/reset
-
-停止向互联发新请求，不意味着旧 context 已经没有流量。preemption 可以先停止 issue，再选择 drain、保存可恢复事务状态，或按架构允许的方式 abort。必须保留在途响应所需的 ID/context/epoch 映射。
-
-晚到响应不能被误交给复用同一个 ID 的新 context。这个问题跨 NoC、D2D retry 和软件故障恢复，不能只在 SDMA queue arbiter 内解决。
-
-### 32.6 读写复制的流量放大
-
-复制 N 字节至少涉及读取和写入，但它们是否竞争同一个方向的链路，取决于源、目标与路径。若两者穿过同一个共享瓶颈，同一 N 字节可能造成多次经过；若分别使用相反方向的全双工通路，就不能机械把单向带宽除二。
-
-应按每个 cut/port 统计 `read request、read data、write data、write response` 的字节和方向，再计算限制，而不是用一个含糊的“总带宽”数字。
-
-## 33. 软硬件协同：先建立资源，再允许 SDMA 发流量
-
-### 33.1 初始化顺序
-
-【本文参考流程】先确认 reset/clock，建立 PHY 和 link，协商容量与模式，初始化 epoch/credit，再配置地址—目的映射和权限。确认目标 NI、响应缓冲和错误处理可用后，最后开放 SDMA 注入。
-
-```text
-clock/reset -> link Active -> resource initialization
-            -> route/protection -> error handlers
-            -> NI ready -> SDMA queues enabled
-```
-
-运行中改路由、禁用端口或减少 buffer quota，不能破坏已经承诺给在途包的资源。可先 quiesce/drain，再切换配置；无停机切换需要更复杂的版本化路由与依赖证明。
-
-### 33.2 操作系统的 DMA 责任
-
-Linux DMA API 文档区分 CPU 地址与设备使用的 DMA 地址，并要求按照映射类型处理同步和生命周期；coherent DMA memory 也不能替代必要的 memory barrier。[R17]
-
-因此，软件向 descriptor 写入地址、发布 valid、敲 doorbell、读取 completion 的顺序，应使用平台和驱动框架规定的 DMA mapping、同步及屏障接口。不能因为 D2D 有 CRC，或 NoC 保序，就省掉 CPU cache/内存排序规则。
-
-### 33.3 建议的可编程寄存器组
-
-下面是本设计建议，不是某厂商的真实寄存器地址：
-
-| 组 | 示例字段 | 注意点 |
-|---|---|---|
-| 资源能力 | ports、VC 数、深度、最大 packet、ID 容量 | 能力读取不等于运行时可任意改动 |
-| 地址与保护 | region base/limit、DstID、domain permission | 配置更新需考虑在途事务 |
-| 注入与 QoS | rate、burst tokens、class weight | 配额按 byte/flit/packet 要写清 |
-| 运行控制 | inject_enable、quiesce、drain_status | drain 要覆盖相关 NI/link 状态 |
-| 错误 | first_error、source、VC、epoch、syndrome | 先保留诊断再恢复 |
-| 性能 | byte/flit counts、stall cycles、latency histogram | 明确计数边界和溢出行为 |
-
-### 33.4 不要让性能计数器自己成为误导
-
-一个 port utilization 低，可能是上游没需求、没有输出 VC、没有 credit、SA 匹配不佳、QoS 限速，也可能是目标已经饱和。应同时观察：
-
-```text
-offered -> admitted -> routed -> VA granted -> SA committed
-        -> transmitted -> acknowledged -> completed
-```
-
-如果只有 transmitted bytes，一个“慢”问题无法定位到哪一级停住。
-
----
-
-# 第八部分：如何验证它真的没有明显的结构漏洞
-
-## 34. 从不变量到定向测试
-
-### 34.1 Router 安全性不变量
-
-```text
-0 <= occupancy[i][v] <= D
-0 <= credit[o][v] <= D
-sum grants per input <= 1
-sum grants per output <= 1
-one output VC has at most one owner
-no pop without valid data
-no send without reserved downstream capacity
-body/tail cannot start a new idle VC
-tail departure latches old routing metadata before local state reuse
-```
-
-如果使用 ready/valid 的 NI/bridge 接口，还要检查 `valid && !ready` 时 payload 和相关控制信息保持稳定。不要把这一条不加区分地套到 R0 的纯 credit 驱动前向 valid 接口；两者的接受契约不同。
-
-### 34.2 需要专门构造的边界场景
-
-| 场景 | 预期检查 |
-|---|---|
-| HEAD_TAIL 单 flit | 同时开始/结束，不漏释放 |
-| body 间隔很长 | FIFO 空但 VC 不释放 |
-| tail 在 ST，下一包 head 已到同一 input VC | 旧 tail 不读取新 route |
-| 同拍 credit return 和 send | counter 只做净更新但两个事件都记账 |
-| 所有输入抢同一个输出 | one-hot grant，无覆盖 |
-| 一个输入不同 VC 去不同输出 | 不出现多读口能力之外的双重 grant |
-| 一个 VN 满、另一个 VN 有响应 | 资源隔离仍允许响应前进 |
-| link 进入 QUIESCE | 不收新包，旧响应/ACK 可完成 |
-| CRC 错误、ACK 丢失、duplicate | 不重复交付，不重复加 credit |
-| epoch 变化后收到旧响应 | 不匹配给新事务 |
-
-### 34.3 Liveness 检查需要环境假设
-
-不能在“目标永远不接收”的环境里要求每个包都完成。应明确：链路最终恢复或报告错误、仲裁最终服务 eligible 请求、目标最终处理已接受事务、控制通道获得有限延迟服务。
-
-在这些假设下，再检查 packet 最终离开、VC 最终释放、事务最终完成或错误收尾。随机仿真没卡住不是一般性死锁证明；形式化安全性通过也不自动意味着所有活性条件成立。
-
-## 35. 本次可执行检查与性能实验建议
-
-仓库附带 `examples/reference_checks.py`，只依赖 Python 标准库。它是本文原创参考算法检查，不是下载某个 simulator 后宣称完成整网验证。
+第一轮 [reference_checks.py](examples/reference_checks.py) 包含九组局部检查：head位域、RR、随机SA、非最大匹配、credit守恒、ownership区分、XY依赖图、预算算式、CRC/序号/epoch。
 
 ```bash
 python3 switch/examples/reference_checks.py
 ```
 
-本次本地运行通过九个测试组：包头位域无重叠且可往返编码；RR 轮转；10,000 组随机 SA 匹配约束；非最大匹配反例；100 个随机种子、每个 2,000 拍加 drain 的 credit 守恒；credit 与 ownership 分离；4×4 XY 依赖图；NoC/端到端预算算式；CRC32C、重复/缺失/回绕/epoch 检查。
+第一轮记录包括4×4 XY48节点68依赖边无环、三跳17flit到达15..31、219ns/11事务算例。这不是当时已实现完整网络模拟。
 
-关键输出为：
+**第二轮新增真正有有限FIFO与延迟事件的 [router_round2.py](examples/router_round2.py)**，见第46—47章。第一轮历史结果和第二轮实测分开，不把版本升级写成旧脚本突然具备新能力。
 
-```text
-4x4 XY: 48 channel nodes, 68 dependency edges, acyclic
-17-flit, 3-hop unloaded arrival edges: 15,16,...,31
-request: 48.5 ns; response: 90.5 ns; total read RTT: 219 ns
-12 GB/s × 219 ns / 256 B -> ceil = 11 transactions
-9 test groups passed
-```
+本稿仍未完成真实RTL、STA、门级功耗、CDC、完整CHI/UCIe合规或全系统死锁证明。后续性能研究需扫traffic、packetlength、VC/depth、RTT、hotspot、负载与p99，而非只看单个无竞争算例。
 
-这些测试没有实现完整 4×4 网络逐周期调度，也没有验证 UCIe/CHI 合规、完整 CRC 故障空间、CDC 亚稳态、STA、门级功耗、协议级死锁或所有重放控制状态。因此不使用“已验证可流片”之类表述。
+# 第九部分：基线认识与来源
 
-后续性能仿真应至少扫描 packet length、VC count、depth、credit RTT、hotspot、transpose/random 流量、读写比例和 gateway 数，报告吞吐与尾延迟。应把真正的瓶颈逐一替换为理想资源做对照实验，例如无限 credit 仅用于定位，不能把它当可实现设计性能。
+## 36. 必须避免的错误认识
 
----
+NoC不等于D2D；Router不等于MUX；每requester不一定有独立FIFO；credit不等于VC idle；VA不等于SA；RR不等于最优匹配和硬实时；更多buffer/outstanding不必更快；各种协议flit不是统一格式；Raw模式不能套用所有Adapter能力；局部无死锁不能自动组合；离开SDMA、linkACK、可见、软件完成不同；模拟stage数不是物理时序证明。
 
-# 第九部分：修正、证据与继续深化的入口
+第二轮把这些认识落实到寄存器、事件表和有限网络模型，而不是再堆一套名词。
 
-## 36. 相比上一版，必须明确修正的认识
+## 37. 第一轮参考资料与边界
 
-1. **NoC 不等于 D2D。** 本稿新增网关、链路适配、PHY 和资源终止/重建边界。
-2. **Router 不等于一组名词。** R0 明确端口、FIFO、状态、位域、VA/SA、提交事件和 tail 释放。
-3. **每 requester 不一定有独立 Router FIFO。** 隔离可以按 NI、物理输入、VC、VN 或 quota 实现。
-4. **credit 不等于 VC 空闲。** 前者是槽许可，后者是 packet ownership。
-5. **VA 不等于 SA。** 一个预订下一跳 packet 资源，一个分配本拍数据通路。
-6. **多个 RR arbiter 不保证最优匹配或端到端硬实时。** 必须检查两级选择和所有服务约束。
-7. **更宽、更深、更多 outstanding 不必然更快。** 需要分别分析出口带宽、credit RTT、VC 周转和事务 RTT。
-8. **NoC/CHI/UCIe 的 flit 不是一个统一格式。** 标准字段与原创例子严格分开。
-9. **Raw D2D 模式不一定由 adapter 提供所需的 CRC/replay。** 先锁定版本和模式。
-10. **局部无死锁不自动组合成全局无死锁。** 网关、控制流和端点资源都必须进入依赖分析。
-11. **数据离开 SDMA、link ACK、目标接受、可见、软件完成是不同事件。** fence 不能只盯 Router FIFO。
-12. **论文/模拟器阶段数不是物理实现证明。** 本稿测试范围与未验证项分别列出。
+以下保留来源定位；第二轮新增R18—R21见第48章。读过特定章节不表示核验了全部标准。
 
-## 37. 参考资料与阅读定位
+**[R1] Li-Shiuan Peh, William J. Dally, A Delay Model and Speculative Architecture for Pipelined Routers, 2001。** 原始论文，流水、推测allocation、credit延迟。https://projects.csail.mit.edu/wiki/pub/LSPgroup/PublicationList/specmodel.pdf
 
-下面只列本次实际用于建立或交叉检查论述的一手资料。商业规范全文没有取得的部分，不以营销概述替代规范细则。正文的大量寄存器、格式和算例是明确标注的本文设计，并非逐段翻译某篇论文。
+**[R2] Robert Mullins, Andrew West, Simon Moore, Low-Latency Virtual-Channel Routers for On-Chip Networks, ISCA2004。** Router结构、allocation、look-ahead、低延迟控制。https://www.cl.cam.ac.uk/~swm11/research/papers/isca2004.pdf
 
-### Router、模型与公开实现
+**[R3] Nan Jiang et al., A Detailed and Flexible Cycle-Accurate Network-on-Chip Simulator, ISPASS2013。** BookSim2求值/更新、资源和流水模型。https://icn.kaist.ac.kr/~jjk12/papers/2013ISPASS.pdf
 
-**[R1] Li-Shiuan Peh, William J. Dally, 2001, A Delay Model and Speculative Architecture for Pipelined Routers.**
-原始论文；用于经典流水划分、推测 allocation 和物理延迟边界。
-https://projects.csail.mit.edu/wiki/pub/LSPgroup/PublicationList/specmodel.pdf
+**[R4] gem5, Garnet2.0官方文档。** 模型边界和NI/Router/link/credit。https://www.gem5.org/documentation/general_docs/ruby/garnet-2/
 
-**[R2] Robert Mullins, Andrew West, Simon Moore, ISCA 2004, Low-Latency Virtual-Channel Routers for On-Chip Networks.**
-原始论文；特别参考第 2 节与 Router 结构图，区分低延迟电路设计和简单合并抽象阶段。
-https://www.cl.cam.ac.uk/~swm11/research/papers/isca2004.pdf
+**[R5] gem5源码，tag v24.1.0.1，SwitchAllocator.cc。** `arbitrate_inports/outports,send_allowed,vc_allocate`；第二轮读取的blob为`e31733d42e1d2a84f5afc86050a8209367983aa1`。https://github.com/gem5/gem5/blob/v24.1.0.1/src/mem/ruby/network/garnet/SwitchAllocator.cc
 
-**[R3] Nan Jiang et al., ISPASS 2013, A Detailed and Flexible Cycle-Accurate Network-on-Chip Simulator.**
-BookSim2 原始论文；参考第 III—IV 节、Fig.4、状态求值/更新、VC 释放与 allocation 模型。
-https://icn.kaist.ac.kr/~jjk12/papers/2013ISPASS.pdf
-
-**[R4] gem5, Garnet 2.0 官方文档。**
-用于模型边界、NI/Router/link/credit 结构定位；网页可更新，源码版本另行固定。
-https://www.gem5.org/documentation/general_docs/ruby/garnet-2/
-
-**[R5] gem5 源码，tag v24.1.0.1，SwitchAllocator.cc。**
-阅读 `arbitrate_inports`、`arbitrate_outports`、`send_allowed`、`vc_allocate`；注意它没有照搬本文独立 VA 阶段。
-https://github.com/gem5/gem5/blob/v24.1.0.1/src/mem/ruby/network/garnet/SwitchAllocator.cc
-
-**[R6] gem5 源码，tag v24.1.0.1，InputUnit.cc 与 OutputUnit.cc。**
-用于核对 head 路由、input pop、credit 与 free indication。
-https://github.com/gem5/gem5/blob/v24.1.0.1/src/mem/ruby/network/garnet/InputUnit.cc
+**[R6] 同tag的InputUnit.cc、OutputUnit.cc。** head、inputpop、credit/free处理。https://github.com/gem5/gem5/blob/v24.1.0.1/src/mem/ruby/network/garnet/InputUnit.cc
 https://github.com/gem5/gem5/blob/v24.1.0.1/src/mem/ruby/network/garnet/OutputUnit.cc
 
-**[R7] FlooNoC 原始论文，arXiv:2409.17606v1，2024。**
-用于宽物理通路、NI 与 transport 分工的对照；不把论文性能数字代入 R0。
-https://arxiv.org/html/2409.17606v1
+**[R7] FlooNoC原始论文，arXiv:2409.17606v1，2024。** 宽通路和NI/transport分工。https://arxiv.org/html/2409.17606v1
 
-### 协议与系统接口
+**[R8] Arm AMBA AXI and ACE Protocol Specification, IHI0022H，2020。** AXI4对照固定IssueH，A3/A5/A6/A8。https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/IHI0022H_amba_axi_protocol_spec.pdf
 
-**[R8] Arm, AMBA AXI and ACE Protocol Specification, IHI0022H，2020。**
-本稿 AXI4 对照固定使用 Issue H；重点定位 A3、A5、A6、A8。没有用后续只描述其他接口的章节替代 AXI4 规则。
-https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/IHI0022H_amba_axi_protocol_spec.pdf
+**[R9] Arm AMBA CHI Protocol Bundle User Guide, DUI0954C，2016。** 第8节，页15—17通道接口；不是最新architecture规范，C++类型不作位宽依据。https://documentation-service.arm.com/static/5ed104c1ca06a95ce53f8869
 
-**[R9] Arm, AMBA CHI Protocol Bundle User Guide, DUI0954C，2016。**
-参考第 8 节、文档页 15—17 的通道和接口字段。它是模型接口指南，不是最新 CHI architecture specification，不据其中 C++ 参数类型推断线上位宽。
-https://documentation-service.arm.com/static/5ed104c1ca06a95ce53f8869
+**[R10] UCIe Consortium, Hot Chips2023 Tutorial—Protocol。** 分层、Raw/68B/256B、打印页37的Format2、初始化。https://hc2023.hotchips.org/assets/program/tutorials/ucie/UCIe%20Protocol.pdf
 
-**[R10] UCIe Consortium, Hot Chips 2023 UCIe Tutorial — Protocol。**
-核对协议/Adapter/PHY 分层、Raw/68B/256B 模式区别、打印页 37 的 68B Format 2、状态与初始化。PDF 自身页码与幻灯片打印页码不同。
-https://hc2023.hotchips.org/assets/program/tutorials/ucie/UCIe%20Protocol.pdf
+**[R11] UCIe Consortium, UCIe1.1 Provides Streaming Protocol Solution for Error Detection and Replay, 2023-08-28。** 版本变化，不能替代完整规范。https://www.uciexpress.org/post/ucie-1-1-provides-streaming-protocol-solution-for-error-detection-and-replay
 
-**[R11] UCIe Consortium, UCIe 1.1 Provides Streaming Protocol Solution for Error Detection and Replay，2023-08-28。**
-用于核对 streaming 检错/重放能力的版本变化；不能替代完整规范。
-https://www.uciexpress.org/post/ucie-1-1-provides-streaming-protocol-solution-for-error-detection-and-replay
+**[R12] Arm, Learn the architecture—Arm System Architectures,110303_0100_01_en，2025。** 第4.4节Fig4-2，CHI-C2C/CXS/transport分层。https://documentation-service.arm.com/static/682ae34f0aae2a5d8f045749
 
-**[R12] Arm, Learn the architecture — Arm System Architectures, 110303_0100_01_en，2025。**
-参考第 4.4 节、Fig.4-2 与 CHI-C2C/CXS/transport 的分层说明。
-https://documentation-service.arm.com/static/682ae34f0aae2a5d8f045749
+**[R13] William J.Dally, Charles L.Seitz, Deadlock-Free Message Routing in Multiprocessor Interconnection Networks。** Caltech1986技术报告与后续正式论文，确定性通道依赖基础，不作为任意自适应网络通用结论。https://authors.library.caltech.edu/records/fd0yr-br438
 
-### 正确性、物理层与软件
+**[R14] UCIe Consortium, Hot Chips2023 Tutorial—Electrical, Form Factor and Compliance。** 封装/时钟/物理职责，不将PHY KPI当远端内存RTT。https://www.hc2023.hotchips.org/assets/program/tutorials/ucie/Electrical%20Form%20Factor%20and%20Compliance.pdf
 
-**[R13] William J. Dally, Charles L. Seitz, Deadlock-Free Message Routing in Multiprocessor Interconnection Networks。**
-Caltech 原始技术报告记录，1986；相关正式论文发表于后续期刊。用于确定性通道依赖分析的基础概念，而非任意现代自适应协议的无条件定理。
-https://authors.library.caltech.edu/records/fd0yr-br438
+**[R15] PULP Platform，FlooNoC公开RTL，hw/floo_router.sv。** 第一轮读取blob`af7e41e51f04fa2e53b6cddebb20a24a56b1df9c`；main可变，论文版本与后续RTL分开。https://github.com/pulp-platform/FlooNoC/blob/main/hw/floo_router.sv
 
-**[R14] UCIe Consortium, Hot Chips 2023 UCIe Tutorial — Electrical, Form Factor and Compliance。**
-用于封装、时钟及物理层职责定位；本稿不把其中 KPI 当作完整远端内存访问延迟。
-https://www.hc2023.hotchips.org/assets/program/tutorials/ucie/Electrical%20Form%20Factor%20and%20Compliance.pdf
+**[R16] A Simple Deadlock Avoidance Scheme for Modular System-on-Chip,arXiv:1910.04882v1，2019。** 引言与第2节的跨chiplet依赖；R1阶段方案不是该算法复刻。https://arxiv.org/pdf/1910.04882
 
-**[R15] PULP Platform / ETH Zurich / University of Bologna，FlooNoC 公开 RTL。**
-本次实际阅读 `hw/floo_router.sv` 的端口参数、输入 VC FIFO、路由及 credit 生成；读取时 blob SHA 为 `af7e41e51f04fa2e53b6cddebb20a24a56b1df9c`。main 链接可能变化，且后续 RTL 具有论文版本之外的扩展，不把两者视为同一冻结版本。
-https://github.com/pulp-platform/FlooNoC/blob/main/hw/floo_router.sv
+**[R17] Linux Kernel Documentation, Dynamic DMA mapping Guide。** CPU/DMA地址、coherent barrier与streaming生命周期；驱动需使用目标内核版本规则。https://docs.kernel.org/core-api/dma-api-howto.html
 
-**[R16] A Simple Deadlock Avoidance Scheme for Modular System-on-Chip, arXiv:1910.04882v1，2019。**
-参考引言与第 2 节的跨 chiplet 依赖问题；本文 PRE/POST 参考扩展不是该论文算法的逐项复刻。
-https://arxiv.org/pdf/1910.04882
+---
+# 第十部分：第二轮下钻——把 Router 的每个动作落实到资源和时钟边沿
 
-**[R17] Linux Kernel Documentation, Dynamic DMA mapping Guide。**
-参考 CPU/DMA address、coherent mapping 的 barrier 和 streaming mapping 生命周期部分。平台驱动仍应使用其目标内核版本的 API 规则。
-https://docs.kernel.org/core-api/dma-api-howto.html
+> 第二轮专项研究，2026-09-24。以下内容继续使用第 3 章的 R0，不把经典论文、gem5 和本文模型拼成某一实际芯片的 RTL。本轮用 R0.2 指“把 R0 的状态更新约定进一步明确”，不是一个新的行业协议。第 1—37 章提供系统主线，本部分是其中 Router 章节的下钻正文；研究进度为第 2 轮完成，第 3—6 轮仍未完成。
 
-### 继续完善的精确入口
+## 38. 先冻结一个所有模块共同遵守的时序契约
 
-下一轮若需要深入，不应再次泛泛补“更多知识”，而应针对仍未闭合的工程项：完整 Router RTL 与随机/形式化验证；所选 CHI/UCIe 版本的正式合规规则；真实 memory-controller completion contract；异步 FIFO 与 reset crossing；带目标流量的多 die 依赖证明；综合、STA、功耗和实际延迟测量。
+### 38.1 一个方框图还缺什么
 
-本稿已经把结构、资源、包格式、正常周期行为、故障边界和算例放进同一个参考体系；这些工程项则决定它能否从可讨论的微架构文档进入具体产品实现。
+画出 `FIFO -> RC -> VA -> SA -> Crossbar` 之后，距离可实现设计还有一段关键工作：确定哪些量是寄存器旧值，哪些量是组合结果，哪些事件可以同拍发生，以及一个动作一旦执行，哪个模块必须保证它不会被取消。
+
+本文把每拍分成三个逻辑步骤：**observe/evaluate，reserve/select，commit/update**。它们描述设计方法，不一定是三个物理流水级。真正的寄存器边界仍由第 15 章定义。
+
+```text
+                  state_q at edge t-1
+                          |
+       +------------------+--------------------+
+       |                  |                    |
+    RC evaluate       VA evaluate          SA evaluate
+       |                  |                    |
+       +------------------+--------------------+
+                          |
+                  selected operations
+                          |
+                atomic commit at edge t
+                          |
+                       state_d
+
+Arrivals/credits captured at edge t are visible to the NEXT evaluation.
+They do not retroactively change the selection committed at edge t.
+```
+
+这个规则直接影响 credit 和资源复用：edge 9 捕获的 free credit，不让 edge 9 已经完成的 VA“提前知道”VC 空闲；它可用于 [9,10] 的计算，edge 10 才提交新的 VA。若希望同边沿旁路，需要明确组合路径、优先级与时序，而不能只更改模拟器代码的执行顺序。
+
+BookSim2 的分离求值/更新模型可用于理解这个问题；Garnet 的调度语义则要结合该模拟器的 tick 与事件模型阅读。本文 Python 模型不是任意一个模拟器的时序复制。[R3][R5]
+
+### 38.2 定义唯一的 send_commit
+
+R0.2 的 ST/LT 是固定延迟、不可回堵的已预留通路。`send_commit` 的前提为：队头有效、VA 已完成、下游 credit 可用、输入与输出都获得匹配、链路处于允许提交的状态。
+
+```text
+send_commit = valid_head_of_queue
+           && active_packet_state
+           && valid_output_vc_mapping
+           && credit_q > 0
+           && final_input_output_match
+           && guaranteed_ST_LT_capacity
+```
+
+同一个 commit 原子执行以下动作：读取并移走旧队头；扣减一份下游接收许可；锁存 data、H/T、output、output-VC；更新真正获胜的 RR 指针；向上游生成一个槽返回事件；若为 tail，再结束本地输入 packet 状态。
+
+其中 data 已经离开 FIFO，不代表它已到下一个 Router；因此必须计入前向在途 F。若后续把 output FIFO 改成可能停住的弹性队列，`guaranteed_ST_LT_capacity` 就不再是常量，commit 条件和 F 的定义都必须修改。
+
+### 38.3 事件冲突表：RTL 评审应逐行过一遍
+
+| 同一时钟边沿的事件 | R0.2 约定 | 不允许的实现 |
+|---|---|---|
+| 普通 pop + 新 body 到达 | 旧队头被读出，新 body 写入，count 加一减一 | 把 count 的两次非阻塞赋值互相覆盖 |
+| credit return + send_commit | C 做净变化；记录两个独立事件 | 只执行最后一条 `C<=...` |
+| input tail pop + 新 head 想注入同一 VC | 本轮不支持同边沿复用，新 head 下一拍再考虑 | 根据刚清除的 IDLE 提前接受新 head |
+| free credit + 新 VA 申请同一 output VC | 本轮下一次 VA 提交才能使用 | 两个不同申请者分别看到不同阶段的“空闲” |
+| tail 进入 ST + local VC 后续被复用 | ST 保存旧包的 route/VC/H/T | ST 再回读已被新包覆盖的 route 寄存器 |
+| reset + outstanding traffic | quiesce/drain 或一致 abort，不按正常传输处理 | 只把一侧 C 清成 D |
+
+同步 RTL 常用 `state_q/state_d` 或单一集中 next-state 逻辑表达这些合并更新。将 `credit <= credit - 1` 和 `credit <= credit + 1` 散落在两个 `if` 中，不是一个正确的并发计数器设计。
+
+### 38.4 Packet identity、VC index、generation 为什么要分开
+
+VC index 是可复用槽位的编号；packet identity 是业务/验证对象；generation 表示同一个 VC 被分配给第几批状态。输入 VC 可能已经服务新包，某个旧 output VC 却仍在等前一个包的 free 返回。
+
+```text
+Input L.VC0:
+  packet A --tail popped--> IDLE --> packet B
+                    |
+                    +-- A's tail still in ST/LT or downstream
+
+Output E.VC1:
+  owns A -------------------------> waits for A's free credit
+```
+
+正确实现让旧 free 只作用于它对应的 output VC 所有权，不能顺着一个已经过时的 `(input,VC)` 指针把 B 的输入状态清掉。硬件不一定需要在线携带无限位宽的 generation；可以通过资源生命周期保证无歧义。但验证模型使用 packet/generation 标签，有助于抓住旧状态误用。
+
+本轮脚本中的 packet ID 和 generation 有一部分是**旁观检查信息**，不等于修改了第 4 章线上 flit 格式。若产品确实在接口增加有限位宽 tag，还要定义回绕与 reset 规则。
+
+## 39. VA 再拆一层：从申请矩阵到寄存器写使能
+
+### 39.1 具体要造几个逻辑单元
+
+R0 有 5×4=20 个 input-VC 申请者和 5×4=20 个 output-VC 资源。不是每个申请者都能申请全部 20 项：RC 已固定输出方向，VN 又限定两个 output VCs，因而申请图很稀疏。
+
+```text
+Input VC descriptor
+ {state, route_out, VN, packet identity}
+                   |
+                   v
+      allowed-mask & idle-mask
+                   |
+         candidate selection
+                   |
+          request[o][outvc][inputvc]
+                   |
+          one RR per output VC
+                   |
+   grant -> input mapping WE + output ownership WE
+```
+
+若使用二十输入 RR，每个 output-VC arbiter 的轮转指针需要表示 0—19，逻辑位宽至少五位。输入 route 五选一编码至少三位；四 VC 编码两位。把端口数、VC 数做成参数时，应使用安全的向上取整位宽，而不把 `P=1` 时的零位向量留给综合器碰运气。
+
+### 39.2 为什么“申请所有空 VC”需要更多协调
+
+假设 A、B 两个输入 VC 都申请下游 VC0 与 VC1，两个 output-VC arbiter 可能都选 A。若没有 input-side accept 阶段，A 会拿到两个资源，B 一个也没有。
+
+R0 的“每申请者只提名一个候选”就是一种简单规避。另一方案允许全申请，再做 grant/accept 匹配，但要有拒绝后的资源撤销和公平性规则。两者都可以实现，不能把两种方案的局部逻辑混接。
+
+### 39.3 多拍 VA 必须防止重复预订
+
+若 VA 的仲裁路径要两拍，第一拍读到 output VC 空闲后，第二拍提交之前可能有另一个申请也读到它空闲。解决方法包括：第一拍建立 reservation；在最终提交重新验证并允许失败；或者串行化分配。
+
+```text
+FREE -> PROVISIONALLY_RESERVED -> OWNED
+              |                    |
+              +-- cancel -> FREE   +-- downstream release -> FREE
+```
+
+临时预留也需要 owner、有效位、撤销条件和复位行为。没有这些状态，只是在论文图上给 VA 多加一个寄存器，并不能保证行为仍然正确。本轮可执行模型仍使用一阶段 VA，未冒称已经实现多拍 reservation。
+
+### 39.4 Ownership 与空间分配的分工
+
+VA 只授予 packet 使用某个 VC 的资格，逐 flit 的空间仍由 credit 约束。对于当前严格 tail-credit 释放的 R0，空闲 output VC 在正常状态下也应有 D 个 credit；模型对此作断言。
+
+如果扩展成 shared buffer 或允许多个包排在同一个 VC，空闲/可分配的定义要变化，不能照搬“IDLE 必有 D 个槽”这一私有-buffer 基线断言。BookSim 的策略代码显示，容量管理与占用/所有权是不同层面。[R19]
+
+## 40. SA 再拆一层：匹配质量、公平性与时序不能只选一个
+
+### 40.1 从三维 VC 请求压成二维端口匹配
+
+同一物理输入的四个 VC 可请求不同输出，但只有一条输入数据总线。R0 先在每输入选一个 VC，再在每输出选一个输入，最后形成合法的部分一对一匹配。
+
+```text
+VC requests:  input i, VC v -> output o
+                       |
+            input-side VC selection
+                       |
+Port matrix M[i][o] ---+
+                       |
+            output-side arbitration
+                       |
+             crossbar selection
+```
+
+Garnet `v24.1.0.1` 的 `arbitrate_inports`、`arbitrate_outports` 提供了具体对照：两级选择、获胜后读出 flit、更新输出元数据、扣 credit、tail/free 处理和 RR 更新。它在 SA 成功路径上给 head 分配输出 VC，没有独立的 VA 阶段，不能把它的每拍行为照搬为 R0。[R5]
+
+### 40.2 maximal 和 maximum 不同
+
+maximum matching 是当前申请图中边数最多的合法匹配；maximal matching 是再也无法直接增加一条不冲突的边，但重新安排已有边可能得到更多并行传输。
+
+```text
+I0 -> O0, O1
+I1 -> O0
+
+Matching A: I0->O0
+  已经 maximal：剩余 I1 只能去已占用 O0
+  但不是 maximum。
+
+Matching B: I0->O1, I1->O0
+  两条边，才是本例 maximum。
+```
+
+所以“多迭代直到没有新边”并不自动等于 maximum。最大匹配也不是队列稳定、公平或低延迟的充分条件：它不一定照顾长期等待的队列。
+
+### 40.3 iSLIP 的有用之处和适用边界
+
+iSLIP 的一次迭代包含未匹配输入发 request、输出 grant、输入 accept；未匹配端口可继续迭代。原算法只对**第一轮迭代中被接受的匹配**更新相关轮转指针，后续迭代补充匹配而不照样更新指针。[R18]
+
+```text
+unmatched requests -> per-output grant -> per-input accept
+       ^                                      |
+       +--------- repeat for unmatched -------+
+
+Persistent pointer updates: accepted matches of iteration 0 only.
+```
+
+这不是说 R0 的简单 SA 也必须套用相同规则。R0 的“一级提名+二级赢家”和 iSLIP 的“request/grant/accept”是不同算法；前者的指针跟真正 commit 走，后者还含迭代层次。原论文研究固定 cell 的输入排队交换机，不能把其特定负载吞吐结论直接当成带 VC、credit、路由依赖的 NoC 保证。
+
+### 40.4 把匹配接到可暂停通路时，要增加哪一步
+
+纯匹配函数返回 `(i,o)` 不代表数据已被消费者接受。若 output register 不可写、head 没拿到 VC，或链路临时停止，必须过滤为实际 commit，并按所选算法决定是否保留授权。
+
+有两种可实现契约：第一种在 request 生成前把所有资源许可筛干净，保证赢家一定能提交；第二种保存 grant 与 payload，等待消费者接收，期间不让另一个包抢占这份授权。不能一边重做仲裁、一边让停住的 payload 变化。
+
+### 40.5 RR 能保证什么，不能保证什么
+
+孤立输出、请求集合稳定、每拍都可服务时，RR 可给出有限轮转等待；整个网络中，VC 是否有 credit、是否被输入一级提名、目标是否服务，都可能变化。
+
+尤其不能把“每级 RR 不饥饿”随手相乘，得出一个无条件的端到端 deadline。多个竞争者间歇 eligible、不同输出交替堵塞时，输入侧候选也会变化。本文不为一般动态流量声称固定 P×V 拍上界。
+
+工程上至少要同时测：等待时间分布、最长连续 eligible 未服务时间、每类成功 flit/byte 数、仲裁空洞，以及与目标不 ready 分开的服务缺失。
+
+### 40.6 逻辑复杂度的真正代价
+
+增加迭代次数可能提高当前拍匹配数量，但增加组合深度。若流水化仲裁，就需要在计算期间锁定或版本化候选队头；否则第二拍依据第一拍旧队头的结果去 pop 新队头。
+
+若使用内部 speedup，使一个输入/输出每外部周期可处理多项，FIFO 读写口、crossbar、credit 返回吞吐也都要同步扩展。不应只给 allocator 增加一个参数，便宣称系统吞吐翻倍。
+
+## 41. FIFO 落到存储电路：队头何时真的可读
+
+### 41.1 寄存器 FIFO 与 SRAM FIFO 的数据可用性不同
+
+基线的浅 FIFO 可以让队头经组合路径可见。同步 SRAM 则通常先提交读地址，随后得到数据。若 SA 在某拍才选定 VC，本拍末就要求 ST 锁存该 VC 数据，可能根本来不及。
+
+```text
+Register FIFO:
+  head pointers -> combinational data -> SA-selected MUX -> ST
+
+Synchronous SRAM:
+  read request -> memory latency -> response/landing register
+                                      |
+                                      v
+                             data-ready arbitration -> ST
+```
+
+于是设计需要预读、队头缓存或把读存储加入流水线。header metadata 可与 payload 分开保存，使 RC/VA 不用为了几个目的字段读整条宽数据。
+
+### 41.2 一个可继续实现的 per-input SRAM 方案
+
+【扩展设计，不是本轮模型已实现】每物理输入一块 1R1W 数据存储，允许一拍写一个到达 flit、读一个候选 flit；每 VC 保存队头描述符、状态和至少一个预读有效位。被选中读出的数据进入 landing register，再参与或完成真正的传输提交。
+
+关键控制量至少包括：`read_pending、read_vc、read_address、read_generation、landing_valid、landing_vc、landing_generation`。返回的数据必须匹配发出读请求时的对象，而不是匹配此刻可能已复用的 VC 状态。
+
+只配一个全输入共享 landing slot 时，一个被 credit 堵住的 VC 可能占住它，让其他 VC 即使有数据也不能预读。增加 per-VC head cache 或多个 landing slots 可以缓解，但会增加面积与调度逻辑。
+
+### 41.3 预取队头不一定释放网络 credit
+
+有两种完全不同的设计：
+
+**复制式预取**：SRAM 中的数据仍然保留，landing/head cache 只是副本。真正 send_commit 才释放原槽并返回 credit。原来 D 的计量无需改变，但应防止过期副本被重复发送。
+
+**搬移式预取**：数据从 SRAM 槽搬进另一个独占存储，原槽可复用。若此时提前返 credit，landing register 就已经进入接收容量承诺范围，新的总容量与在途定义必须把它算进去。
+
+```text
+Copy prefetch:  memory [X] -> cached copy [X] ; one logical flit
+Move prefetch:  memory [ ]    landing [X]     ; capacity moved, not destroyed
+```
+
+不把副本和新增容量分清，可能把一份数据算成两份空间，也可能在 landing 满时仍然对上游发许可。
+
+### 41.4 端口与 bank 冲突不能藏起来
+
+如果把五个输入 FIFO 合到一块全 Router SRAM，最坏每拍可能有五写、五读需求。一块 1R1W SRAM 不能实现这种吞吐。选择 banking 后，还必须讨论同 bank 多请求、元数据写冲突和流量分布。
+
+例如按 `slot_address % bank_count` 分 bank，两个被 SA 选中的队头仍可能落到同 bank。此时要在请求筛选中加入 bank 许可，或保留数据直到冲突解开。否则 allocator 发出的“两个 grant”在数据面只兑现一个。
+
+### 41.5 能耗的检查点
+
+buffer 深度、flit 宽度和 VC 数一起增加时，访问能耗、头部广播、宽 MUX 切换和时钟负载都可能上升。可采用独立写使能、无效数据隔离、按 VC clock-enable 和队头字段分离，但要用实际综合/功耗分析评价；本文不凭逻辑图给出 pJ 或面积百分比。
+
+## 42. Shared buffer：不再只说“用一块公共 SRAM”
+
+### 42.1 一个具体的 per-input linked-pool 微架构
+
+本节选择**每物理输入共享**，不是全 Router 共享，因此每拍最多一入一出，资源模型较容易闭合。假设有 B 个 flit slots 和 V 个逻辑队列：
+
+```text
+                       per-queue registers
+                   head[V], tail[V], count[V]
+                           |          |
+Arrival -> allocate ------+          +------ dequeue -> read data
+             |                                  |
+         free bitmap / free list                |
+             |                                  |
+             v                                  v
+       data[B] + next[B] <---------------- slot release
+```
+
+`data[a]` 保存 flit，`next[a]` 保存同队列下一槽地址；每队列 head/tail 指向链表两端；空闲池跟踪未占用地址。历史 DAMQ 论文提供了动态多队列、独立指针与共享存储的具体实现思路，但本节是按 R0 需求重新设计的 flit 级方案，不是复制其旧器件参数。[R20]
+
+### 42.2 入队与出队
+
+入队先从旧 free 集合预留地址 a，写 data[a] 与 next[a]=NULL。队列为空则 head=tail=a；非空则 old_tail.next=a，再将 tail=a。出队先读 old_head 数据，head=next[old_head]；若原来只有一项，head/tail 都变空，旧槽再归还 free 池。
+
+free list 与 payload 可以分开实现，避免为更新一个指针读写整条数据。若元数据本身用 SRAM，也要明确同拍写 old_tail.next 与清 old_head.next 是否需要两个写口，或是否采用合并更新/独立寄存器。
+
+### 42.3 同队列一进一出：四种边界
+
+| 旧队列长度 | pop | push | 正确的新状态 |
+|---:|---:|---:|---|
+| 0 | 0 | 1 | head=tail=new slot，count=1 |
+| 1 | 1 | 0 | head=tail=NULL，count=0 |
+| 1 | 1 | 1 | 弹出旧数据，head=tail=new slot，count=1 |
+| ≥2 | 1 | 1 | head 指向旧第二项，旧 tail 连新项，count 不变 |
+
+当 old_count=1、同时 pop/push 时，若两段 RTL 分别独立更新 head/tail，可能把刚挂入的新节点清掉。本轮检查脚本显式实现了这个边界，并用普通 deque 作参考比较。
+
+R0.2 教学 linked-pool 不使用“本拍刚释放的地址立即再分配”的组合回收；只有旧 free 集合有地址才接受 append。可以增加同拍回收优化，但要先定义 read-during-write 和元数据冲突语义。
+
+### 42.4 物理空闲不等于逻辑未承诺
+
+这是本轮最重要的细化之一。一个 8-slot shared pool 即使物理上一个 flit 都没有，只要已经向 VC0 发了八份许可，就不能再向 VC1 发一份许可；VC0 的八个 flit 可能都还在远端或前向流水线里。
+
+对共享容量 B 定义：U 是尚未授出的池许可，C_v 是上游可用许可，F_v 是前向在途，Q_v 是占用，R_v 是正在返回的许可：
+
+```text
+B = U + sum_v(C_v + F_v + Q_v + R_v)
+
+physical_empty_slots = B - sum_v(Q_v)
+unpromised_capacity  = U
+```
+
+两者不相等。降低某 VC 的软件 quota 不能凭空撤回已经发出的 C_v 或 F_v。若需要回收闲置许可，应有受控撤回/静默重配置握手，并证明不会与最后一份在途发送交叉。
+
+### 42.5 最小保留容量与动态池
+
+让请求与响应共用存储可以节省闲置容量，但也可能使请求占满所有槽，响应无法进入，进而反过来阻止请求释放。逻辑上画了两条 VN，并不表示其底层容量已经隔离。
+
+一种参考策略是给每个进展关键类别保留不可被借走的最低容量，超出部分才借动态池；申请和 credit 发放必须维护这些保留约束。保留多少不是固定“一个槽就足够”的答案，要看协议消息依赖、整包/虫洞方式和接收端承诺。
+
+本轮 `SharedPool` 测试只证明所选许可记账的局部守恒，不证明一般 shared-buffer 协议无死锁。
+
+## 43. Credit 往返、VC 周转与短包吞吐
+
+### 43.1 同一条路径有两个不同的回路
+
+```text
+Space loop:
+  send reservation -> arrival -> buffer pop -> slot credit return
+
+Packet-ownership loop:
+  VA reservation -> ... HEAD/BODY/TAIL ... -> downstream TAIL pop
+                  -> free indication return -> next packet VA
+```
+
+第一个决定同一 packet 的 flit 能否连续流动；第二个决定新的 packet 何时可以复用 VC。深度 D 增加主要改善槽闭环，不自动缩短 packet 所有权周转。
+
+经典 Router 延迟论文明确把 credit 的传输、处理与流水影响纳入模型。本文的具体 edge 数值仍由 R0.2 自己定义，不把论文的示意周期当作所有芯片参数。[R1]
+
+### 43.2 用真实队列事件复算，而不是输入同一个公式
+
+新增 Python 模型真的安排：head 到达、RC、VA、SA、两拍前向 ST/LT、接收 FIFO pop 和可配置反向返回。每拍检查 C+F+Q+R=D，最终还要等 owner 释放与 credit 全部归还，才报告 drained。
+
+对同一个 17-flit 包、三个 Router 服务跳、1 flit/cycle 源注入，本次实际结果：
+
+| 每 VC 深度 D | 反向返回延迟 | 首 flit 到达 edge | 尾 flit 到达 edge | drain 后下一模型 edge |
+|---:|---:|---:|---:|---:|
+| 1 | 1 | 15 | 95 | 98 |
+| 8 | 1 | 15 | 31 | 34 |
+| 8 | 12 | 15 | 47 | 61 |
+
+三个实验的 head 固定路径相同，但后续 flit 因 credit 可复用时间不同而出现不同气泡。因此，单看首 flit latency 会漏掉很严重的完整包与吞吐问题。
+
+`drain 后下一模型 edge` 是 Python 循环完成最后一次状态更新后的计数值，不是另一种物理传播延迟。sink 消费数据和网络最后一份 free 返回，也晚于 tail 到达。
+
+### 43.3 D 不足时不要用错误补救
+
+不能为了让模型“达到理论带宽”在 C=0 时放行一拍，或者初始化多于真实接收槽的 credit。合法改进是增加容量、缩短闭环、采用经过证明的同拍 credit bypass、增加可用 VC 或改变通路与缓冲组织。
+
+D2D 的长返回路径往往需要在网关终止短范围流控，采用另一层资源协议。但这属于后续 D2D 深化，不应通过偷偷扩大 R0 的 credit 定义来掩盖。
+
+### 43.4 提前释放 output VC 到底改变了什么
+
+如果在本端 tail 发出就让另一个 packet 使用同一 downstream VC，线上顺序仍可保证旧 tail 在新 head 前。但接收端可能在处理旧 packet 时已经收到新 packet，因而不能再采用“一个 VC 永远只保存一个 packet 的 route/state”的最简结构。
+
+可能需要包头队列/描述符 FIFO、分段状态、每包顺序和多次完成跟踪，并重新定义 free/credit 的意义。BookSim 的 `wait_for_tail_credit` 分支是对照入口；它存在不同模式不代表 R0 可以只关掉一个 busy bit 而其余逻辑不变。[R19]
+
+## 44. Speculation、look-ahead、bypass：把失败路径补全
+
+### 44.1 VA 与 SA 并行时的结果表
+
+【参考扩展】假定 VA 和 SA 为 head 并行计算，非推测的 body/tail 保留应有优先权。下表中的“VA 成功但 SA 失败”采用保留 VC 的策略，其他设计可以取消，但必须保持一致。
+
+| VA | SA | 本拍行为 |
+|---|---|---|
+| 成功 | 成功 | 所有许可有效后 commit，pop、扣 credit、锁存数据 |
+| 成功 | 失败 | 保存 output-VC ownership，head 留 FIFO，下一拍申请 SA |
+| 失败 | 成功 | speculative grant 作废，不 pop、不扣 credit、不按已传输更新 RR |
+| 失败 | 失败 | head 与队列不前进；等待/重试状态按约定更新 |
+
+“SA 成功”只有在其使用的 VC/路径与最终 VA 一致、数据可用且输出可接收时才能转成 commit。否则误发的 head 可能进入别人拥有的 VC。早期推测 Router 论文用于说明这种并行化思想；此处失败表是本文选定的具体契约。[R1]
+
+### 44.2 Speculative traffic 不能挤掉可兑现的传输
+
+一个 body 已有 VC 和 credit，本可以本拍发送；另一个 head 猜测 VA 会成功，却抢走 output。若后者 VA 失败，本拍输出空转，而且损失的是已可兑现的服务。
+
+因此常见的设计目标是：非推测请求优先，或在授权结构中隔离推测请求，并在失败时有明确回退。是否能在同拍补选 body，取决于关键路径，不能不计代价地假定“失败后再仲裁一次”。
+
+### 44.3 Look-ahead 搬走的是 RC 延迟，不是路由责任
+
+在上游计算下一节点的方向，可以让 head 少等本地 RC。需要随 flit 携带或保存下一跳信息，并处理拓扑边界、错误目的地、路由表世代以及是否允许本地重新检查。
+
+若采用自适应策略，上游看到的远端拥塞可能过时。Look-ahead 元数据不应绕过当前节点的安全资源检查，也不能把一个非法转向当作“上游已经算过，所以必然正确”。
+
+### 44.4 Bypass 必须有失败落点
+
+```text
+new incoming flit
+        |
+        +-- bypass conditions all true ---> reserved output stage
+        |
+        +-- any condition fails ----------> normal input FIFO
+```
+
+条件至少包括没有必须先走的旧 flit、packet/VC 状态匹配、下游容量许可、输出匹配以及 fallback FIFO 能接住失败路径。在同一拍只能有一个接受归宿，不能既 enqueue 又作为新数据发送两次。
+
+body bypass 还必须继承其 head 已建立的路径；不能因另一个输出空闲就随意改变方向。若 bypass 与正常队头同时抢资源，必须规定年龄/优先级和双重 pop 防护。
+
+### 44.5 Elastic buffering 是另一种体系，不是给 credit 代码加 READY
+
+ElastiStore 提供按 VC 维护弹性状态、共享辅助存储和仲裁的具体研究实例；其容量节省伴随特定阻塞场景下的服务取舍，不能当作无代价优化。[R21]
+
+一般设计推导是：反压经过寄存器返回，需要吸收在停顿被上游看见之前仍然合法发来的数据。若最大继续传输量为 K，就需要对应的弹性容量或更早停止阈值；两槽结构只适用于相应的一拍反馈与一拍传输假设，不是所有链路的固定答案。
+
+```text
+consumer stops now
+    -> registered stop propagates later
+    -> previously authorized flit can still arrive
+    -> skid/elastic capacity absorbs it
+```
+
+本轮网络模型采用 credit+固定 ST/LT，不同时冒称实现 ElastiStore、异步 FIFO 或完整 ready/valid elastic router。不同体系在文档中作为明确的设计分支讨论。
+
+## 45. Deadlock 与 QoS：把隐藏的共享资源画出来
+
+### 45.1 单纯 XY 图漏掉什么
+
+一个只含有向链路的 XY 依赖图，不含 SRAM bank、共享池许可、NI 返回数据空间、重排缓冲、target queue 或软件消费。这些资源也可能被占有并参与等待。
+
+例如：请求占满 shared pool，target 等待有响应空间才接收请求，响应又因 shared pool 无剩余而无法进入。物理路由没有环，也仍然可能存在协议资源环。
+
+```text
+request-held shared capacity
+        -> target waits for response acceptance
+        -> response waits for shared capacity
+        -> request cannot retire
+```
+
+修正方法不是机械增加 VC 数，而是切断依赖：保留响应容量、在 NI 注入前预留接收资源、使目标不因发新请求才能消耗响应、或为各阶段提供受保护资源类别。
+
+### 45.2 Escape VC 不是万能标签
+
+若设计支持 adaptive route 并希望用 escape network 保证前进，至少要定义逃逸网络的合法路由、进入/退出规则、buffer 获取方式和公平服务。若 escape buffer 仍被普通流量借光，或 packet 进入逃逸类后又返回更早资源，名字叫 escape 并不能提供证明。
+
+本轮 R0 继续使用确定性 XY，没有通过增加一个 VC 名称就宣称实现一般自适应死锁避免。
+
+### 45.3 QoS 仲裁粒度影响 SDMA
+
+按 packet 轮转，一次 17-flit SDMA 数据包与一次 1-flit 控制包得到的字节服务不等。按 flit 轮转改善交错，但 packet 占用 VC 的时长可能更长。按 byte/deficit 调度则要保存配额、补充量以及不能发送时是否累积额度等状态。
+
+延迟敏感控制流的要求通常不是“有一个高优先级 bit”，而是它在请求 buffer、VA、SA、链路和目标端都不能被无限阻塞。某一级严格优先权也可能让 bulk SDMA 饿死，因此需要区分最低服务保证、上限限流和突发容忍。
+
+### 45.4 排队计数器不能无条件求和
+
+一个 VC 同时没有 credit、也没有 SA grant 时，两种观察都可能为真；把两个 stall counter 相加当成真实等待拍数，会重复记账。
+
+建议同时提供两类统计：互斥的主阻塞原因用于分解延迟；允许重叠的事件计数用于诊断相关性。指标名称、触发点和单位需要写在寄存器说明中。不能把本轮脚本的 `vc_credit_stall_observations` 误读为整个 Router 的独占停顿周期：它按 VC 观察，多 VC 可在同一拍各加一次。
+
+## 46. 一个真正运行起来的有限缓冲模型
+
+### 46.1 模型实现了什么
+
+本轮新增 [router_round2.py](examples/router_round2.py)，仅依赖 Python 标准库。它实现 2D mesh、每输入四个私有 VC FIFO、独立 RC/VA、两级 SA、固定两拍 ST/LT、带延迟的反向 credit、tail-free 所有权释放以及有限 sink queue。
+
+源 NI 一次在一个 node 注入最多一个 flit，使用明确标注的理想 ready/valid 接口；中间 Router 与 sink 接口采用信用流控。packet 带有用于检查的不可变身份，输出事件保存快照，因此可以检查 local VC 被复用后旧 tail 是否仍正确到达。
+
+```text
+Packet source -> Local FIFO -> RC/VA/SA -> scheduled forward event
+                                            |
+                                            v
+                                     next finite FIFO
+                                            |
+                                       later pop
+                                            |
+                               scheduled reverse credit event
+```
+
+没有调用 gem5/BookSim，也没有把其中源码复制后改名。公开实现用于对照设计选择；本轮代码是自行编写的教学模型。
+
+### 46.2 为什么它比第一轮检查更进一步
+
+第一轮的到达时间检查主要是按照给定递推计算。第二轮中到达 edge 是排队、仲裁、有限 credit 和事件执行的结果；低 D、长返回路径或 sink 暂停会自然改变结果，不需要人为把一个延迟项加到公式里。
+
+每拍还逐 link/VC 检查容量守恒与 owner 映射，最终验证 packet 内顺序、不丢失、不重复、正确目的地，以及所有 owner/credit 能否排空恢复。错误增发一份 credit 的故障注入会触发断言。
+
+### 46.3 模型没有实现什么
+
+没有真实 RTL 电路、同步 SRAM 读延迟、bank 仲裁、VA 多拍 reservation、推测/bypass 网络、CDC 亚稳态、ECC 纠错、UCIe/CHI 合规、一致性协议、SDMA 指令状态机或完整多 die 系统。iSLIP、shared-pool 许可与 linked-list 存储是**独立局部检查**，尚未替换进基线 mesh。
+
+运行随机种子并排空，只说明这些有限测试轨迹通过，不证明所有状态都无死锁。为了不把研究阶段混淆，本轮的局部 depth/credit 对照也不计作第五轮的完整性能研究。
+
+## 47. 本次云端实际检查结果与复现方式
+
+```bash
+python3 switch/examples/router_round2.py --report /tmp/round2_results.json
+```
+
+本次 **14 个测试组全部通过**。测试覆盖：RR、3×3 全部 512 个申请图在三种统一指针初值下的匹配约束与 maximal 检查、iSLIP 第一迭代指针规则、两级 SA 非最优例子、无负载流水、源端间歇发包、credit 参数变化、sink 暂停恢复、随机 mesh 流量、共享容量承诺、链表同拍入出队、错误 credit 检出、tail/新包状态复用和非法调用的原子性。
+
+| 随机网络检查汇总 | 实际值 |
+|---|---:|
+| 配置/种子运行数 | 16：12 个 2×2，4 个 3×3 |
+| 逻辑 packet 数 | 1,728 |
+| 端点成功交付 flit 数 | 11,249 |
+| 实际 SA commit 次数 | 25,343 |
+| 逐拍不变量检查 edge 数 | 8,665 |
+| tail-free 返回事件 | 3,900 |
+| credit 不足的 VC 观察次数 | 30,279 |
+
+上表仅汇总指定的 16 次随机网络实验，不把单元测试与生成报告时的重复运行再次累加。packet 长度选自 1、2、5、17 flits，D 选自 2、4、8，反向延迟选自 1、2、4；sink 前 25 拍阻塞，之后按固定种子、每拍 0.61 的可服务概率取样。它是压力测试，不是代表实际 SDMA workload 的测量。
+
+linked-pool 另外进行了 10,000 拍随机入队/出队与 deque 对照。`test_14` 是编写过程审查后新增的改进：非法 pop+push 调用必须在改变 free list 之前被拒绝，避免“抛出错误但状态已经部分改变”。这属于参考代码接口健壮性修正，不应夸大为发现实际芯片漏洞。
+
+本次脚本 SHA-256：`67676b1cf4841f45bdc7d9574342dc92d997ce434c62c88ac119ed666a18fbd5`。完整机器可读结果见 [round2_results.json](examples/round2_results.json)。执行耗时取决于机器，不作为 Router 性能指标。
+
+## 48. 第二轮证据清单：具体读到哪里，具体改变什么
+
+| 来源 | 本轮实际定位 | 带来的细化 | 边界 |
+|---|---|---|---|
+| Peh/Dally Router 延迟论文 [R1] | VC/推测流水、credit turnaround 图与相关正文 | 拆分空间闭环、所有权闭环和失败路径 | 不套用其工艺/性能数字 |
+| Mullins 等低延迟 Router [R2] | 基线结构图、低延迟控制路径讨论 | 强调流水压缩需要实现机制 | 未重做物理设计 |
+| iSLIP 原论文 [R18] | 第 III、VI、IX 节，指针与迭代规则 | 独立 matching 函数和第一迭代更新测试 | 不把固定 cell 保证当 NoC 保证 |
+| BookSim 固定提交 [R19] | `buffer_state.cpp` 私有/共享策略、SendingFlit、ProcessCredit、TakeBuffer | 容量与所有权分开，提前释放不能只改 busy bit | 模拟器策略不是本文 RTL |
+| Garnet 固定 tag [R5] | `arbitrate_inports/outports` 与 commit 路径 | 源码动作逐项对照，说明合并 VA/SA 的差别 | 本文仍独立 VA |
+| Tamir/Frazier DAMQ [R20] | 第 III 节、buffer organisation 与 timing 表 | 明确数据/指针/free-pool 的结构 | 本文改成 flit 级原创示例 |
+| ElastiStore [R21] | 第 II—IV 节、Fig.1—5 | 解释弹性容量、延迟反压与共享辅助槽 | 未合入 mesh 模型 |
+
+**新增参考：**
+
+**[R18] Nick McKeown, The iSLIP Scheduling Algorithm for Input-Queued Switches, IEEE/ACM Transactions on Networking, 7(2), 1999。** 原论文，特别是第一迭代更新规则与硬件 arbiter 结构。https://www.cs.cmu.edu/~dga/15-744/S07/papers/islip-ton.pdf
+
+**[R19] BookSim2，固定提交 `28f43299f1706a3160ffac721ca461d74eb6e618`。** 本轮读 `src/buffer_state.cpp`，blob `228d91d0ab1a221cf6ced0461e650959eecce0f8`；不把未来 master 更新混入当前描述。https://github.com/booksim/booksim2/blob/28f43299f1706a3160ffac721ca461d74eb6e618/src/buffer_state.cpp
+
+**[R20] Yuval Tamir, Gregory L. Frazier, High-Performance Multi-Queue Buffers for VLSI Communication Switches, ISCA 1988。** 本轮读取原论文的动态队列、指针和数据组织；不要与后续年份的相近题名论文混淆。https://web.cs.ucla.edu/~tamir/papers/isca88.pdf
+
+**[R21] I. Seitanidis, A. Psarras, G. Dimitrakopoulos, C. Nicopoulos, ElastiStore: An Elastic Buffer Architecture for Network-on-Chip Routers, DATE 2014。** 作者公开版本，重点为第 II—IV 节的弹性 VC 与共享辅助存储。https://gdimitrak.github.io/papers/date14a.pdf
+
+资料索引中的“读过”指上述定位，不声称已完整核验所有列举规范或所有源码文件。没取得全文的论文不作为已完成专项研究的证据。
+
+## 49. 第二轮的结论与后续边界
+
+第二轮将“一个可讲通的 Router 方框图”推进到**明确更新事件、资源守恒、仲裁接入条件、存储实现分支和可执行有限网络检查的参考设计**。几个重要结论是：一个 grant 不一定等于传输；一个空槽不一定可重新承诺；一个满 credit 的 VC 不一定空闲；一个 maximal 匹配不一定最大；几个局部无死锁部件不一定能安全组合。
+
+本轮完成的是 Router 微架构专项深化。第三轮仍需把选定 AXI/CHI 子集逐项映射到 NI 与 transport；第四轮仍需锁定 UCIe 版本/模式核验真实 D2D 接口；第五轮仍需完整流量、吞吐与尾延迟研究；第六轮仍需在这些结论稳定后做 SDMA 系统交叉复审。
+
+本轮没有后台持续运行任务。报告和脚本是本次云端会话执行后保存的结果；以后继续研究时，应读取本章、对应代码及当时的 GitHub 提交，不把文档版本号或 R0/R1 编号误认为迭代轮次。

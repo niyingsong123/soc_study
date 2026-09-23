@@ -1,6 +1,6 @@
 # SoC 项目上下文
 
-更新日期：2026-09-23。本页汇总项目目标、已经确定的约定、现有资料状态和后续问题，供本地与 GitHub 上的工作接续使用。模块完整清单及关系证据以 [模块映射](module-map.md) 和 [资料来源](sources.md) 为准。
+更新日期：2026-09-24。本页汇总项目目标、已经确定的约定、现有资料状态和后续问题，供本地与 GitHub 上的工作接续使用。模块完整清单及关系证据以 [模块映射](module-map.md) 和 [资料来源](sources.md) 为准。
 
 ## 目标与阅读顺序
 
@@ -23,7 +23,7 @@ GitHub 中的模块入口、图像资源和上下文文档可以直接阅读。�
 
 ## 已确定的目录与命名决策
 
-当前维持 19 个顶层学习目录，不新建专属子模块目录；所有名称的对应位置见 [完整映射](module-map.md)。
+当前维持 19 个顶层学习模块的映射，不自行增加实际芯片子模块；所有名称的对应位置见 [完整映射](module-map.md)。用户另指定的公开研究正文位于小写 `switch/`，大写 `SWITCH/` 保留模块入口；本次不移动或合并目录。
 
 | 决策 | 含义与依据 |
 | --- | --- |
@@ -56,11 +56,12 @@ CF 当前按 shaobo 资料中的 Command Fabric 理解；CF、SMN 与 anshi 的 
 | 内容 | 当前状态 |
 | --- | --- |
 | 模块入口与架构映射 | 19 个模块 README、模块映射及来源文档可读 |
-| 配套资源 | 223 个图像资源保留，其中含 155 页的完整页面预览；EMF/WMF 可通过对应页面 PNG 查看 |
-| C01–C05 的五份 Markdown 正文 | 本地与 GitHub 当前均缺失；按用户选择不补回 |
+| 配套资源 | 原登记为 223 个图像资源，其中含 155 页的完整页面预览；本次 Switch 研究未重新清点，EMF/WMF 可通过对应页面 PNG 查看 |
+| C01–C05 的五份 Markdown 正文 | 按既有登记，本地与 GitHub 当前缺失；按用户选择不补回，本次未访问本地核验 |
 | 五份 PPTX/PDF 原件 | 只保存在本地 `original_file/`，不进入 Git 历史或上传内容 |
 | 转换报告与哈希清单 | [历史转换报告](conversion-report.md) 和 [历史清单](source-manifest.json) 保留当时记录，不能作为当前正文存在或可重新通过全文校验的证明 |
 | 外部附件 | C01 第 6 页提到的 `code_coverage_improve.xlsx` 未提供 |
+| Switch 公开研究 | [详细稿](switch/switch_detailed_guide.md)、[简化版](switch/switch_quick_guide.md)、[研究进度](switch/RESEARCH_PROGRESS.md)与教学检查脚本；第一、二轮完成，三至六轮尚未完成 |
 
 当前可从 [UTCL2 资料入口](UTCL2/README.md) 和 [HUBS 资料入口](HUBS/README.md) 打开对应页面图片；五份资料的原名、预期 Markdown 路径和页数见 [来源登记](sources.md)。
 
@@ -68,7 +69,7 @@ CF 当前按 shaobo 资料中的 Command Fabric 理解；CF、SMN 与 anshi 的 
 
 1. 目标芯片、代际、die 划分、顶层 block diagram 及准确的模块命名。
 2. MMHUB、CH、UTCL2、EA 的实例数量与包含关系；各 UTCL1 的宿主模块。
-3. DF、CS、CAKE、switch 的边界、拓扑和协议。
+3. DF、CS、CAKE、switch 的边界、拓扑和协议。公开学习范围已选择 NoC/D2D，不代表目标实现已经确认。
 4. NBIF、PCIe、HDP 的分工与层级；UMC、HBM、PHY 的实例映射和接口参数。
 5. SMN、RSMU、SMU 的关系，以及目标设计中 GL2、GRBM、RLC 的归属。
 
@@ -76,7 +77,9 @@ CF 当前按 shaobo 资料中的 Command Fabric 理解；CF、SMN 与 anshi 的 
 
 ## 云端接续
 
-用户于 2026-09-23 确认已建立名为 `niyingsong123/soc_study` 的云端环境 [U7]。这是环境建立的用户说明，不代表当前本地任务已经切换到云端。
+用户于 2026-09-23 确认已建立名为 `niyingsong123/soc_study` 的云端环境 [U7]。环境建立的用户说明本身不证明任意会话已具有仓库或文件权限。
+
+2026-09-24 的 Switch 第二轮已实际通过 GitHub 连接器读取仓库，并在当前云端会话容器执行原创有限缓冲 Router 模型的 14 个测试组，全部通过；没有读取本地 `original_file/` 或独立 SDMA 项目。具体配置、结果、限制和下一轮入口见 [RESEARCH_PROGRESS.md](switch/RESEARCH_PROGRESS.md)。没有后台持续运行任务，也没有启动或声称完成远端 GitHub Actions CI。
 
 云端工作使用同一 GitHub 仓库中的资料。开始工作时先读取 `README.md`、`module-map.md`、`project-context.md` 与 `AGENTS.md`，再进入相关模块和 `sources.md`。本地绝对路径只用于说明目录位置；云端不具备 `original_file/` 或独立 SDMA 项目的文件。
 
