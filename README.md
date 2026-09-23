@@ -1,0 +1,52 @@
+# SoC 模块学习项目
+
+本项目从模块职责、接口和协作路径入手，逐步建立对整个 SoC 的理解。当前按用户列出的模块初始化；原写法已统一更正为 **GRBM**。
+
+## 阅读入口
+
+- [模块关系与完整映射](module-map.md)：包含关系、接口关系、归档位置及待确认项。
+- [资料来源](sources.md)：本地 SDMA 项目的只读参考与公开架构资料。
+- [SDMA 外部项目入口](SDMA/README.md)：FE、BE、TBE 的详细研究继续在独立项目维护。
+
+## 顶层目录
+
+当前建立 19 个学习目录，资料按模块归档，不预建子模块目录。专属子模块合并到父级；UTCL1 这类公共模块按用户要求保留独立目录，并注明实例归属；缺少本项目层级证据的模块暂保留独立入口。**这是学习资料的组织方式，不是已验证的芯片 RTL 顶层图。**
+
+| 目录 | 管理范围 |
+| --- | --- |
+| [DF](DF/README.md) | Data Fabric；CS、CAKE 暂按 DF 相关子模块归档 |
+| [CF](CF/README.md) | Command Fabric，当前名称来自 shaobo 资料 |
+| [SMN](SMN/README.md) | 系统管理网络主题 |
+| [UTCL1](UTCL1/README.md) | 分布式一级地址翻译缓存主题；具体实例归属于使用它的模块 |
+| [UTCL2](UTCL2/README.md) | 二级地址翻译缓存主题；本项目物理归属待确认 |
+| [EA](EA/README.md) | Efficiency Arbiter；具体实例归属待确认 |
+| [NBIF](NBIF/README.md) | NBIF 接口模块，边界与命名待资料确认 |
+| [SWITCH](SWITCH/README.md) | 用户所说的芯片互联 switch；拓扑与协议待确认 |
+| [UMC](UMC/README.md) | 内存控制器 |
+| [HBM](HBM/README.md) | 高带宽内存及其与控制器、PHY 的接口 |
+| [PCIE](PCIE/README.md) | PCI Express 接口主题 |
+| [HDP](HDP/README.md) | 主机数据访问主题 |
+| [PHY](PHY/README.md) | 物理层主题；区分内存、PCIe、芯片互联等不同实例 |
+| [HUBS](HUBS/README.md) | MMHUB、CH，按用户给出的分组管理 |
+| [SDMA](SDMA/README.md) | FE、BE、TBE；只提供独立项目链接及系统关系 |
+| [GC](GC/README.md) | GL2、GRBM、RLC 的图形/计算上级归档入口 |
+| [IH](IH/README.md) | 中断汇聚与处理 |
+| [RSMU](RSMU/README.md) | 名称、职责及与 SMU 的关系待确认 |
+| [SMU](SMU/README.md) | 系统管理、功耗与时钟等主题 |
+
+`GC` 是为表示上级关系补充的归档名称，不额外展开其他图形计算模块。UTCL1/UTCL2 保留独立学习入口并不意味着它们在硬件上都是 SoC 顶层实例。CS、CAKE、GL2、GRBM、RLC、MMHUB、CH、FE、BE、TBE 不再分别建目录。
+
+## 学习方法
+
+每个主题逐步回答：负责什么、接收谁的请求、向谁发请求、如何完成、异常如何上报、关键参数与代际差异是什么。先理解 SDMA 发起的一次搬运，再沿地址翻译、互联、内存和中断路径扩展。各路径的准确连接以目标芯片资料为准。
+
+后续收到新资料时，在对应顶层目录归档并补充来源；需要新增模块或改变父子关系时，同步更新映射表。整理日期：2026-09-23。
+
+
+## 原始文件与 Markdown
+
+UTCL2、HUBS 已新增 5 份资料的 Markdown 转换结果，见各模块入口。原始 PPTX/PDF 统一平铺归档在 original_file；模块内 assets 为图像资源目录，不是子模块目录。
+
+`original_file/` 中的文件仅供本地查看，不得上传 GitHub（包括私有仓库）或其他云端服务；已通过 `.gitignore` 排除。云端环境中无法打开指向这些本地原件的链接。
+
+[转换校验报告](conversion-report.md) · [来源与哈希清单](source-manifest.json)
