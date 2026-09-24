@@ -1,6 +1,6 @@
 # UTCL2 — 二级地址翻译缓存
 
-[项目入口](../README.md) · [模块关系](../module-map.md) · [来源](../sources.md)
+[项目入口](../README.md) · [模块关系](../module-map.md) · [资料集与来源](../sources.md)
 
 公开术语为 Unified Translation Cache - Level 2 [P5]。本地资料确认 shaobo TBE 的 UTCL1 miss 会请求 UTCL2 [L2]。
 
@@ -22,3 +22,9 @@
 页面图片保留原资料的视觉内容，本次上下文整理不新增目标芯片的架构结论。来源原名及证据边界见 [资料登记](../sources.md)。
 
 [项目上下文](../project-context.md) · [历史转换报告](../conversion-report.md) · [历史来源与哈希清单](../source-manifest.json)
+
+## 资料集与接续
+
+资料集入口：[资料集与来源总入口](../sources.md)。按本模块主题查看来源简介、相关研究问题和实际阅读定位；条目随后续阅读补充。
+
+后续 Codex 先读本入口及已有方案/整体架构，再浏览相关资料简介，按需阅读原文。这里保留位置与阅读顺序，简介在资料集中维护；若后续建立或移动模块资料集，同步更新本节和总索引。具体方法见 [研究范本](../chip-study-plan.md)。

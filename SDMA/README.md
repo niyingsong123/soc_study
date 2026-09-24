@@ -1,6 +1,6 @@
 # SDMA — 独立项目只读入口
 
-[项目入口](../README.md) · [模块关系](../module-map.md) · [来源](../sources.md)
+[项目入口](../README.md) · [模块关系](../module-map.md) · [资料集与来源](../sources.md)
 
 **详细研究在 `D:\project\no_preject\sdma_repo` 管理，本项目只读参考，不修改其任何内容。** 此目录只维护入口及系统关系，不复制原始资料，不建立 FE、BE、TBE 子目录。
 
@@ -18,3 +18,9 @@ FE（Front End）、BE（Back End）、TBE（Tile Back End）属于 SDMA 研究�
 - [anshi 架构](../../sdma_repo/docs/context/anshi.md)
 - [资料目录](../../sdma_repo/docs/sources.md)
 - [未决问题](../../sdma_repo/docs/context/open-questions.md)
+
+## 资料集与接续
+
+资料集入口：[资料集与来源总入口](../sources.md)。用于本仓库的 SDMA 系统联系与只读来源，详细研究仍在外部项目。
+
+后续 Codex 先读本入口及已有方案/整体架构，再浏览相关资料简介，按需阅读原文。这里保留位置与阅读顺序，简介在资料集中维护；若后续建立或移动模块资料集，同步更新本节和总索引。具体方法见 [研究范本](../chip-study-plan.md)。
