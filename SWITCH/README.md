@@ -27,6 +27,10 @@
 
 ## 资料集与接续
 
-资料集入口：[本模块来源主条目](../sources.md#p6switch-公开研究资料组)；[资料集总入口](../sources.md)。覆盖本方案使用的公开材料与既有来源；建议阅读顺序：P6 中既有 R1–R21 → 本次补充阅读 → 按需 FAB1。内容简介、版本及已读范围集中维护在资料集中。
+资料入口：[本模块逐篇索引](sources/README.md)；[全局编号与阅读状态](../sources.md)。每篇索引说明讲什么、何时值得读，链接详细技术笔记和原文；跨模块来源只有一份主笔记。
 
-后续 Codex 先读本入口及已有方案/整体架构，再浏览相关资料简介，按需阅读原文。这里保留位置与阅读顺序，简介在资料集中维护；若后续建立或移动模块资料集，同步更新本节和总索引。具体方法见 [研究范本](../chip-study-plan.md)。
+优先阅读：[R1](sources/R1-pipelined-router-delay.md) → [R2](sources/R2-low-latency-vc-router.md) → [R3](sources/R3-booksim-method.md) → [R4](sources/R4-garnet-overview.md) → [R5](sources/R5-garnet-switch-allocator.md) → [R6](sources/R6-garnet-input-output-credit.md) → [R18](sources/R18-islip-matching.md) → [R19](sources/R19-booksim-buffer-state.md) → [R20](sources/R20-damq-buffer.md) → [R21](sources/R21-elastistore.md)。覆盖：既有 Router 两轮的证据复查；NI、排序和协议映射；D2D 交接、进展与评估。
+
+后续 Codex 先读本模块上下文和 research-plan.md 的整体架构，再按问题选择笔记。笔记保留版本、机制、重要细节、实际阅读范围及证据边界；精确字段、新版本或未读部分再回原资料。补充资料时同步索引、主笔记与受影响方案，不在上下文复制整份资料集。
+
+本次资料扩充完成，不计为新的论文轮次；论文的下一项仍按上文实际进度执行。方法见[研究范本 v1.3](../chip-study-plan.md)。

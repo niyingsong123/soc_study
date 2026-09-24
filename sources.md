@@ -1,23 +1,36 @@
 # 资料集与来源
 
-基础整理日期：2026-09-23；Switch 第二轮公开研究补充：2026-09-24。公开文档用于解释术语和提供架构参考，不能证明本项目目标芯片的具体实现。初始化时读取本地 Markdown 摘要。C01–C05 留有历史转换与校验记录，但五份 Markdown 正文当前缺失；用户选择只同步现有文件，不补回正文。当前状态见 [项目上下文](project-context.md)，未进行目标芯片 RTL 核验。
+更新日期：2026-09-24。当前建立 **101 篇独立来源笔记、19 个模块资料索引**：95 篇基于已读取正文、相关章节/函数或已提交页图；R13 为摘要范围笔记；MEM11、IO4 为未取得全文的规范入口；L1–L3 为未重读外部资料的登记笔记。后六篇不能算作全文技术精读。95 篇中的官方简介、产品页和模型指南也各自保留资料层级，不等于读过完整规范。
 
-本页兼作资料集总入口，复用既有来源编号与分类。后续阅读时为相关资料补充简短内容介绍、链接、对应研究主题和实际阅读范围；模块资料较多时可链接该模块的资料集。条目以实际读到的部分为准，未读资料标为待查；不因建立资料集而把历史登记改记为已读。维护方式见 [研究范本](chip-study-plan.md)。
+原有 41 是上一阶段新增的 GC/VM/FAB/MEM/IO/MG 主条目数量，并非当时全项目所有历史资料。此次覆盖这些条目、旧 P/C/R/L 来源并补充新资料；P6 是分组，R17 与 IO3 同源，只保留一篇主笔记，不重复充数。一个编号可包含同一指南的多个章节，或一个机制必需的紧密关联代码文件；原文入口在笔记中逐一列出。
+
+模块索引告诉你“这篇讲什么、何时读”；逐篇笔记保存技术细节、限制和位置；研究方案保存微架构问题及轮次。先读模块上下文/结构，再查索引和相关笔记，按需回原文。[维护范本 v1.3](chip-study-plan.md) · [项目上下文](project-context.md) · [研究路线图](research-roadmap.md)。
 
 ## 按模块查阅资料集
 
-本次新增来源是支持规划的定向阅读，详细轮次尚未执行。来源摘要集中在本页；模块 README 与方案直接引用，不额外复制书目。完整规范未取得或仅阅读官网简介的条目已明确标为候选/局部阅读。
+| 模块索引 | 主笔记数 | 含跨模块复用来源数 | 主线内容 |
+| --- | --- | --- | --- |
+| [GC](GC/sources/README.md) | 8 | 25 | 存储层次与 GL2 请求边界；GRBM/RLC 的选择状态与恢复；可见性与性能解释 |
+| [UTCL1](UTCL1/sources/README.md) | 2 | 20 | 客户端身份、命中与 miss；合并、等待与资源释放；失效与地址空间复用 |
+| [UTCL2](UTCL2/sources/README.md) | 11 | 30 | 整体结构、页表层级与回填；并发、fault、失效和外部翻译；预取、观测与纠错 |
+| [HUBS](HUBS/sources/README.md) | 3 | 29 | Hub 集成及翻译服务边界；数据/地址交接与共享资源；失效、故障和通知 |
+| [EA](EA/sources/README.md) | 2 | 30 | 请求接入与下游服务；共享存储、bank/group 与资格；返回、维护与性能解释 |
+| [DF](DF/sources/README.md) | 8 | 42 | 本地/远端目标与身份；地址归属、hash 与 XGMI；事务完成、流控和恢复 |
+| [SWITCH](SWITCH/sources/README.md) | 20 | 33 | 既有 Router 两轮的证据复查；NI、排序和协议映射；D2D 交接、进展与评估 |
+| [UMC](UMC/sources/README.md) | 5 | 30 | 请求、映射与命令调度；PHY 交接与刷新/低功耗；错误、地址隔离与观测 |
+| [PHY](PHY/sources/README.md) | 7 | 22 | 内存接口、时钟与校准；串行采样和协议训练；D2D 与性能裕量 |
+| [HBM](HBM/sources/README.md) | 4 | 18 | 器件组织与数量级；命令、时序和维护；保护域与持续性能 |
+| [PCIE](PCIE/sources/README.md) | 6 | 20 | BAR/DMA 与请求完成；有限资源、保序与翻译扩展；通知、链路和恢复 |
+| [NBIF](NBIF/sources/README.md) | 2 | 21 | 窗口、目标和实例；主机交付与维护连接；事件、分区与异常 |
+| [HDP](HDP/sources/README.md) | 4 | 17 | 历史职责与现代接口；维护与可见性闭环；低功耗、RAS 和代际差异 |
+| [CF](CF/sources/README.md) | 1 | 18 | 命令身份与端点访问；接纳、排序和完成；共享状态与异常退出 |
+| [SMU](SMU/sources/README.md) | 4 | 25 | 管理请求和共享表；策略约束与反馈；错误、事件和恢复 |
+| [SMN](SMN/sources/README.md) | 2 | 13 | 管理访问入口与选择状态；端点与相邻接口；完成、低功耗和恢复 |
+| [RSMU](RSMU/sources/README.md) | 2 | 10 | 模块身份与直接寄存器证据；端点访问及错误状态；可访问性与恢复责任 |
+| [IH](IH/sources/README.md) | 5 | 23 | 事件记录、内存和解码；通知和来源处理；溢出、恢复与吞吐 |
+| [SDMA](SDMA/sources/README.md) | 5 | 27 | 目标接口与外部范围；系统提交、寻址与维护；完成、事件和恢复 |
 
-| 研究主题 | 主条目入口 | 主要内容 |
-| --- | --- | --- |
-| GC：GL2、GRBM、RLC | [GC1–GC2](#gc1)，复用 P2–P5 | AMD 存储结构与公开寄存器/固件控制接口 |
-| UTCL1、UTCL2、HUBS、EA | [VM1–VM6](#vm1)，复用 P2/P3/P5 | GPUVM、MMHUB、失效、IOMMU、翻译研究及 GCEA 观察 |
-| DF、CF | [FAB1–FAB4](#fab1)，复用 P1/P6 | AMD 互联、地址归属、公开驱动与完成语义参照 |
-| SWITCH | [P6 与已有 R1–R21](#p6switch-公开研究资料组)，补充 FAB1 | NI、Router、D2D、进展与后续性能研究 |
-| UMC、PHY、HBM | [MEM1–MEM11](#mem1)，复用 MG5 | 控制器/器件/PHY 参考与标准、训练、RAS 边界 |
-| PCIe、NBIF、HDP | [IO1–IO10](#io1) | 事务与地址、主机窗口、HDP 维护、通知与恢复 |
-| SMU、SMN、RSMU、IH | [MG1–MG8](#mg1) | 管理请求、间接访问、RSMU 接口线索、事件 ring |
-| SDMA 系统接口 | 本页 L1–L3、P2 及相邻模块主条目 | 仅复用已有摘要与公开系统边界，内部正文在外部项目 |
+主笔记数合计 101；复用来源数不能相加。所有来源保留原编号；固定 tag/commit 和具体章节/函数见各笔记。
 
 ## 用户说明
 
@@ -48,391 +61,621 @@
 
 - **U18（2026-09-24）：** 用户确认按已维护的计划正式实施。本次完成各模块的研究与论文规划、资料集及接续入口；详细论文留给后续本地 Codex，实际轮次单独记录。
 
+- **U19（2026-09-24）：** 用户要求在既有 41 个规划主条目基础上继续扩充各模块资料，为每份新旧资料分别整理核心内容与重要细节，文档统一存入模块下的资料子目录，并更新上下文和入口。
+- **U20（2026-09-24）：** 用户强调笔记应足够详细，减少后续 Codex 反复阅读原资料，并支持未来多次跨模块复用；已授权实施所有既有及新增来源的整理。
+- **U21（2026-09-24）：** 用户要求每篇资料都有索引，说明大致内容，帮助 Codex 判断是否值得阅读；后续明确要求继续实施。当前采用模块 sources/README.md 的逐篇导读与唯一主笔记。
+
+
 ## 本地只读参考
 
-下列相对链接指向仓库之外的独立 SDMA 项目，仅在本地对应目录存在时可用，GitHub 仓库中不包含这些文件。
+外部目录为 `D:\project\no_preject\sdma_repo`，仅引用，不复制或修改。L1–L3 是本项目编号，外部 S1–S9 编号保持原义。本次没有访问外部全文，详情见以下范围笔记。
+### L1
 
-- **L1：[SDMA 术语表](../sdma_repo/docs/context/glossary.md)**：CF/DF、FE/BE/TBE、UTCL1/UTCL2 的本项目语义。配合 [项目上下文](../sdma_repo/docs/project-context.md)。
-- **L2：[shaobo 架构摘要](../sdma_repo/docs/context/shaobo.md)**：FE 两条后端路径、CF_IF/DF_IF、TBE 内 UTCL1、UTCL2 请求及 MMHUB 写回。其原始依据为外部项目 S1「dma_utcl1」「Dma_ce」与 S2「子模块划分」等，定位见 [外部原始资料目录](../sdma_repo/docs/sources.md)。
-- **L3：[SDMA 待确认问题](../sdma_repo/docs/context/open-questions.md)**：特别保留 anshi TBE 的剩余职责未确定这一边界。
+[外部 SDMA 术语表：既有登记与复查入口](SDMA/sources/L1-external-glossary-scope.md) · 外部本地路径见笔记 · 外部入口·未重读
 
-外部目录为 `D:\project\no_preject\sdma_repo`。这里只引用，不复制或修改其文件。L1–L3 是本项目引用编号；外部 S1–S9 的编号保持原义。
+用于查项目专用 CF/DF、FE/BE/TBE、UTCL1/UTCL2 含义；当前只保存原仓库登记范围，必须在本地可访问外部项目时复查原文。
+
+### L2
+
+[外部 shaobo 摘要：两条后端路径的待复查接口](SDMA/sources/L2-external-shaobo-scope.md) · 外部本地路径见笔记 · 外部入口·未重读
+
+原登记涉及 FE 两条后端路径、CF_IF/DF_IF、TBE 内 UTCL1、UTCL2 请求和 MMHUB 写回；适合后续本地核实 SDMA 与 SoC 的连接。
+
+### L3
+
+[外部 SDMA 待确认问题：保留 anshi TBE 边界](SDMA/sources/L3-external-open-questions.md) · 外部本地路径见笔记 · 外部入口·未重读
+
+用于接续未决问题，特别是 anshi TBE 的剩余职责；当前没有原文，禁止用公开驱动或 shaobo 架构把未知项自动填满。
 
 ## 公开参考
 
-- **P1：[AMD Ryzen Processor Software Optimization，GDC 2019](https://gpuopen.com/gdc-presentations/2019/gdc-2019-s2-amd-ryzen-processor-software-optimization.pdf)**，2019-03-20，第 21 页：SDF、CS、CAKE、UMC 的参考架构与术语。适用 Ryzen 示例；只支持 DF 相关主题的初步归档，不能确定 shaobo/anshi 的 RTL 父级。 本次规划复读打印页 21–23 的术语和 local/remote refill 抽取文字：用于辨认 CCM、SDF transport、CS、CAKE、UMC 的参考职责，不复制 CPU 产品的参数或拓扑到目标 GPU。
-- **P2：[Linux AMDGPU Core Driver Infrastructure — GPU Hardware Structure](https://docs.kernel.org/gpu/amdgpu/driver-core.html#gpu-hardware-structure)**：GC 包含 RLC、IH 和 SMU 基本职责、内存 hub 的架构差异。在线文档查询日期 2026-09-23，未固定内核提交。 本次定向阅读同一文档的在线 hub/client 连接说明，以及 [Linux 6.12 固定版本](https://docs.kernel.org/6.12/gpu/amdgpu/driver-core.html#gpu-hardware-structure)开头的 GMC、IH、SMU、SDMA、GC/RLC 职责。前者随在线版本变化，后者可固定复查；没有全文研读或目标 RTL 核验。
-- **P3：[AMD ROCm Compute Profiler — GL2 cache](https://rocm.docs.amd.com/projects/rocprofiler-compute/en/docs-7.14.1/conceptual/rdna/gl2-cache.html)**：gfx115x 的 GL2 与 GCEA 访问路径，不能直接推广到所有 GPU。 本次原链接读取未成功，实际已读 [docs-7.14.0 / Profiler 3.7.0 的同名页](https://rocm.docs.amd.com/projects/rocprofiler-compute/en/docs-7.14.0/conceptual/rdna/gl2-cache.html)中 GL2 cache、performance、request statistics、bandwidth。适用 RDNA3.5/gfx115x；资料提供 GL2/GCEA 的观察边界及命中/请求/带宽口径，指出 EA 方向请求可能由系统级 cache 服务，不能以 DRAM 命名推定每次访问实际到 DRAM。目标队列和算法仍无直接证据。
-- **P4：[AMD ROCm Compute Profiler — Graphics Register Bus Manager](https://rocm.docs.amd.com/projects/rocprofiler-compute/en/docs-7.14.1/conceptual/rdna/grbm.html)**：GRBM 名称、图形/计算活动统计主题。
-- **P5：[AMD ROCm 6.0.0 — MI200 performance counters and metrics](https://rocm.docs.amd.com/en/docs-6.0.0/conceptual/gpu-arch/mi200-performance-counters.html)**，2024-01-16：EA、UTCL1、UTCL2、GRBM、HBM 缩写与计数器参考。同页 CS 指 Compute Shader，说明缩写必须结合上下文，不能直接替换 DF 语境的 Coherent Slave。 本次沿用既有术语登记；页面入口/搜索结果可见，但具体 UTCL 章节定位遇到访问限流，未增加完整阅读或计数器核验声明，后续使用具体事件时须复查。
+### P1
+
+[AMD GDC 2019：CCM、CS、CAKE 与本地/远端访存路径](DF/sources/P1-ryzen-fabric-topology.md) · [原文](https://gpuopen.com/gdc-presentations/2019/gdc-2019-s2-amd-ryzen-processor-software-optimization.pdf) · 厂商/项目官方资料
+
+提供 CS、CAKE 等 AMD 名称的官方出处，并用本地 DRAM、同 die 其他 CCX、远端 die DRAM 三条路径说明一致性端点与传输层的分工；历史性能数字不可外推。
+
+### P2
+
+[AMDGPU 驱动中的 IP 边界与系统入口](GC/sources/P2-amdgpu-hardware.md) · [原文](https://docs.kernel.org/6.12/gpu/amdgpu/driver-core.html#gpu-hardware-structure) · 厂商/项目官方资料
+
+解释 Linux 如何按 IP 组织 GPU，以及 GMC、GC/RLC、SDMA、SMU、IH 的职责。适合首次建立系统边界；查具体队列或硬件协议时应转入对应代码笔记。
+
+### P3
+
+[gfx115x GL2 的访问边界与计数口径](GC/sources/P3-gl2-metrics.md) · [原文](https://rocm.docs.amd.com/projects/rocprofiler-compute/en/docs-7.14.0/conceptual/rdna/gl2-cache.html) · 厂商/项目官方资料
+
+把 GL2 命中、客户请求和向 GCEA 下发的流量分开，适合建立缓存到仲裁器的观测模型。它提供计数语义，不提供 GL2 队列深度或替换算法。
+
+### P4
+
+[GRBM 活动计数与利用率解释](GC/sources/P4-grbm-utilization.md) · [原文](https://rocm.docs.amd.com/projects/rocprofiler-compute/en/docs-7.14.0/conceptual/rdna/grbm.html) · 厂商/项目官方资料
+
+说明 GRBM 提供哪些粗粒度忙碌度观测，以及为什么 GPU Busy、GL2C Busy 不能直接证明吞吐或瓶颈。研究 GRBM 寄存器选址和 RLC 协同时应联读 GC2。
+
+### P5
+
+[MI200 的翻译、EA credit 与在途请求计数](GC/sources/P5-mi200-counters.md) · [原文](https://rocm.docs.amd.com/en/docs-6.0.0/conceptual/gpu-arch/mi200-performance-counters.html) · 厂商/项目官方资料
+
+提供可操作的观测点：UTCL1 translation/permission miss、UTCL2 busy、EA 按 IO/GMI/DRAM 分类的 credit stall，以及在途请求积分。适合做跨模块性能诊断，但不是目标芯片的计数器规格。
 
 ## P6：Switch 公开研究资料组
 
-登记日期：2026-09-24。完整来源条目、版本和引用关系在 [详细微架构稿](switch/switch_detailed_guide.md)第 37、48 章，使用该文内部的 R1–R21 编号，不覆盖本页的 L/P/C 编号。第一轮完整稿另存 [v2.0 历史原稿](switch/switch_detailed_guide_v2.0.md)。
+R1–R22 保留 SWITCH 原有编号体系并补 R22。第 1、2 轮事实与模型执行结果见[真实研究进度](switch/RESEARCH_PROGRESS.md)；旧引用关系可在[详细稿](switch/switch_detailed_guide.md)及 Git 历史复查。本次扩充来源笔记，不执行第 3–6 轮。R9 是 CHI 模型用户指南，R12 是 Arm 架构介绍，均不能替代正式 CHI 规范。
 
-第二轮实际重点阅读与对照如下；只声明阅读所列章节和源码，不声明完成全部文献或规范的合规核验。
+### R1
 
-| 对应编号 | 来源与版本 | 本轮阅读定位及用途 |
-|---|---|---|
-| R1 | Peh/Dally，2001，[Router 延迟与推测架构论文](https://projects.csail.mit.edu/wiki/pub/LSPgroup/PublicationList/specmodel.pdf) | VC/推测流水、credit turnaround；用于空间闭环和失败路径 |
-| R2 | Mullins/West/Moore，ISCA 2004，[低延迟 VC Router](https://www.cl.cam.ac.uk/~swm11/research/papers/isca2004.pdf) | Router 结构与控制路径；不采用其工艺数字作为本项目参数 |
-| R5 | gem5 tag `v24.1.0.1`，[SwitchAllocator.cc](https://github.com/gem5/gem5/blob/v24.1.0.1/src/mem/ruby/network/garnet/SwitchAllocator.cc) | `arbitrate_inports/outports`、成功路径和指针更新；blob `e31733d42e1d2a84f5afc86050a8209367983aa1` |
-| R18 | Nick McKeown，IEEE/ACM ToN 7(2)，1999，[iSLIP 原论文](https://www.cs.cmu.edu/~dga/15-744/S07/papers/islip-ton.pdf) | 第 III、VI、IX 节，第一迭代指针更新与 matching；原场景是固定 cell 输入排队交换机 |
-| R19 | BookSim2 commit `28f43299f1706a3160ffac721ca461d74eb6e618`，[buffer_state.cpp](https://github.com/booksim/booksim2/blob/28f43299f1706a3160ffac721ca461d74eb6e618/src/buffer_state.cpp) | 私有/共享容量、SendingFlit/ProcessCredit/TakeBuffer；blob `228d91d0ab1a221cf6ced0461e650959eecce0f8` |
-| R20 | Yuval Tamir、Gregory L. Frazier，ISCA 1988，[High-Performance Multi-Queue Buffers for VLSI Communication Switches](https://web.cs.ucla.edu/~tamir/papers/isca88.pdf) | 第 III 节、buffer organisation 与 timing；用于共享数据/指针/free pool 的实现对照 |
-| R21 | I. Seitanidis、A. Psarras、G. Dimitrakopoulos、C. Nicopoulos，DATE 2014，[ElastiStore](https://gdimitrak.github.io/papers/date14a.pdf) | 第 II–IV 节与 Fig.1–5，弹性 VC、共享辅助槽和反压；未合入本轮 mesh 模型 |
+[Peh/Dally：流水 router 延迟模型与推测分配](SWITCH/sources/R1-pipelined-router-delay.md) · [原文](https://projects.csail.mit.edu/wiki/pub/LSPgroup/PublicationList/specmodel.pdf) · 原始论文
 
-本轮代码是原创教学模型，不是以上实现的重命名副本；模型运行结果登记在 [round2_results.json](switch/examples/round2_results.json)，验证范围见 [研究进度](switch/RESEARCH_PROGRESS.md)。公开资料不证明目标芯片 SWITCH 属于 DF、连接 CAKE 或采用某一协议。
+说明 router pipeline、VC 分配、switch 分配和 credit 往返如何共同决定零负载延迟与吞吐，适合审查“每跳一拍”和“增加 VC 必然更快”等简化假设。
+
+### R2
+
+[Mullins 等：look-ahead、预计算仲裁与单周期 router](SWITCH/sources/R2-low-latency-vc-router.md) · [原文](https://www.cl.cam.ac.uk/~swm11/research/papers/isca2004.pdf) · 原始论文
+
+解释低延迟 router 如何把控制从数据关键路径移开，以及空闲后多个新请求到达时为何需要冲突检测/撤销；用于约束低延迟方案的真实前提。
+
+### R3
+
+[BookSim 论文：模型边界、两阶段更新与性能实验口径](SWITCH/sources/R3-booksim-method.md) · [原文](https://icn.kaist.ac.kr/~jjk12/papers/2013ISPASS.pdf) · 原始论文
+
+说明微架构仿真如何保持真实并行时序、建模 credit 延迟和源端排队，并揭示局部公平与全局公平、年龄优先与吞吐之间的区别。
+
+### R4
+
+[Garnet 2.0：NI、router、vnet 与流水模型总览](SWITCH/sources/R4-garnet-overview.md) · [原文](https://www.gem5.org/documentation/general_docs/ruby/garnet-2/) · 厂商/项目官方资料
+
+建立 gem5 网络模型的组件与参数语义，区分协议 vnet、物理链路、VC 和端点缓冲；适合阅读具体 allocator/credit 代码前使用。
+
+### R5
+
+[Garnet SwitchAllocator：两级选择、发送资格与最终提交](SWITCH/sources/R5-garnet-switch-allocator.md) · [原文](https://github.com/gem5/gem5/blob/v24.1.0.1/src/mem/ruby/network/garnet/SwitchAllocator.cc) · 固定版本公开代码
+
+逐步说明 SA-I/SA-II 怎样选择 flit、何时分配 outVC、扣 credit、弹出输入及更新 RR；重点是有请求与允许发送之间的差别。
+
+### R6
+
+[Garnet Input/OutputUnit：VC 状态与 credit 往返](SWITCH/sources/R6-garnet-input-output-credit.md) · [原文](https://github.com/gem5/gem5/blob/v24.1.0.1/src/mem/ruby/network/garnet/InputUnit.cc) · 固定版本公开代码
+
+配对追踪接收 flit、保存路由、流水等待、输入释放和下游 free-credit 返回，避免把 buffer 空槽与 packet 的 VC ownership 混为一个状态。
+
+### R7
+
+[FlooNoC 论文：宽物理网络、AXI 并发流与端点重排](SWITCH/sources/R7-floonoc-paper.md) · [原文](https://arxiv.org/html/2409.17606v1) · 原始论文
+
+说明宽链路 NoC 如何把 AXI 排序放在 NI、用响应存储预约保证可接收，并比较带 ROB 与限制同 ID 目标的两种设计；适合作为 AMD switch 的行业对照。
+
+### R8
+
+[AMBA AXI：握手、独立通道、ID 顺序与完成边界](SWITCH/sources/R8-axi-ordering-contract.md) · [原文](https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/IHI0022H_amba_axi_protocol_spec.pdf) · 规范选读
+
+保存 AXI 数据通路必须遵守的 VALID/READY、AW/W/B 依赖、burst/ID 和响应顺序规则；适合研究 bridge、NI、buffer 和“收到响应意味着什么”。
+
+### R9
+
+[CHI Protocol Bundle 用户指南：模型接口与 credit 回调](SWITCH/sources/R9-chi-model-user-guide.md) · [原文](https://documentation-service.arm.com/static/5ed104c1ca06a95ce53f8869) · CHI 模型用户指南
+
+这是 Arm SoC Designer 仿真组件指南，展示 CHI 通道、模型转换器和回调如何接线；可用于理解模型边界，不能作为 CHI 一致性事务规范。
+
+### R10
+
+[UCIe 教程：协议层、D2D Adapter、CRC/retry 与状态协商](SWITCH/sources/R10-ucie-protocol-adapter.md) · [原文](https://hc2023.hotchips.org/assets/program/tutorials/ucie/UCIe%20Protocol.pdf) · 厂商/项目官方资料
+
+分清 FDI/RDI 两侧责任、raw/标准 flit 模式的可靠性归属，以及链路初始化/低功耗进入需要的多层握手；用于规划 die-to-die switch 边界。
+
+### R11
+
+[UCIe 1.1 streaming：可复用可靠性不等于统一上层协议](SWITCH/sources/R11-ucie11-streaming.md) · [原文](https://www.uciexpress.org/post/ucie-1-1-provides-streaming-protocol-solution-for-error-detection-and-replay) · 厂商/项目官方资料
+
+说明 UCIe 1.1 如何让非 PCIe/CXL 的 streaming payload 复用 adapter CRC/replay，并指出 Raw Mode、flit 格式协商和上层 CHI 打包的边界。
+
+### R12
+
+[Arm 系统架构入门：数据、翻译、中断与低功耗接口的分层](SWITCH/sources/R12-arm-system-architecture.md) · [原文](https://documentation-service.arm.com/static/682ae34f0aae2a5d8f045749) · Arm 架构概述
+
+提供 CHI/AXI、SMMU 翻译接口、GIC 与低功耗控制的系统地图，帮助研究 AMD 模块别名和职责边界；它是入门总览，不是 CHI 事务规范。
+
+### R13
+
+[Dally/Seitz：channel dependency 的可用结论与阅读范围](SWITCH/sources/R13-channel-dependency-scope.md) · [原文](https://authors.library.caltech.edu/records/fd0yr-br438) · 原论文仅摘要已读
+
+保存原作者记录可确认的 CDG/虚通道断环思想，并明确正文未成功取得；可用于定位死锁研究入口，不能代替原证明或覆盖所有自适应/协议级依赖。
+
+### R14
+
+[UCIe 电气教程：forwarded clock、训练、repair 与封装约束](PHY/sources/R14-ucie-electrical-training.md) · [原文](https://www.hc2023.hotchips.org/assets/program/tutorials/ucie/Electrical%20Form%20Factor%20and%20Compliance.pdf) · 厂商/项目官方资料
+
+解释 UCIe die-to-die 物理层如何依赖封装距离、时钟/数据匹配、训练与 lane repair；用来区分链路可靠性、可用带宽和协议完成。
+
+### R15
+
+[FlooNoC router RTL：参数化队列、路由裁剪与握手边界](SWITCH/sources/R15-floonoc-router-code.md) · [原文](https://github.com/pulp-platform/FlooNoC/blob/c58f1bf13baeda147b4e87e961683d389db090a1/hw/floo_router.sv) · 固定版本公开代码
+
+从固定版本 RTL 识别输入 FIFO、route select、输出仲裁、可选输出 FIFO 和 VC/物理通道复用，并记录代码较原论文的新能力和端点握手约束。
+
+### R16
+
+[Remote Control：独立无死锁 chiplet 组合后的环路风险](SWITCH/sources/R16-remote-control-deadlock.md) · [原文](https://arxiv.org/pdf/1910.04882) · 原始论文
+
+解释多个内部无死锁网络连接后仍可能互相阻塞，以及出口整包缓冲预约如何切断跨 chiplet 依赖；用于规划 die-to-die 组合正确性。
+
+### R17
+
+与 [IO3](PCIE/sources/IO3-linux-dma-api.md) 同源：Linux DMA API，研究地址、所有权与可见性。保留旧编号，详细笔记只维护一份。
+
+### R18
+
+[iSLIP：VOQ、Request/Grant/Accept 与指针更新](SWITCH/sources/R18-islip-matching.md) · [原文](https://www.cs.cmu.edu/~dga/15-744/S07/papers/islip-ton.pdf) · 原始论文
+
+解释交叉开关的两侧匹配、RR 指针为何必须与接受结果关联，以及多轮匹配的第一轮更新规则；用于区分单输出仲裁与多输入多输出分配。
+
+### R19
+
+[BookSim BufferState：共享池、保留槽与 tail-credit 释放](SWITCH/sources/R19-booksim-buffer-state.md) · [原文](https://github.com/booksim/booksim2/blob/28f43299f1706a3160ffac721ca461d74eb6e618/src/buffer_state.cpp) · 固定版本公开代码
+
+区分总容量、per-VC 占用、共享池、保留槽和 VC ownership，并解释不同 buffer policy 与 tail-credit 配置怎样改变可发送条件。
+
+### R20
+
+[Tamir/Frazier：动态多队列缓冲与共享存储实现](SWITCH/sources/R20-damq-buffer.md) · [原文](https://web.cs.ucla.edu/~tamir/papers/isca88.pdf) · 原始论文
+
+解释 DAMQ 怎样用每目的队列与共享 free list 同时减少 HOL 和静态分区浪费，保留指针阵列、头尾、分块分配和 cut-through 的关键实现条件。
+
+### R21
+
+[ElastiStore：每 VC 槽位与共享弹性缓冲的取舍](SWITCH/sources/R21-elastistore.md) · [原文](https://gdimitrak.github.io/papers/date14a.pdf) · 原始论文
+
+解释 ready/valid 反压流水为何需要额外吸收空间，以及 ElastiStore 用 V+1 个槽替代 2V 个槽时的结构和明确吞吐例外。
+
+### R22
+
+[Garnet NI：终点背压、tail 保留与协议缓冲依赖](SWITCH/sources/R22-garnet-network-interface.md) · [原文](https://github.com/gem5/gem5/blob/v24.1.0.1/src/mem/ruby/network/garnet/NetworkInterface.cc) · 固定版本公开代码
+
+说明网络到达终点后仍可能因协议 MessageBuffer 无空间而持有 tail/VC，并解释 credit、回调和消息交付的关系；用于补齐端到端依赖分析。
 
 ## 规划阶段对既有 SWITCH 来源的补充阅读
 
-阅读日期：2026-09-24。下列条目仍沿用 P6/R 编号；它们补充资料简介与本次定位，不表示完成 SWITCH 新一轮研究。
+上一阶段定向阅读与本次更深阅读的历史由 Git 保存；当前实际阅读范围以 R 系列逐篇笔记为准。规范版本、论文与当前代码差异、摘要范围及性能例外均已纳入笔记。
 
-| 原编号与直达入口 | 主要内容、研究用途和本次阅读范围 |
-| --- | --- |
-| [R7：FlooNoC v1](https://arxiv.org/html/2409.17606v1) | 提供 NI 端点排序与 NoC 组织的公开实现研究。已读 III-A 的 ROB/限制注入取舍、III-C 及 IV-A 开头；IV–V 完整实验/物理实现细节留第 5 轮，不据其参数推定 AMD 实现。 |
-| [R8：AXI IHI0022H](https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/IHI0022H_amba_axi_protocol_spec.pdf) | 用于 NI 请求/响应契约与保序研究，CF 仅借鉴规则写法。已读 A3.3、A5.2 相关返回排序及 A6.1–A6.6 的抽取段落；未核验全规范合规，AMD 目标采用的协议待确认。 |
-| [R10：UCIe Hot Chips 2023 Protocol 教程](https://hc2023.hotchips.org/assets/program/tutorials/ucie/UCIe%20Protocol.pdf) | 解释分层、Raw/格式职责、链路状态和初始化。已读打印页 27、34、36–45 的相关文字；它是当时模式的教程，不能替代匹配版本正式规范。 |
-| [R11：UCIe 1.1 Streaming 官方说明](https://www.uciexpress.org/post/ucie-1-1-provides-streaming-protocol-solution-for-error-detection-and-replay) | 用于识别 Streaming/Raw 与差错处理的版本变化；本次复读其背景说明，精确模式和字段留待正式规范，原创 LRP-64 不因此成为 UCIe 实现。 |
-| [R16：Modular SoC 原论文 v1](https://arxiv.org/pdf/1910.04882v1) | 讨论跨 chiplet 引入的资源等待与模块化进展问题。已读引言和第 2 节；Remote Control 全算法/证明未重做，也不作为本仓库 PRE/POST 教学设计的证明。 |
-
-## GC：缓存与控制：本次规划来源
+## GC：缓存与控制
 
 ### GC1
 
-- 原名与链接：[Introducing AMD CDNA 2 Architecture](https://www.amd.com/content/dam/amd/en/documents/instinct-business-docs/white-papers/amd-cdna2-white-paper.pdf)；本次读取官网 17 页白皮书，2026-09-24。
-- 主要内容：介绍 MI200 的 GCD、分片 L2、内存接口和多种主机/加速器互联配置。第 5 页将 L2 排队、仲裁、原子操作及特定平台的一致性放在系统存储层次中说明。
-- 研究用途：GC 的 L2 结构/下游带宽与 DF/SWITCH 的互联边界；目标 shaobo/anshi 参数不能直接套用。CDNA L2/TCC 与本目录 GL2 按功能对照，不能默认名称和实现一一对应。
-- 实际阅读：正文 p.2、p.4–5 的结构/存储说明，以及 p.5–8 的通信与一致性段落；未逐页完整研读计算单元或矩阵指令章节。读过的文本能支持定向规划，不作为队列/协议完整实现规格。
+[CDNA 2 的分片 L2、内存与互联边界](GC/sources/GC1-cdna2-memory.md) · [原文](https://www.amd.com/content/dam/amd/en/documents/instinct-business-docs/white-papers/amd-cdna2-white-paper.pdf) · 厂商/项目官方资料
+
+从 MI200 的公开整体结构理解 GCD 内 L2、内存控制器、HBM 和多种互联的分工。适合建立模块间地图与带宽层级；不提供内部队列或一致性状态机。
 
 ### GC2
 
-- 原名与链接：[Linux v6.12 — gfx_v9_4_3.c](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_4_3.c)，Git blob c100845409f7948cd060c2e44d978aec8bf35997。
-- 主要内容：GC 9.4.3 驱动呈现 GRBM 的实例/广播选择、RLC 寄存器访问控制、safe-mode 握手，以及启停、复位、恢复与 clock-gating 的软件编程序列。
-- 研究用途：GRBM 和 RLC 的控制微架构边界、共享选择状态、固件/驱动职责、控制完成和超时；代码不是 RLC 固件或目标 RTL。
-- 实际阅读：gfx_v9_4_3_xcc_select_se_sh；is_rlc_enabled、xcc_set/unset_safe_mode、init_rlcg_reg_access_ctrl；xcc_rlc_stop/reset/start/resume 和 rlc_resume；xcc_update_gfx_clock_gating（约 L692–717、1364–1440、1488–1550、1597–1635、2710–2762）。其他部分未完整阅读。
+[GC 9.4.3 的 GRBM 选址与 RLC 控制闭环](GC/sources/GC2-gfx943-rlc-grbm.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_4_3.c) · 固定版本公开代码
 
-## 翻译、hub 与仲裁：本次规划来源
+从驱动调用看实例选择、广播、safe-mode、RLC 启停和门控顺序。适合恢复控制路径的状态与握手；不等同 RLC 固件或硬件内部算法。
+
+### GC3
+
+[LLVM AMDGPU 内存模型：等待、缓存维护与一致性域](GC/sources/GC3-llvm-memory-model.md) · [原文](https://github.com/llvm/llvm-project/blob/llvmorg-18.1.7/llvm/docs/AMDGPUUsage.rst) · 固定版本公开代码
+
+解释 acquire/release 为什么需要组合等待与 cache 操作，以及 gfx90a/gfx942 的 agent、L2 和远端内存条件。研究“写完成”“缓存可见”“TLB 失效”之间的区别时应优先读。
+
+### GC4
+
+[RLC 公共层：软件状态、保存区与硬件回调](GC/sources/GC4-rlc-common.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_rlc.c) · 固定版本公开代码
+
+补足 GC2 的上层：safe-mode 的软件标志如何维护、保存恢复数据由谁分配。适合判断驱动状态与硬件状态是否被错误等同。
+
+## 翻译、hub 与仲裁
 
 ### VM1
 
-- **原名与链接：** Linux `drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c`，[v6.12 固定 tag](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c)，blob `6005280f5f38f07c0b5c5f583f1b4e273ac117e9`。
-- **主要内容：** 开头 GPUVM 说明从软件接口介绍 GPU 地址空间、VMID/页表、访问权限和 VMID 0 的特殊 aperture；系统地址在有 IOMMU 时可处于 IOVA 语境。它帮助区分 GPU 翻译体系与系统 IOMMU，但不是 UTCL1/UTCL2 RTL 规格。
-- **适用版本与阅读：** Linux v6.12 AMDGPU；已读 `DOC: GPUVM` 全段及 `amdgpu_vm_set_pasid`，其余实现未系统研究。注释内 VMID 数量和页表级数不得推广为所有 AMD 芯片参数。
-- **用途与未知：** UTCL1/UTCL2 第一轮地址空间、权限与请求身份；HUBS aperture 边界。目标 UTCL2 的 PTW 位置、缓存组织、接口字段仍待查。
+[GPUVM 的地址空间、VMID、PASID 与 aperture](UTCL2/sources/VM1-gpuvm-address-spaces.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c) · 固定版本公开代码
+
+建立 GPUVA、页表、动态 VMID、PASID 与系统地址的基本关系；尤其适合防止把 GPUVM 和系统 IOMMU 合并为一个翻译器。
 
 ### VM2
 
-- **原名与链接：** Linux `drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c`，[v6.12 固定 tag](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，blob `a0cc8e218ca1ea2c10349e48205d82f3ef490b06`。
-- **主要内容：** 通过 MMHUB client ID、aperture/上下文配置、TLB/cache 初始化、失效请求和保护故障状态暴露公开软件可见的功能。代码按 IP 版本选择 client 表，且注明 MMHUB 2.1.x 无 ATCL2，说明 hub 的翻译组成必须按代际核对。
-- **适用版本与阅读：** Linux v6.12 中此文件所列 MMHUB 2.0.x/2.1.x，不能反推所有 hub。已读 client ID 表、`get_invalidate_req`、`print_l2_protection_fault_status`、`setup_vm_pt_regs`、`init_gart_aperture_regs`、`init_system_aperture_regs`、`init_tlb_regs`、`init_cache_regs`、`setup_vmid_config`、`program_invalidation`、`set_fault_enable_default`、clock-gating/light-sleep 相关段。
-- **用途与未知：** UTCL1/UTCL2 的权限与失效研究入口，HUBS 的集成边界与错误归因。寄存器名称不证明内部队列、PTW 物理归属或 heavy/light 的事务排空语义；不提供 CH 定义。
+[MMHUB 2.x 的地址范围、翻译缓存与 fault 配置](HUBS/sources/VM2-mmhub-v2.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c) · 固定版本公开代码
+
+按初始化顺序整理 MMHUB 软件可见的服务结构：页表根、aperture、TLB/cache、VM context、失效引擎和 fault。适合构建 hub 控制面；不证明完整内部数据网络。
 
 ### VM3
 
-- **原名与链接：** Linux `drivers/gpu/drm/amd/amdgpu/gmc_v9_0.c`，[v6.12 固定 tag](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gmc_v9_0.c)，blob `7a45f3fdc73410c8a3c2ef84a6d759dc82a3e13c`。
-- **主要内容：** 展示 GPU TLB 失效的软件发起、按 VMID/PASID 与 hub 选择、请求/ACK 等待，以及特定配置下与门控相关的 semaphore 处理。可据此研究失效的发起方、目标与完成接口，不能从软件等待推出所有业务事务的硬件完成点。
-- **适用版本与阅读：** Linux v6.12，此源文件管理的 GMC v9 相关配置；已读 `gmc_v9_0_flush_gpu_tlb`、`gmc_v9_0_flush_gpu_tlb_pasid`、`gmc_v9_0_emit_flush_gpu_tlb`，并浏览附近 VMID/PASID 和 Vega10 PTE/PDE 注释。未读取完整 IP 规格。
-- **用途与未知：** UTCL1 第三轮、UTCL2 第四轮、HUBS 第四轮的接口对齐。FLUSH_TYPE 的协议含义、在途旧回填、light/heavy/NACK 规则仍需适用芯片原始协议证据。
+[GMC v9 的 GPUVM 失效：请求、ACK、hub 与电源状态](UTCL2/sources/VM3-gpuvm-invalidation.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gmc_v9_0.c) · 固定版本公开代码
+
+详细追踪 GPUVM invalidate 的软件发起与完成观察，包含 VMID/PASID 转换、不同 hub、KIQ 与直接寄存器路径及旧 ACK 风险。适合建立维护事务闭环。
 
 ### VM4
 
-- **原名与链接：** Linux `drivers/iommu/amd/iommu.c`，[v6.12 固定 tag](https://github.com/torvalds/linux/blob/v6.12/drivers/iommu/amd/iommu.c)，blob `8364cd6fa47d016311c7d79ed218adfea90fcbb6`。
-- **主要内容：** AMD IOMMU 驱动分别构造 IOMMU 页翻译缓存和设备 IOTLB 的失效命令，并在启用 ATS 的设备上安排设备侧失效；完成等待路径用于保证相关失效命令完成。它明确系统侧多参与者边界，不能替代 GPUVM 或 UTCL2 的硬件协议。
-- **适用版本与阅读：** Linux v6.12 AMD IOMMU；已读 `build_inv_iommu_pages`、`build_inv_iotlb_pages`、`device_flush_iotlb`、`__domain_flush_pages`、`amd_iommu_domain_flush_pages` 的常规路径、`iommu_completion_wait`、`domain_flush_complete`。未系统研究整个驱动或 PPR 状态机。
-- **用途与未知：** UTCL2 第五轮区分 GPUVM、IOMMU 和 ATC/设备 IOTLB；是否适用于目标系统需先核对。AMD 48882 IOMMU 规范检索到了入口，但本次打开原 PDF/API 失败，不能记为已读；ATS 协议的 NACK、排空与续跑细节待原始规范。
+[AMD IOMMU 驱动的多级翻译缓存失效与完成等待](UTCL2/sources/VM4-amd-iommu-commands.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/iommu/amd/iommu.c) · 固定版本公开代码
+
+说明为什么更新系统映射后可能需要同时处理 IOMMU 内部缓存和 ATS 设备 IOTLB，并追踪 command queue 与 completion wait。适合与本地 GPUVM invalidate 对比。
 
 ### VM5
 
-- **原名与链接：** Rachata Ausavarungnirun et al., *MASK: Redesigning the GPU Memory Hierarchy to Support Multi-Application Concurrency*, ASPLOS 2018，[作者提供的 PDF](https://rausavar.github.io/pubs/mask-asplos18.pdf)，[DOI](https://doi.org/10.1145/3173162.3173169)。
-- **主要内容：** 以研究模型比较 GPU TLB/页表缓存路径，讨论翻译等待与共享资源干扰，并提出跨翻译和数据层次的优化。适合作为建立问题和比较设计的资料，不能当成 AMD 已实现的结构。
-- **适用版本与阅读：** 2018 原论文，实验模型基于 NVIDIA Maxwell/GPGPU-Sim/Mosaic；已读第 3 节和 Fig.2、第 4.1 节及第 4 节部分干扰分析、第 5.1 节、第 5.3 节开头、第 6 节方法开头。其余优化细节和实验未完整评审。
-- **用途与未知：** UTCL1 miss/等待、UTCL2 translation cache 与 walk cache 的区分及共享干扰、EA 条件性的翻译/业务竞争问题。其条目数、算法、页表级数、保守排空做法和性能数值都不转为目标参数；目标预取机制无直接证据。
+[MASK：把地址翻译需求传递到共享缓存和 DRAM 调度](UTCL2/sources/VM5-mask-paper.md) · [原文](https://rausavar.github.io/pubs/mask-asplos18.pdf) · 原始论文
+
+解释一次 TLB miss 为何能阻塞许多 warp，以及共享 TLB、数据 cache、DRAM 三层怎样共同放大翻译开销。适合设计跨模块性能研究问题；不是 AMD 实现证据。
 
 ### VM6
 
-- **原名与链接：** AMD *Graphics Core Efficiency Arbiter (GCEA)*，[ROCm Compute Profiler 3.7.0，docs-7.14.0](https://rocm.docs.amd.com/projects/rocprofiler-compute/en/docs-7.14.0/conceptual/rdna/gcea.html)。
-- **主要内容：** 从性能观察角度描述 GL2 下游 GCEA 阶段，组织 DRAM 读写、SARB 和返回接口指标，提供忙、停顿、饥饿和请求/返回量等分析入口。页面分组用于性能解释，不证明 GCEA 的 RTL 层级或仲裁算法。
-- **适用版本与阅读：** 正文注明 RDNA3.5/gfx115x；已读 GCEA 说明、DRAM read interface、DRAM write interface、System arbiter、Return interface、Memory chart。
-- **用途与未知：** EA 的输入/下发/返回闭环、反压与性能诊断；与 P3 共用 GL2/GCEA 分界。目标 EA 是否同一实例、客户端、队列、QoS、算法及一致性职责均待查。
+[GCEA 的接纳、停顿、目标与返回观测](EA/sources/VM6-gcea-metrics.md) · [原文](https://rocm.docs.amd.com/projects/rocprofiler-compute/en/docs-7.14.0/conceptual/rdna/gcea.html) · 厂商/项目官方资料
 
-## DF、SWITCH 与命令支路：本次规划来源
+按 read/write、SARB 和 return 三个边界整理 gfx115x 的 GCEA 指标，帮助判断请求缺乏、下游背压和返回受阻的区别。
+
+### VM7
+
+[gem5 Vega TLB：查找、回填、属性与模型简化](UTCL1/sources/VM7-gem5-vega-tlb.md) · [原文](https://github.com/gem5/gem5/blob/v24.1.0.1/src/arch/amdgpu/vega/tlb.cc) · 固定版本公开代码
+
+提供一套可以沿函数追踪的 TLB 模型，解释命中、miss、回填和返回。尤其记录其 ASID、fault 与失效处理的简化，避免后续 Codex 把模拟器当成完整硬件规格。
+
+### VM8
+
+[gem5 Vega 页表遍历器的依赖状态与端口重试](UTCL2/sources/VM8-gem5-page-walker.md) · [原文](https://github.com/gem5/gem5/blob/v24.1.0.1/src/arch/amdgpu/vega/pagetable_walker.cc) · 固定版本公开代码
+
+具体解释一个 page walk 如何保存上下文、逐级读 PDE/PTE、等待内存、遇到背压重试并回填。适合建立 walker 与缓存/内存服务之间的接口。
+
+### VM9
+
+[翻译请求合并：时间窗、在途表与响应展开](UTCL1/sources/VM9-gem5-coalescer.md) · [原文](https://github.com/gem5/gem5/blob/v24.1.0.1/src/arch/amdgpu/vega/tlb_coalescer.cc) · 固定版本公开代码
+
+解释多个同页请求如何共用一次下游翻译，以及如何保留每个请求的 offset、返回端口和统计数量。适合研究 miss 合并与有限资源；明确模型的多地址空间限制。
+
+### VM10
+
+[AMD IOMMU 3.09：翻译、远端 ATC 与失效完成契约](UTCL2/sources/VM10-iommu-spec.md) · [原文](https://kib.kiev.ua/x86docs/AMD/IOMMU/48882-3.09.pdf) · 规范选读
+
+用规范区分 IOMMU 内部缓存、设备 ATC、页表更新与在途 DMA；重点解释失效命令的依赖、Completion Wait、QueueID 流控和安全回收页面的条件。
+
+### VM11
+
+[动态 VMID 的租用、复用与页表更新依赖](UTCL2/sources/VM11-vmid-lifetime.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_ids.c) · 固定版本公开代码
+
+解释为什么 VMID 不能当作永久进程编号，以及驱动如何用 active fence、页表根和 flush 进度防止过早复用。适合连接提交队列、翻译上下文与完成事件。
+
+### VM12
+
+[GFXHUB 2.0 与 MMHUB 的编程模型对照](HUBS/sources/VM12-gfxhub-v2.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfxhub_v2_0.c) · 固定版本公开代码
+
+用另一 hub 的公开实现对照页表根、地址 aperture、翻译 cache、context 与失效入口，帮助区分共享编程概念与真实物理归属。
+
+### EA1
+
+[轮转仲裁 RTL：成功传输、背压锁定与公平性](EA/sources/EA1-rr-arbiter.md) · [原文](https://github.com/pulp-platform/common_cells/blob/e73baaec2ca665cd80c3c384e9258e35242b829c/src/cc_rr_arb_tree.sv) · 固定版本公开代码
+
+提供能追踪到状态更新的仲裁器参考，解释选中、grant、真正交付和优先级轮转的区别。适合补足 EA 方案中的可实现机制，但不代表 AMD EA 采用本设计。
+
+## Fabric、地址与完成
 
 ### FAB1
 
-- 原名：[AMD CDNA 3 Architecture white paper](https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-3-white-paper.pdf)。2026-09-24 官网取得的 28 页版本，含 MI325X；不能标成未经核对的原始 2023 版本。
-- 简介：解释 XCD/IOD 的功能分工、L2 与内存侧 Infinity Cache、片内与跨封装互联，以及 MI300A/MI300X 的不同内存与连接组织。用于把 DF 研究置于真实 AMD 产品结构中，明确缓存一致性职责与输运职责不能仅靠名称合并。
-- 适用性：公开 CDNA 3 产品参考，不能证明 shaobo/anshi 的 CS、CAKE 或 SWITCH RTL 归属；也不能据此声称 AMD D2D 采用 UCIe。
-- 实际阅读：Introduction、Chiplet Architecture Repartitioning；打印页 9–14 “Memory”及 Fig.6–8；打印页 15–18 “Communication and Scaling”及 Fig.9–10 的抽取文字。没有把正文外的图形细节当作已目视核验。
-- 用途：DF 第 1、3、4 轮；SWITCH 目标协议/层级边界。与其他模块引用同一白皮书时合并主条目。
+[CDNA 3 白皮书：XCD/IOD、memory-side cache 与一致性层次](DF/sources/FAB1-cdna3-iod-memory.md) · [原文](https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-3-white-paper.pdf) · 厂商/项目官方资料
+
+解释 CDNA 3 把计算侧 L2、IOD 存储侧 cache、HBM 与互联重新分配后的职责，特别区分 snoop filter、cache 数据和 CPU/GPU 统一内存；适合校准模块边界与带宽口径。
 
 ### FAB2
 
-- 原名：[Linux v6.12 — drivers/gpu/drm/amd/amdgpu/df_v3_6.c](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/df_v3_6.c)；Git blob `483a441b46aa1051f78820296095b0a1368b2bc2`。
-- 简介：驱动侧展示 DF 地址 hash/通道配置查询、间接配置访问、时钟门控及 perfmon 的读写组织。可据此提出地址映射和观测点问题，但寄存器访问序列不是在线 DF 事务实现。
-- 适用性：固定 Linux tag；代码有 Arcturus/Aldebaran 条件分支，不自动适用于全部 AMD GPU。
-- 实际阅读：`df_v3_6_query_hashes`、`df_v3_6_get_fb_channel_number`、`df_v3_6_get_hbm_channel_number`、`df_v3_6_get_fica/set_fica`、`df_v3_6_perfmon_rreg/wreg`；计数器配置/读取的函数入口已核对，未逐项核验目标性能事件编码。
-- 用途：DF 地址归属、配置边界与性能观测规划。
+[Linux DF 3.6：通道编码、hash、实例访问与性能计数器](DF/sources/FAB2-df36-registers-counters.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/df_v3_6.c) · 固定版本公开代码
+
+从 AMDGPU 的 DF 3.6 回调识别软件能观察的配置与计数器生命周期，特别说明寄存器编码不等于实际通道数、计数器零值也可能来自未支持或重装失败。
 
 ### FAB3
 
-- 原名：[Linux v6.12 — drivers/ras/amd/atl/core.c](https://github.com/torvalds/linux/blob/v6.12/drivers/ras/amd/atl/core.c)；Git blob `4197e10993acaaa0a5097c7f21796ccde418020c`。
-- 简介：AMD Address Translation Library 将 RAS 报告相关的 normalized address 转为 system address，调用节点/映射选择、反交织/hash 与 base/hole 处理。它提醒 DF 地址归属变换和 MMU 的虚实地址翻译是不同研究层次。
-- 适用性：该版本针对可匹配的 AMD Zen/SMCA 系统；不能拿软件反解函数的调用次序画成 GPU 硬件流水级。
-- 实际阅读：完整 `core.c`，重点 `norm_to_sys_addr`、`get_base_addr`、`add_base_and_hole`、`late_hole_remove`、`addr_over_limit` 和初始化适用条件；被调用的其他源文件尚未逐一展开。
-- 用途：DF 第 2 轮地址空间边界及目标资料核对。
+[AMD ATL：从 UMC 归一化地址恢复系统物理地址](DF/sources/FAB3-atl-address-core.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/ras/amd/atl/core.c) · 固定版本公开代码
+
+展示 RAS 地址解码必须结合 socket/die/CS、DRAM map、interleave/hash、base 与 MMIO hole；用于避免把 UMC 错误地址直接解释成系统 PA。
 
 ### FAB4
 
-- 原名：[Linux v6.12 — include/linux/dma-fence.h](https://github.com/torvalds/linux/blob/v6.12/include/linux/dma-fence.h)；Git blob `e06bad467f55ef1befdad569f0a8a37875def383`。
-- 简介：软件 fence 通过 context/seqno 表达同一执行上下文中的同步对象，区分未完成、成功完成和带错误终结。用于为 CF 的“谁看到什么完成”提问，避免把所有完成信号等同成功。
-- 适用性：Linux 软件同步机制参考；不是 CF 协议，不证明 EOC、cancel 与 fence 对应。
-- 实际阅读：`struct dma_fence` 字段说明、`dma_fence_ops` 的 signaling 注释、`dma_fence_is_later`、`dma_fence_get_status_locked`、`dma_fence_set_error`；未核验具体 GPU fence 发出/中断链路。
-- 用途：CF 第 3 轮软件可见终结与错误传播的边界。
+[dma-fence：完成对象、时间线与硬件语义的边界](DF/sources/FAB4-dma-fence-contract.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/include/linux/dma-fence.h) · 固定版本公开代码
 
-## 内存控制、PHY 与 HBM：本次规划来源
+解释 fence 的 context/seqno、signal/error、callback 与 lifetime，帮助区分软件完成对象和硬件 flush/fence 操作；跨模块研究完成语义时必读。
+
+### FAB5
+
+[AMDGPU XGMI：hive、节点拓扑、链路信息与 RAS](DF/sources/FAB5-xgmi-topology.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_xgmi.c) · 固定版本公开代码
+
+从驱动观察 XGMI 多设备拓扑的建立、固件协作、hop/link 信息和错误入口；特别记录 v6.12 中 pstate 切换实际被提前返回禁用，防止把死代码当现行功能。
+
+### FAB6
+
+[AMD ATL denormalize：非二次幂通道与 hash 的逆向重建](DF/sources/FAB6-atl-denormalization.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/ras/amd/atl/denormalize.c) · 固定版本公开代码
+
+解释 3/5 倍通道模式为何不能靠插入几位 channel ID 还原 PA，以及 DF4.5 如何枚举丢失位和余数，再用正向映射与 CS 身份校验候选地址。
+
+### FAB7
+
+[AMDGPU fence：ring 完成写回、序号槽位和异常收敛](DF/sources/FAB7-amdgpu-fence-lifecycle.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_fence.c) · 固定版本公开代码
+
+把抽象 dma-fence 落到 AMDGPU 的 ring 命令、写回内存、序号表、中断/定时器与回收流程，适合研究数据完成怎样变成软件可等待事件。
+
+## 控制器、PHY 与 HBM
 
 ### MEM1
 
-- 原名与入口：[AMD AXI High Bandwidth Memory Controller LogiCORE IP Product Guide (PG276)](https://docs.amd.com/r/en-US/pg276-axi-hbm)，v1.0，页面发布日期 2025-12-17。
-- 简介：说明 AMD FPGA HBM IP 的用户端口、地址映射、重排与内存命令、刷新和数据保护，以及 PHY-only 与时钟接口。它提供可具体研究的控制器实例；GPU UMC 的协议、队列深度、实例数和功能支持不得由此推定。
-- 实际阅读：相关章节已读——[HBM Topology](https://docs.amd.com/r/en-US/pg276-axi-hbm/HBM-Topology)、[HBM Address Map and Protocol Considerations](https://docs.amd.com/r/en-US/pg276-axi-hbm/HBM-Address-Map-and-Protocol-Considerations)、[HBM Reordering Options](https://docs.amd.com/r/en-US/pg276-axi-hbm/HBM-Reordering-Options)、[Reorder, Refresh, and Power Savings Options Tab](https://docs.amd.com/r/en-US/pg276-axi-hbm/Reorder-Refresh-and-Power-Savings-Options-Tab)、[Data Path Error Protection](https://docs.amd.com/r/en-US/pg276-axi-hbm/Data-Path-Error-Protection)、[Clocking](https://docs.amd.com/r/en-US/pg276-axi-hbm/Clocking)、[PHY Only Mode](https://docs.amd.com/r/en-US/pg276-axi-hbm/PHY-Only-Mode)。正文阅读，不声明全书和所有图中波形已核验。
-- 用途与限制：UMC 的事务到命令路径、PHY 边界、HBM2 拓扑与共享资源。Topology 段落存在 Gb/GB/Mb/MB 混写，容量须交叉核对 Address Map 表与具体料号，不直接复制。PHY-only 称接口为 DFI，未在已读部分明确版本，需与 MEM4 的标准覆盖范围核对。
+[PG276：HBM 拓扑、地址映射、重排与错误边界](UMC/sources/MEM1-pg276-hbm-controller.md) · [原文](https://docs.amd.com/r/en-US/pg276-axi-hbm) · 厂商/项目官方资料
+
+研究请求进入内存控制器后为何排队、如何选 bank/行、何时返回错误。重点是两级重排、共享命令资源、地址映射对调度的影响；适合 UMC 主线与 EA/HBM 联读。
 
 ### MEM2
 
-- 原名与链接：[Ramulator 2.0: A Modern, Modular, and Extensible DRAM Simulator](https://arxiv.org/html/2308.11030v2)，Luo 等，arXiv:2308.11030v2，2023-11-29。
-- 简介：通过地址映射、控制器、调度器、刷新管理器和独立 DRAM 行为模型划分可替换组件，解释请求如何转为受状态与时序限制的命令。适合检查研究骨架是否遗漏维护请求及完成反馈。
-- 实际阅读：第 II-A、II-A1、II-B 节及文字中的 Fig.1–2、Listing 1–3 说明已读；本次未运行模拟器、未读取其源码，也未核验论文性能数据。
-- 用途与限制：UMC 逻辑拆分与 HBM 命令约束表达；是研究模拟器架构，不是 AMD RTL。若后续需要实验，另选固定 tag/commit、校验目标内存模型并更新本条，不直接引用移动分支的结果。
+[Ramulator 2.0：控制器、DRAM 模型与验证边界](UMC/sources/MEM2-ramulator2-paper.md) · [原文](https://arxiv.org/html/2308.11030v2) · 原始论文
+
+解释如何把请求调度、命令前置条件、时序状态和维护策略拆开建模；适合搭建 UMC 教学模型与理解验证覆盖，不是 AMD UMC 实现说明。
 
 ### MEM3
 
-- 原名与链接：[AMDGPU RAS Support — Linux Kernel 6.12 documentation](https://docs.kernel.org/6.12/gpu/amdgpu/ras.html)。
-- 简介：说明 AMDGPU 按 IP 暴露 RAS 能力、错误计数、注入和 VRAM 坏页管理的驱动接口。它帮助区分硬件检测、驱动恢复与系统页隔离，不能反推 UMC ECC 编码电路。
-- 实际阅读：RAS debugfs/sysfs Control and Error Injection、Error Count、EEPROM、VRAM Bad Pages、Reboot Behavior 各节已读；未执行注入、复位或系统操作。
-- 用途：UMC RAS 第 4 轮的观测与恢复闭环；与 MG5 的特定 UMC 版本源码交叉引用，支持情况以 ASIC 为准。
+[AMDGPU RAS：错误计数、坏页与恢复策略](UMC/sources/MEM3-amdgpu-ras.md) · [原文](https://docs.kernel.org/6.12/gpu/amdgpu/ras.html) · 厂商/项目官方资料
+
+从软件侧梳理 CE/UE、坏页状态和恢复动作，适合连接 UMC 检测、IH 通知及页面隔离；不能用软件状态替代硬件错误定位。
 
 ### MEM4
 
-- 原名与链接：[DDR PHY Interface (DFI) Group — About DFI / DFI News](https://ddr-phy.org/)。
-- 简介：标准组织说明 DFI 定义 MC-PHY 的信号、时序和功能，且不限定系统侧或存储器侧接口。2018 年 5.0 公告介绍 PHY-independent training；2026 年 6.0 公告声明首次正式支持 HBM，说明检索 DFI 时必须区分版本和厂商扩展。
-- 实际阅读：About DFI、2018-05-02 DFI 5.0 公告及 2026-05-26 DFI 6.0 公告全文已读；**DFI 5.x/6.0 规范全文未获取、未读**。
-- 用途与限制：PHY 接口责任、训练所有权、规范版本核对。AMD 参与 DFI 不证明目标 GPU UMC 使用某版本；MEM1 的 DFI 命名须结合对应产品接口手册确认。
+[DFI 官方资料：控制器与 PHY 的边界及 6.0 变化](PHY/sources/MEM4-dfi-version-boundary.md) · [原文](https://ddr-phy.org/) · 规范组织公开介绍
+
+用于确定 controller/PHY 分工、训练所有权与规范版本；尤其修正“DFI 不支持 HBM”的过时概括。公开更新不能代替接口信号规范。
 
 ### MEM5
 
-- 原名与链接：[Zynq 7000 SoC and 7 Series Devices Memory Interface Solutions User Guide (UG586)](https://docs.amd.com/r/en-US/ug586_7Series_MIS)，v4.2，2024-11-13。
-- 简介：所读 LPDDR2 PHY 章节展示慢速控制域到 I/O 的 FIFO、字节组时钟、相位调整及采样路径；初始化章节说明训练完成后才允许控制器进入正常访问。用于建立“数据路径与校准共同组成 PHY”的具体认识。
-- 实际阅读：[Overall PHY Architecture](https://docs.amd.com/r/en-US/ug586_7Series_MIS/Overall-PHY-Architecture)、[Memory Initialization and Calibration Sequence](https://docs.amd.com/r/en-US/ug586_7Series_MIS/Memory-Initialization-and-Calibration-Sequence) 正文已读；本次直链解析落到 **LPDDR2** 章节，不将其标为 DDR3/HBM 训练细节。各 calibration 子步骤全文未逐项阅读。
-- 用途与限制：PHY 功能骨架、初始化门控、时钟域和读写采样研究。PHASER/FPGA 原语及具体训练序列只属于该参考，不复制成 AMD GPU HBM PHY 实现。
+[UG586：字节组 PHY 与初始化、校准分工](PHY/sources/MEM5-ug586-phy.md) · [原文](https://docs.amd.com/r/en-US/ug586_7Series_MIS) · 厂商/项目官方资料
+
+研究 DQ/DQS、相位调节、FIFO 和校准逻辑如何组成 PHY；用于从控制器侧跨到物理接口侧，需注意实际读取的是 LPDDR2 章节。
 
 ### MEM6
 
-- 原名与链接：[PCI Express PHY LogiCORE IP Product Guide (PG239)](https://docs.amd.com/r/en-US/pg239-pcie-phy/Product-Specification)，v1.0，2024-12-18。
-- 简介：所读部分说明该 FPGA PCIe PHY 使用 GTY/GTH 收发器，并给出速率变化及 TX/RX 均衡的控制交互。可用于追问 MAC/LTSSM 与 PHY 谁发起、谁执行、谁报告完成。
-- 实际阅读：Product Specification 与 [Equalization Sequences](https://docs.amd.com/r/en-US/pg239-pcie-phy/Equalization-Sequences) 的 Preset Apply、RX Adapt、TX Adapt 正文已读；图中完整波形与其余接口表尚未逐项核验。
-- 用途与限制：PHY 的 PCIe 分支；不是 AMD GPU PCIe PHY 的实例级证明，也不能推广到所有 PCIe 代际。
+[PG239：PCIe PHY 均衡阶段与完成语义](PHY/sources/MEM6-pcie-equalization.md) · [原文](https://docs.amd.com/r/en-US/pg239-pcie-phy/Product-Specification) · 厂商/项目官方资料
+
+解释 Preset Apply、接收适配、发送系数更新的不同阶段，适合 PCIe PHY 与链路状态机联读；重点是请求接受和适配完成的区别。
 
 ### MEM7
 
-- 原名与链接：[Versal Adaptive SoC GTY and GTYP Transceivers Architecture Manual (AM002)](https://docs.amd.com/r/en-US/am002-versal-gty-transceivers/RX-CDR)，rev.1.3，2023-10-26。
-- 简介：RX CDR 解释接收采样相位如何跟踪串行数据；RX Equalizer 解释接收均衡针对信道损耗和码间干扰的作用。适合把电气信道、均衡、采样和数字接收路径连起来理解。
-- 实际阅读：[RX CDR](https://docs.amd.com/r/en-US/am002-versal-gty-transceivers/RX-CDR)、[RX Equalizer (DFE and LPM)](https://docs.amd.com/r/en-US/am002-versal-gty-transceivers/RX-Equalizer-DFE-and-LPM) 正文已读；没有晶体管级、电路仿真或完整手册阅读。
-- 用途与限制：相应串行 PHY 的采样和均衡基础；不对宽并行 HBM 接口强套 CDR/DFE，不将 GTY 当成目标 GPU 实现。
+[AM002：串行接收均衡与 CDR](PHY/sources/MEM7-versal-cdr-equalizer.md) · [原文](https://docs.amd.com/r/en-US/am002-versal-gty-transceivers/RX-CDR) · 厂商/项目官方资料
+
+把链路误码问题分解为信道损耗、均衡与采样相位跟踪，适合 PHY 微架构入门；不提供 HBM 源同步接口或目标芯片的接收器设计。
 
 ### MEM8
 
-- 原名与链接：[UCIe Consortium — Introduction to UCIe Webinar: Q&A Recap](https://www.uciexpress.org/post/introduction-to-ucie-webinar-q-a-recap)，UCIe 1.0 语境。
-- 简介：Physical Questions 说明 mainband、sideband、逻辑与物理 lane 映射及封装约束；Miscellaneous 提醒链路延迟目标不等于端到端事务延迟。用于形成 D2D PHY 与适配器责任边界的问题。
-- 实际阅读：Physical Questions 与 Miscellaneous 中 latency、clock receiver、repair 问答已读；未凭此声明 UCIe 规范全文阅读或合规。
-- 用途与限制：PHY 的 D2D 比较支路。UCIe 是行业参考，不能将 AMD Infinity Fabric、CAKE 或本项目 SWITCH 直接命名为 UCIe。
+[UCIe 官方问答：侧带、lane 与链路延迟口径](PHY/sources/MEM8-ucie-official-qa.md) · [原文](https://www.uciexpress.org/post/introduction-to-ucie-webinar-q-a-recap) · 厂商/项目官方资料
+
+澄清 UCIe 初代公开介绍中的 lane 模块化、侧带和延迟数字；用于 D2D 接口与 PHY 边界，避免把物理指标当系统事务性能。
 
 ### MEM9
 
-- 原名与链接：[Micron HBM3E](https://www.micron.com/products/memory/hbm/hbm3e)，动态官方产品页，查询 2026-09-24。
-- 简介：FAQ 给出 Micron HBM3E 的 stack 容量、接口总宽度及 channel/pseudo-channel 组织，可用于检查 HBM2 参考参数是否被误用到后续代际。产品性能比较为厂商口径，不作为目标芯片或应用实测结果。
-- 实际阅读：Frequently asked questions 的组织、容量、带宽及 HBM2/HBM3E 差异条目已读；页面所链 Product Brief 请求被拒绝，**未获取完整数据手册或其时序/命令表**。
-- 用途：HBM 代际选择、容量/带宽口径及具体料号数据手册待查入口。
+[Micron HBM3E：组织、容量与带宽口径](HBM/sources/MEM9-micron-hbm3e.md) · [原文](https://www.micron.com/products/memory/hbm/hbm3e) · 厂商/项目官方资料
+
+提供 HBM3E 器件组织与产品级指标，用于容量/通道/带宽的数量级检查；不包含完整命令时序或端到端性能保证。
 
 ### MEM10
 
-- 原名与链接：[Samsung HBM3](https://semiconductor.samsung.com/dram/hbm/hbm3/)，动态官方产品页，查询 2026-09-24。
-- 简介：产品页展示 HBM3 堆叠与 ODECC 的产品级信息，并明确更详细规格需索取数据手册。用于提示器件内部纠错与控制器端 ECC 不能混为一个保护域，不据营销描述确定纠错码字或完整故障覆盖。
-- 实际阅读：Stack the chips in your favor、Level up to high reliability、数据手册可索取说明已读；**数据手册正文未取得**。
-- 用途：HBM RAS 研究问题及来源边界；具体位数、保护范围和错误上报协议均留待器件手册核验。
+[Samsung HBM3：产品指标与 ODECC 表述边界](HBM/sources/MEM10-samsung-hbm3.md) · [原文](https://semiconductor.samsung.com/dram/hbm/hbm3/) · 厂商/项目官方资料
+
+用于与 HBM3E 对照容量和原始带宽，并识别器件内部 ECC 宣传与系统 RAS 的区别；不提供可实现的 ECC 编码或命令规范。
 
 ### MEM11
 
-- 原名与入口：[JEDEC JESD238 — High Bandwidth Memory (HBM3)](https://www.jedec.org/standards-documents/docs/jesd238)。
-- 状态：规范候选待查；本次官方页面访问失败，**未读标准全文，不填写未经核验的章节号或参数**。
-- 用途：目标采用 HBM3 时，后续本地 Codex 从合法可用版本核验器件组织、命令、时序、初始化、刷新与 RAS。若目标为 HBM2/2E，改选相应 JESD235 修订版及具体料号；不以厂商概述代替规范。
+[JESD238：HBM3 正式标准入口与待补范围](HBM/sources/MEM11-jedec-scope-gap.md) · [原文](https://www.jedec.org/standards-documents/docs/jesd238) · 规范全文未取得
 
-## PCIe、NBIF 与 HDP：本次规划来源
+这是完整规范尚未取得的缺口记录；用于判断哪些 HBM3 细节必须回查正式标准，不能作为时序、编码或合规依据。
+
+### MEM12
+
+[Ramulator 当前 HBM 控制器：双命令槽与 FRFCFS](UMC/sources/MEM12-ramulator-hbm-controller.md) · [原文](https://github.com/CMU-SAFARI/ramulator2/blob/72427a1bba3771564c4fb0e494ba02242fd1eaa7/src/ramulator/controller/impl/hbm34_controller.cpp) · 固定版本公开代码
+
+研究请求如何变成可发出的列/行命令，以及优先级、激活缓冲和共享命令总线怎样约束吞吐；提供代码级 UMC 对照实例。
+
+### MEM13
+
+[Ramulator HBM3：层级状态、时序与生成式模型](HBM/sources/MEM13-ramulator-hbm3-model.md) · [原文](https://github.com/CMU-SAFARI/ramulator2/blob/72427a1bba3771564c4fb0e494ba02242fd1eaa7/src/ramulator/dram/impl/HBM3.cpp) · 固定版本公开代码
+
+适合逐项理解 HBM3 模型的共享/独立资源、命令依赖与时序作用范围；可与控制器代码联读，不能替代 JEDEC 标准。
+
+### MEM14
+
+[UMC 8.10 驱动：错误分类与地址候选展开](UMC/sources/MEM14-umc810-ras-address.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/umc_v8_10.c) · 固定版本公开代码
+
+研究错误地址为何不是现成系统物理地址，以及 UE 计数为何可能没有可隔离页面；提供具体寄存器与转换路径，适合 RAS 联读。
+
+### MEM15
+
+[PG150：DQS gate 搜索、细调与失败定位](PHY/sources/MEM15-pg150-dqs-gate.md) · [原文](https://docs.amd.com/r/en-US/pg150-ultrascale-memory-ip/Calibration-Stages) · 厂商/项目官方资料
+
+详细解释读数据门控如何找到 DQS 起始位置，覆盖粗/细调、重复采样、rank 统一及诊断；适合 PHY 校准专题，不能据此宣称已读所有训练阶段。
+
+## 主机与控制接口
 
 ### IO1
 
-- 名称与入口：[AMD UltraScale+ Devices Integrated Block for PCI Express Product Guide，PG213 v1.3](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Completer-Request-Interface-Operation)。在线页面版本 v1.3，读取日期 2026-09-24；页面是持续更新入口，后续应按目标控制器版本复核。
-- 内容简介：已读 Completer Request Interface Operation、[Completer Memory Read Operation](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Completer-Memory-Read-Operation)、[Completer Memory Write Operation](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Completer-Memory-Write-Operation)、[Selective Flow Control for Non-Posted Requests](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Selective-Flow-Control-for-Non-Posted-Requests)、[Maintaining Transaction Order](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Maintaining-Transaction-Order) 正文。分别说明请求描述符与数据、读返回拆分、写字节使能、NP 请求的局部信用控制，以及发送流水中的顺序约束。
-- 研究用途：PCIe 接收/发送与内部事务适配、posted/non-posted/completion、反压和保序；提供可工作的公开端点接口例子。
-- 阅读状态与限制：上述正文相关部分已读，Tag Management 页面未成功取得正文，留待下一轮；图示信号逐拍时序未核验。这里的 AXI4-Stream、CQ/CC/RQ/RC 和具体信用数是该 FPGA IP 的实现接口，不是 PCI-SIG 全规范，也不能套成目标 AMD GPU 的端口名或容量。
+[PG213：TLP 接收、选择性流控与跨接口保序](PCIE/sources/IO1-pg213-transactions.md) · [原文](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Completer-Request-Interface-Operation) · 厂商/项目官方资料
+
+围绕 TLP 到用户逻辑的转换，解释 descriptor、有效字节、NP credit、Split Completion 及 Posted 顺序检查点；适合 PCIe 请求/完成微架构研究。
 
 ### IO2
 
-- 名称与链接：[Linux 6.12 — Bus-Independent Device Accesses](https://docs.kernel.org/6.12/driver-api/device-io.html)。
-- 内容简介：描述 MMIO accessors、`ioremap`/`ioremap_wc` 的访问性质，以及 posted write 可能尚未到设备的语义；说明需要时通过合适的读操作约束 posted write 完成。CPU 侧顺序、总线写入到达和设备内部操作完成应分别分析。
-- 阅读状态：相关章节已读，定位 Accessing the device、Differences between I/O access functions、Device memory mapping modes；非相关架构和 API 列表未逐项研读。
-- 研究用途：PCIe BAR/MMIO 与普通内存访问区别，NBIF doorbell 前的发布次序，HDP flush 与 MMIO readback 的边界；通用 Linux 语义，不决定目标芯片缓存一致性实现。
+[Linux Device I/O：MMIO、Posted write 与访问顺序](HDP/sources/IO2-linux-device-io.md) · [原文](https://docs.kernel.org/6.12/driver-api/device-io.html) · 厂商/项目官方资料
+
+解释 CPU 寄存器访问与设备真正收到写入之间的差异，覆盖 MMIO 映射属性、读回和 relaxed accessor；适合主机控制路径与 HDP 完成语义。
 
 ### IO3
 
-- 名称与链接：[Linux 6.12 — Dynamic DMA mapping Guide](https://docs.kernel.org/6.12/core-api/dma-api-howto.html)。
-- 内容简介：开篇区分 CPU 虚拟、CPU 物理和设备 bus/DMA 地址，并用 host bridge 与 IOMMU 解释它们为何不能一概相等；`dma_map_single` 得到设备可用 DMA 地址。用于把 CPU 访问设备 BAR 与设备主动访问主存分成两条路径。
-- 阅读状态：CPU and DMA addresses 相关正文及图的文本说明已读，后续 DMA ownership/sync API 全部细节未研究。
-- 研究用途：PCIe requester/completer 角色、NBIF 地址窗口与系统 IOMMU 边界；ATS/PASID/PRI 仍需专门规范和目标支持证据，本条不能证明这些能力存在。
+[Linux DMA API：地址、所有权、同步和 scatter-gather](PCIE/sources/IO3-linux-dma-api.md) · [原文](https://docs.kernel.org/6.12/core-api/dma-api-howto.html) · 厂商/项目官方资料
+
+用于判断设备应使用哪种地址、何时 CPU/设备可以碰缓冲区、为何 coherent 仍需排序。原 SWITCH R17 与本条是同一资料，复用此笔记。
 
 ### IO4
 
-- 名称与链接：[PCI-SIG — PCI Express Base Specification Revision 5.0, Version 1.0](https://pcisig.com/PCIExpress/Specs/Base/_5.0_1.0)。
-- 内容简介：官方登记页说明 Base Specification 的范围及 2019-05-28 发布信息；可作为取得合法规范全文的入口。
-- 阅读状态：只读登记页，**规范正文未取得、未阅读，候选资料**。后续通过已有合法访问渠道获取目标版本，再定位 Transaction Layer、Data Link Layer、Configuration、Error Handling；当前不编造章节号，不以登记页支持协议细节。
-- 研究用途：PCIe 后续规范核验；选 5.0 作为传统 non-FLIT 研究候选不表示本项目目标端口已确认为 Gen5，也不将 PG213 当作替代规范。
+[PCIe Base 5.0：规范入口与待补读范围](PCIE/sources/IO4-base-spec-gap.md) · [原文](https://pcisig.com/PCIExpress/Specs/Base/_5.0_1.0) · 规范全文未取得
+
+正式规范全文未取得的缺口记录，指明链路层/事务层哪些细节不能只靠 FPGA 指南推定；无需把它当成已完成的技术精读。
 
 ### IO5
 
-- 名称与链接：[Linux v6.12 — nbio_v7_4.c](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/nbio_v7_4.c)；配套 [amdgpu_nbio.h](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_nbio.h)。
-- 内容简介：公开 NBIO 驱动包含 doorbell aperture/range、framebuffer 访问使能、HDP flush remap/REQ/DONE、IH 控制、NBIF RAS 事件和 ASPM 等配置入口。文件中同时出现 NBIO 软件归档和 NBIF 硬件寄存器/中断标识，证明需要联合检索，不能据此证明二者在所有芯片中完全等价。
-- 阅读状态：相关函数已读：`nbio_v7_4_mc_access_enable`、`sdma_doorbell_range`、`enable_doorbell_aperture`、`ih_control`、`remap_hdp_registers`、`get_hdp_flush_req_offset`/`get_hdp_flush_done_offset`、`set_reg_remap`、`program_aspm`、`handle_ras_controller_intr_no_bifring`，以及 header 的 `amdgpu_nbio_funcs`。保留各函数完整的 `nbio_v7_4_` 前缀检索。
-- 研究用途：NBIF 研究候选功能与公开软件证据；HDP 控制关系；不能还原内部完整数据路径、队列规模、NBIF 父级或 shaobo/anshi 实例。`v7_4` 文件仍含多个 IP/产品分支，应逐分支引用。
+[NBIO 7.4：主机窗口、doorbell 与 HDP/IH 接口](NBIF/sources/IO5-nbio74-host-bridge.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/nbio_v7_4.c) · 固定版本公开代码
+
+提供 NBIF 可对应的公开 NBIO 软件接口，重点是 framebuffer 访问开关、doorbell 译码范围、HDP remap 和 IH 配置；适合建立主机桥边界。
 
 ### IO6
 
-- 名称与链接：[Linux v6.12 — hdp_v4_0.c](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/hdp_v4_0.c)。
-- 内容简介：HDP 驱动分别实现 flush 与 read-cache invalidate、non-surface base 初始化、时钟/内存低功耗和 RAS 计数。invalidate 对指定 4.4.x 版本直接返回，说明仅凭函数名不能假设所有 HDP 代际具有同一种缓存维护操作。
-- 阅读状态：相关函数已读：`hdp_v4_0_flush_hdp`、`invalidate_hdp`、`init_registers`、`query_ras_error_count`、`reset_ras_error_count`、`update_clock_gating`。`init_registers` 的 VF 跳过分支和 HDP 4.2.1 的 `HDP_MMHUB_CNTL` 设置均已见；它们是软件配置事实，不能确定目标 HDP/MMHUB 的完整拓扑。
-- 研究用途：HDP 维护状态、主机 aperture 地址基础、代际差异和错误恢复研究；驱动调用发出与硬件处理完成需另查协议，不自行解释为已排空全部 GPU 缓存。
+[HDP 4.0 驱动：flush、invalidate 与 RAS 代际差异](HDP/sources/IO6-hdp40-maintenance.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/hdp_v4_0.c) · 固定版本公开代码
+
+研究 HDP 维护命令怎样由 CPU 或 ring 发起、哪些 IP 跳过 invalidate，以及计数清除为何有读清/写清区别；用于准确写完成与恢复边界。
 
 ### IO7
 
-- 名称与链接：[AMD BKDG for Family 15h Models 60h–6Fh，50742 Rev 3.05，2016-05-21](https://www.amd.com/content/dam/amd/en/documents/archived-tech-docs/programmer-references/50742_15h_Models_60h-6Fh_BKDG.pdf)。
-- 内容简介：第 2.14.2.2 节 Host Data Path Guidelines 将 HDP 与 host 对 framebuffer 的地址转换联系起来，并给出该旧 APU 的窗口配置语境。用于确认 AMD 公开历史名称和 aperture 研究入口。
-- 阅读状态：已读第 2.14.1–2.14.2.2 节相关段落，纸面第 169–170 页（PDF 索引 168–169），未研究完整手册或寄存器表。
-- 研究用途与限制：HDP 全称和历史职能的原厂证据；旧 UMA APU 的容量上限、GMC 组织和访问路径不适用于未确认的目标 GPU，不能与新 NBIO/HDP 文件拼成一个真实芯片。
+[AMD 15h BKDG：HDP 历史职责与 UMA 窗口](HDP/sources/IO7-bkdg-hdp-history.md) · [原文](https://www.amd.com/content/dam/amd/en/documents/archived-tech-docs/programmer-references/50742_15h_Models_60h-6Fh_BKDG.pdf) · 厂商/项目官方资料
+
+HDP 全称和 host framebuffer 地址转换的 AMD 原厂历史依据；适合确认命名与窗口概念，不能作为现代 GPU 容量/拓扑参数。
 
 ### IO8
 
-- 名称与链接：[Linux 6.12 — The MSI Driver Guide HOWTO](https://docs.kernel.org/6.12/PCI/msi-howto.html)。
-- 内容简介：MSI 是设备向特殊地址写入以触发主机中断，文档比较传统引脚中断与 MSI 的数据写入顺序，并说明 MSI/MSI-X 的配置和向量管理。
-- 阅读状态：第 4.2、4.3、4.4.2 节相关部分已读；未以此核验目标芯片 MSI-X 表位置或能力。
-- 研究用途：PCIe 请求闭环中的通知阶段，与 IH 事件汇聚和 ring 消费区分；中断顺序结论仅在文档讨论的 PCI ordering 前提下使用，不能替代任意缓存域的维护。
+[Linux MSI：通知写、向量分配与中断并发](IH/sources/IO8-linux-msi.md) · [原文](https://docs.kernel.org/6.12/PCI/msi-howto.html) · 厂商/项目官方资料
+
+解释 MSI/MSI-X 为什么是内存写形式的通知、如何与之前的数据写排序，以及多向量如何改变并发；适合 IH 到 CPU 的最后一段路径。
 
 ### IO9
 
-- 名称与链接：[Linux 6.12 — PCI Error Recovery](https://docs.kernel.org/6.12/PCI/pci-error-recovery.html)。
-- 内容简介：给出平台与设备驱动在错误通知、停止新 I/O、恢复 MMIO、link/slot reset 和 resume 之间的协作。恢复过程具有平台差异，驱动恢复回调不是 PCIe 链路重放协议。
-- 阅读状态：第 7.1 节及 STEP 0–4 相关正文已读；具体平台实现未研究。
-- 研究用途：PCIe/NBIF 异常闭环，区分链路可纠错重放、事务失败和软件恢复，不把 Linux 回调直接画成目标硬件状态机。
+[Linux PCI 恢复：隔离、诊断、复位与恢复 I/O](PCIE/sources/IO9-pci-error-recovery.md) · [原文](https://docs.kernel.org/6.12/PCI/pci-error-recovery.html) · 厂商/项目官方资料
+
+提供错误后跨驱动协作的状态机，重点是 MMIO 恢复不等于 DMA 可重启；用于系统恢复主线及超时/复位规划。
 
 ### IO10
 
-- 名称与链接：[Linux v6.12 — gfx_v9_0.c](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_0.c)。
-- 内容简介：`gfx_v9_0_ring_emit_hdp_flush` 按引擎选择 mask，使用 NBIO 提供的 HDP request/done 寄存器构造等待；它给出 HDP 维护命令从请求到等待完成的公开调用例子。
-- 阅读状态：只读该函数及相关 ring funcs 中的 `emit_hdp_flush` 绑定，未研究该大文件的其他执行单元和命令处理器；相关的 `gfx_v9_0_wait_reg_mem` 具体包字段留待后续。
-- 研究用途：NBIF/HDP 控制闭环及完成条件的来源追踪。这里只借调用点研究接口，不扩展本项目 GC 的既定模块范围，不认为所有 flush 路径都会使用相同等待机制。
+[GC 9.0 驱动：实例选择、异步寄存器访问与 HDP 完成](CF/sources/IO10-gfx90-register-control.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_0.c) · 固定版本公开代码
 
-## 管理与事件支路：本次规划来源
+研究 GRBM 共享选择状态、异步读回，以及 ring 按引擎/pipe 发起 HDP request/done 等待；适合控制事务与维护完成联读，不扩展 CU/CP 内部或推定真实 CF 拓扑。
+
+### IO11
+
+[PCI ATS/PRI/PASID：能力、额度与 PF/VF 共享](PCIE/sources/IO11-ats-pri-pasid.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/pci/ats.c) · 固定版本公开代码
+
+用于区分 ATS 缓存翻译、PRI 请求资源和 PASID 身份能力，重点是配置依赖、PF/VF 共享及队列深度编码；适合 IOMMU 与 PCIe 联读。
+
+### IO12
+
+[PCIe AER：严重性、报告权与恢复触发](PCIE/sources/IO12-aer-error-path.md) · [原文](https://docs.kernel.org/6.12/PCI/pcieaer-howto.html) · 厂商/项目官方资料
+
+区分可纠正、不可纠正非致命与致命错误，并说明固件/OS 谁处理 AER；适合把链路错误连接到恢复策略，不能当作通用 ECC 规范。
+
+### IO13
+
+[NBIO 7.9：多 AID doorbell、分区与 replay 计数](NBIF/sources/IO13-nbio79-partition-doorbell.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/nbio_v7_9.c) · 固定版本公开代码
+
+扩展 NBIF 到多实例/分区场景，解释 doorbell 的双层配置和 replay 指标的实际来源；适合与 NBIO 7.4 比较代际差异。
+
+### IO14
+
+[HDP 6.0：维护提交与时钟/存储低功耗切换](HDP/sources/IO14-hdp60-power-sequence.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/hdp_v6_0.c) · 固定版本公开代码
+
+研究 HDP power/clock 配置的顺序约束和代际地址差异，适合把低功耗放回可访问性与状态保持主线；不能据此推导 SRAM retention 细节。
+
+## 管理与事件
 
 ### MG1
 
-**Linux v6.12 — AMDGPU SMU common interfaces / smu_cmn.c**  
-链接：[原文件](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/pm/swsmu/smu_cmn.c)。
+[SMU 公共驱动：mailbox、错误状态与表传输](SMU/sources/MG1-smu-message-table.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/pm/swsmu/smu_cmn.c) · 固定版本公开代码
 
-简介：实现软件到 SMU 的消息映射、参数提交、状态轮询和错误返回，也实现共享内存表格传输。消息互斥与固件状态检查可用于解释请求接口，表格传输前后的 HDP 操作提供 CPU/GPU 可见性的具体入口，不能据此推导固件内部调度。
-
-版本/适用：Linux v6.12，AMDGPU swsmu common 层，实际路径受 ASIC/能力配置约束。  
-阅读状态：相关函数已读；定位 `__smu_cmn_send_msg`、`__smu_cmn_reg2errno`、`__smu_cmn_ras_filter_msg`、`smu_cmn_send_smc_msg_with_param`、`smu_cmn_wait_for_response`、`smu_cmn_update_table`。未逐一研究所有芯片的消息映射。  
-研究用途：SMU 第 1–2 轮 mailbox、共享状态、超时/拒绝以及表格传输；HDP 接口可以复用此条。
+详细追踪管理命令如何串行提交、等待响应和搬运数据表；适合 SMU 控制路径，尤其用于区分发送成功、固件执行成功和状态实际改变。
 
 ### MG2
 
-**Linux v6.12 — AMDGPU SMU 13.0 / smu_v13_0.c**  
-链接：[原文件](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/pm/swsmu/smu13/smu_v13_0.c)。
+[SMU 13 公共控制：固件就绪、表地址和频率约束](SMU/sources/MG2-smu13-control.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/pm/swsmu/smu13/smu_v13_0.c) · 固定版本公开代码
 
-简介：提供 SMU 13.0 系列的固件接口版本检查、频率范围与功率约束调用，以及 thermal、AC/DC 和 SMU-to-host 事件处理。源码可区分软件请求、固件接口与源端 ACK/re-enable；它没有公开完整 DVFS 控制算法。
-
-版本/适用：Linux v6.12，SMU 13.0 common 实现；产品差异由分支和调用方决定，不能假定同一文件所有功能用于同一 ASIC。  
-阅读状态：相关函数已读；定位 `check_fw_version`、`set_power_limit`、`set_soft_freq_limited_range`、`set_hard_freq_limited_range`、`enable_thermal_alert`、`set_irq_state`、`irq_process`、`ack_ac_dc_interrupt`、`register_irq_handler`。初始化/恢复全调用链尚未完整追踪。  
-研究用途：SMU 约束—执行—反馈和保护事件；IH 源端处理责任的条件化例子，不据此证明 SMU 13.0 与某个 IH 版本必然同片。
+连接 SMU 初始化、固件接口、频率上下界和事件处理；适合研究管理状态机，避免把设置频率边界等同于即时完成变频。
 
 ### MG3
 
-**Linux v6.12 — SMU 13.0.0 driver/firmware interface / smu13_driver_if_v13_0_0.h**  
-链接：[原文件](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/pm/swsmu/inc/pmfw_if/smu13_driver_if_v13_0_0.h)。
+[SMU 13.0.0 ABI：DPM 描述、表结构与指标语义](SMU/sources/MG3-smu13-firmware-abi.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/pm/swsmu/inc/pmfw_if/smu13_driver_if_v13_0_0.h) · 固定版本公开代码
 
-简介：定义该接口版本的功率策略表与遥测结构，包括功率/电流/温度限制、时钟、活动、能量和 throttling 等可见字段。字段与注释有助于辨认控制输入和反馈输出，不能单靠表布局恢复整个控制器的内部算法。
-
-版本/适用：Linux v6.12 携带的 SMU 13.0.0 ABI，头文件标注 `PPTABLE_VERSION 0x2B`，不推广其他 SMU 版本。  
-阅读状态：部分章节已读；定位 PPTable_t 的 Feature Control、Infrastructure Limits、Throttler settings，以及 SmuMetrics_t / SmuMetricsExternal_t；其余表格和具体单位转换未全面研究。  
-研究用途：SMU 第 2–3 轮共享表、约束与遥测、版本适用性。
+研究固件接口版本、参数表和 telemetry 的字段差异；重点是 target/pre-DS/post-DS、平均时间常数与累计量，适合设计可信观测表。
 
 ### MG4
 
-**Linux v6.12 — AMD northbridge SMN access / arch/x86/kernel/amd_nb.c**  
-链接：[原文件](https://github.com/torvalds/linux/blob/v6.12/arch/x86/kernel/amd_nb.c)。
+[AMD SMN：index/data 访问与错误判定](SMN/sources/MG4-smn-indirect-access.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/arch/x86/kernel/amd_nb.c) · 固定版本公开代码
 
-简介：通过节点选择和 PCI 配置 index/data 窗口完成 SMN 读写，使用软件互斥保护一组间接访问。代码注释解释 SMN 访问失败检测的边界，包括 PCI error response、读零及写副作用，说明“访问返回”与“端点语义正确”需要分别判断。
-
-版本/适用：Linux v6.12，AMD x86 CPU 平台访问帮助函数；不能直接用来确定目标 GPU 的寄存器地址、SMN 拓扑或硬件并发能力。  
-阅读状态：相关函数与注释已读；定位 smn_mutex、`__amd_smn_rw`、`amd_smn_read`、`amd_smn_write` 及函数前的错误/读回注释；未通读其他 northbridge 功能。  
-研究用途：SMN 第 1–2 轮入口与状态、返回语义；第 3–4 轮的硬件网络/超时机制仍需目标资料。
+解释 SMN 软件访问的地址选择、互斥与返回值局限；适合控制网络的访问契约研究，不足以给出 SMN 路由器或包格式。
 
 ### MG5
 
-**Linux v6.12 — RSMU UMC index-mode register definitions and UMC v6.1 callers**  
-链接：[rsmu_0_0_2_offset.h](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/include/asic_reg/rsmu/rsmu_0_0_2_offset.h)、[rsmu_0_0_2_sh_mask.h](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/include/asic_reg/rsmu/rsmu_0_0_2_sh_mask.h)、[umc_v6_1.c](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/umc_v6_1.c)。
+[RSMU 寄存器线索与 UMC 6.1 访问模式](RSMU/sources/MG5-rsmu-umc-index.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/include/asic_reg/rsmu/rsmu_0_0_2_offset.h) · 固定版本公开代码
 
-简介：两个小型寄存器头与调用代码共同给出 RSMU 命名的 UMC index-mode 接口证据。UMC RAS 路径保存原 mode、必要时关闭它、访问各 UMC/通道后恢复，并有 Arcturus 特定 DF C-state 条件；这些只证明该访问模式与调用关系，不证明 RSMU 全称、完整微架构、SMU 包含关系或 UMC 内存数据经过 RSMU。
-
-版本/适用：Linux v6.12；RSMU 0.0.2 寄存器符号含 NBIF_VG20_GPU，调用者为 UMC v6.1 实现，具体 ASIC 分支分别辨认。  
-阅读状态：两个头文件全文已读；umc_v6_1.c 已读 `enable_umc_index_mode`、`disable_umc_index_mode`、`get_umc_index_mode_state`、`clear_error_count`、`query_ras_error_count`、`query_ras_error_address`、`err_cnt_init` 中模式处理及外围调用顺序；未完整研究 ECC 地址解码算法。  
-研究用途：RSMU 三轮的身份/接口线索与条件化架构；UMC RAS 管理访问约定；SMN 间接访问状态的对比例子。三个紧密关联的接口文件在本条统一登记，跨模块不另建重复条目。
+这是 RSMU 最直接的公开接口证据：UMC index mode 及错误采集前后的状态切换。适合建立职责边界，不能据少量寄存器推定完整 RAS 控制器。
 
 ### MG6
 
-**Linux v6.12 — AMDGPU IH v6.0 / ih_v6_0.c**  
-链接：[原文件](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/ih_v6_0.c)。
+[IH 6.0：ring 地址、溢出与 doorbell 回收](IH/sources/MG6-ih60-ring-hardware.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/ih_v6_0.c) · 固定版本公开代码
 
-简介：配置 IH ring、指针写回、doorbell 与主机通知，并提供 overflow 检测、RPTR 恢复及第二 ring 的 self-interrupt 处理。初始化还可见事件 storm/flood 控制和特定 ring 分流，是研究通知节奏与事件存储差别的入口，不提供完整入口 RTL 仲裁结构。
-
-版本/适用：Linux v6.12，IH v6.0 实现；ring/VF/固件加载条件分别核对，不用其参数代表全代际。  
-阅读状态：相关函数已读；定位 `enable_ring`、`get_wptr`、`set_rptr`、`irq_rearm`、`self_irq`、`irq_init`、`irq_disable`、`toggle_ring_interrupts` 与 `force_update_wptr_for_self_int`。未系统检查所有 IP revision 和虚拟化组合。  
-研究用途：IH 第 2–4 轮 ring、overflow、storm、self interrupt、生命周期。
+从硬件可见配置解释 IH ring 的地址空间、wptr 发布、溢出和 rptr 回收，适合建立事件传输主线；特别标出占位函数不能证明 idle。
 
 ### MG7
 
-**Linux v6.12 — AMDGPU IH common ring / amdgpu_ih.c**  
-链接：[原文件](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_ih.c)。
+[IH 公共代码：发布顺序、IV 解码与 checkpoint](IH/sources/MG7-ih-core-consumer.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_ih.c) · 固定版本公开代码
 
-简介：负责 IH ring 内存分配、指针 shadow、软件消费循环和公共 IV 解码。代码显示 DMA coherent 与 GTT 路径的区别，以及读写指针与 ring 数据的顺序要求；公共解码中的身份字段须按实际源及 IP 适用。
-
-版本/适用：Linux v6.12，AMDGPU common 层；decode_iv_helper 注释对应 Vega10 及之后的格式，不能自动套给旧代际。  
-阅读状态：相关函数已读；定位 `amdgpu_ih_ring_init`、`amdgpu_ih_process`、`amdgpu_ih_decode_iv_helper`；检查了 checkpoint/write-ring 附近的读取定位，未完整研究这些辅助路径。  
-研究用途：IH 第 1–2 轮 IV 信息、DMA/内存归属、WPTR/RPTR 与可见性。
+解释 producer/consumer ring 的内存顺序和 32 字节 IV 格式，覆盖 budget/restart、软件 ring 和 checkpoint；适合写 IH 完成与丢事件边界。
 
 ### MG8
 
-**Linux v6.12 — AMDGPU IRQ setup and dispatch / amdgpu_irq.c**  
-链接：[原文件](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_irq.c)。
+[AMDGPU IRQ：来源分派、引用计数与复位恢复](IH/sources/MG8-irq-dispatch-lifecycle.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_irq.c) · 固定版本公开代码
 
-简介：设置主机 IRQ、驱动 handler 和后台 work，并将 IV 分发给对应 client/source 回调或相关处理者。它有助于区分中断记录、主机 IRQ 资源以及源端业务处理，回调被调用不等于业务事件必已消除。
+研究 IH 解码后如何路由给 IP/KFD、如何管理中断使能引用，以及 reset 后如何恢复；适合把事件传输连接到实际处理者。
 
-版本/适用：Linux v6.12，AMDGPU 通用分发；MSI/MSI-X/INTx、legacy client、VF 等路径按条件解释。  
-阅读状态：相关部分已读；定位 `amdgpu_irq_init`、`amdgpu_irq_handler`、`amdgpu_irq_dispatch`、ih1/ih2/soft work handlers；未逐一研究所有源模块回调。  
-研究用途：IH 第 1、3–4 轮主机通知、分发、后台处理与异常边界；SMU 源端回调复用 MG2。
+### MG9
+
+[AMDGPU 温度/功耗接口：单位、策略与同步快照](SMU/sources/MG9-thermal-power-observability.md) · [原文](https://docs.kernel.org/6.12/gpu/amdgpu/thermal.html) · 厂商/项目官方资料
+
+用于设计性能实验的观测表，区分功率上限、实际功率、档位与平均频率；适合 SMU 的反馈路径，不是固件调频算法说明。
+
+### MG10
+
+[AMD ATL system.c：Fabric 身份字段与版本发现](SMN/sources/MG10-atl-system-identity.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/ras/amd/atl/system.c) · 固定版本公开代码
+
+解释 socket/die/node/component ID 的代际解码和未知版本处理；适合控制寻址与错误地址定位的前置研究，不能用固定移位套所有芯片。
+
+### MG11
+
+[UMC 6.7：错误地址展开与 poison 模式的代际对照](RSMU/sources/MG11-umc67-ras-comparison.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/umc_v6_7.c) · 固定版本公开代码
+
+补充 RSMU 相邻的 UMC RAS 路径，解释 hash/列位模糊如何扩大隔离候选，及 poison 查询如何依赖寄存器；用于对照 UMC 8.10。
+
+### MG12
+
+[Vega10 IH：不同 ring 的 wptr 来源与溢出处理](IH/sources/MG12-vega10-ih-comparison.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/vega10_ih.c) · 固定版本公开代码
+
+通过另一代 IH 检查 ring 数量、writeback、地址和 overflow 差异；适合验证哪些结论可复用，避免只看 IH6.0 就推广所有 GPU。
+
+## SDMA 公开系统接口
+
+### SD1
+
+[AMDGPU SDMA 公共层：实例、固件和 RAS 接口](SDMA/sources/SD1-sdma-system-lifecycle.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_sdma.c) · 固定版本公开代码
+
+只研究 SDMA 如何接入 SoC：ring 到实例映射、固件版本条件、ECC 通知和复位责任；不替代外部 SDMA 项目的 FE/BE/TBE 内部资料。
+
+### SD2
+
+[SDMA 5.2：doorbell、维护命令、fence 与 trap](SDMA/sources/SD2-sdma52-completion-maintenance.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/sdma_v5_2.c) · 固定版本公开代码
+
+把 SDMA 系统接口串成“提交→维护/翻译→完成记录→通知”，重点是不同 flush 的对象、wptr 单位与可选中断；只读公开代码的 SoC 边界。
 
 ## 新资料登记方式
 
-新增资料沿用来源编号和链接，并根据实际阅读补充 1–3 句主要内容简介、关联模块/研究问题及阅读状态；产品/代际、版本/日期、章节或代码定位和重要限制按需记录。相同资料更新原条目，不重复登记；不同版本保留影响研究的差异。尚未收到或未读的资料标为待查，不登记为已读来源。
+每个来源维护一个稳定编号、一篇主笔记及模块索引导读。笔记记录来源/版本、实际阅读位置、机制与关键细节、状态/资源和完成语义、适用边界及可复用问题；缺失全文据实记录。共享资料通过链接复用，紧密关联文件说明组合范围；不以链接或文件数量替代技术深度。见[范本](chip-study-plan.md)。
 
 ## C01–C05：历史转换登记与当前状态
 
@@ -447,3 +690,38 @@
 | C05 | `MMHUB_introduction.pptx` | `HUBS/MMHUB_introduction.md`（缺失） | 41 | [现有图像](HUBS/assets/MMHUB_introduction/) |
 
 [历史转换报告](conversion-report.md) · [历史 SHA-256 清单](source-manifest.json)。这些记录保留当时的结果，不能作为五份正文当前存在的证明。C01 第 6 页引用的 `code_coverage_improve.xlsx` 未提供；当前仅保留该附件缺失的记录。
+
+### 本次页图阅读与技术笔记
+
+本次使用仓库已提交的页面图像进行文字阅读，并直接核看关键结构/表格；没有访问或上传 original_file/，没有恢复缺失的转换正文。C01 第 1、4 页本次未取得有效图像，其余读取范围见笔记。部分页带 HYGON 标识，统一作为用户参考设计，与 AMD 官方或目标 shaobo/anshi 证据区分。C04 地址算例存在错误，已在笔记保留原问题和独立核算；C01/C05 的 VM 类型标签差异没有强行统一。
+
+### C01
+
+[MM_UTCL2 图示与验证环境：从翻译事务到可观测检查点](UTCL2/sources/C01-mm-utcl2-testbench.md) · [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/tb_mm_utcl2) · 用户页图·参考设计
+
+覆盖 MM_UTCL2 的 APT1/2/3、VML2/ATCL2、fault/retry、两类失效以及验证环境，适合建立请求生命周期和验证检查点；所有容量与字段均须保留该资料版本范围。
+
+### C02
+
+[UTCL2 结构与使用：页表格式、cache 映射和 BigK 性能反例](UTCL2/sources/C02-utcl2-cache-organization.md) · [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/UTCL2%20%E7%BB%93%E6%9E%84%E5%92%8C%E4%BD%BF%E7%94%A8%E7%AE%80%E4%BB%8B%20by%20Wang%20Junmin) · 用户页图·参考设计
+
+解释 Group/VML2/Walker/ATC 的分工、PTE cache 的 bank/set/way/tag、表布局粒度与映射粒度的区别，并保存 BigK 增大反而禁止填充的具体案例。
+
+### C03
+
+[UTCL2 总图：GPUVM、ATC 与 walker 的资源边界](UTCL2/sources/C03-utcl2-topology.md) · [原文](https://github.com/niyingsong123/soc_study/blob/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/utcl2_top/page-001.png) · 用户页图·参考设计
+
+从一张总图建立请求入口、VML2 bank、walker、ATCL2 与返回网络的关系，适合快速判断一个 feature 应放在哪个子模块；图中的实例数只属于该图配置。
+
+### C04
+
+[地址翻译与预取：rdif 扩展、资源竞争和已核算勘误](UTCL2/sources/C04-translation-prefetch.md) · [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/UTCL2%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91%E5%8F%8A%E9%A2%84%E5%8F%96%E6%8A%80%E6%9C%AF%E4%BB%8B%E7%BB%8D) · 用户页图·参考设计
+
+把常见翻译预取思想与资料中 shaobo 的 rdif 方案分开，说明 history table、独立预取缓存、需求请求优先和返回分类；同时记录地址例题和阈值描述中的问题。
+
+### C05
+
+[MMHUB：翻译、TAP/DAGB、EA 队列与 DF 边界](HUBS/sources/C05-mmhub-dagb-ea.md) · [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/HUBS/assets/MMHUB_introduction) · 用户页图·参考设计
+
+连接客户端 AXI、按需翻译、TAP/DAGB 预约、EA 分组排队和 SDP 返回，是 HUBS/EA 整体微架构的重要参考；保留共享存储、独立 credit、失效路径及与 C01 的差异。
+

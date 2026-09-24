@@ -1,8 +1,19 @@
 # SDMA 系统接口接续方案
 
-方案版本：v1.0；依据 [研究范本 v1.2](../chip-study-plan.md)；日期：2026-09-24。
+方案版本：v1.1；依据 [研究范本 v1.3](../chip-study-plan.md)；日期：2026-09-24。
 状态：本仓库系统接口规划完成；下列三轮接口整理待执行。FE/BE/TBE 详细研究的进度由外部项目独立记录，本文件不替它报告完成。
 [模块上下文及外部入口](README.md) · [资料集](../sources.md) · [整体安排](../research-roadmap.md)
+
+## 逐篇笔记与本方案的研究落点
+
+先查[模块资料索引](sources/README.md)了解每篇讲什么，再读对应详细笔记；笔记内保留原文链接、版本、阅读位置、机制及重要限制。本次仅补资料与修订规划，下面的论文轮次完成状态不变。
+
+| 微架构位置 | 对应轮次 | 可直接复用的技术笔记 | 本次补充的研究重点 |
+| --- | --- | --- | --- |
+| 目标接口与外部范围 | 接口第 1 轮 | [L1](sources/L1-external-glossary-scope.md)、[L2](sources/L2-external-shaobo-scope.md)、[L3](sources/L3-external-open-questions.md)、[P2](../GC/sources/P2-amdgpu-hardware.md) | 外部材料本次未读，沿原入口复查 FE/BE/TBE；不复制另一套内部规格。 |
+| 系统提交、寻址与维护 | 接口第 1–2 轮 | [SD1](sources/SD1-sdma-system-lifecycle.md)、[SD2](sources/SD2-sdma52-completion-maintenance.md)、[IO3](../PCIE/sources/IO3-linux-dma-api.md)、[VM3](../UTCL2/sources/VM3-gpuvm-invalidation.md)、[IO5](../NBIF/sources/IO5-nbio74-host-bridge.md)、[IO13](../NBIF/sources/IO13-nbio79-partition-doorbell.md) | 区分实例、doorbell、DMA 地址、GCR/HDP/TLB 维护和相关资源。 |
+| 完成、事件和恢复 | 接口第 2–3 轮 | [FAB7](../DF/sources/FAB7-amdgpu-fence-lifecycle.md)、[MG7](../IH/sources/MG7-ih-core-consumer.md)、[MG8](../IH/sources/MG8-irq-dispatch-lifecycle.md)、[MEM3](../UMC/sources/MEM3-amdgpu-ras.md) | 用 fence/IV 路径定义 SoC 契约，公开驱动不等于 shaobo/anshi 的内部实现。 |
+
 
 ## 范围与微架构入口
 
@@ -13,9 +24,9 @@
 | 场景中的接口位置 | 本仓库需要形成的约定 | 资料入口及边界 |
 | --- | --- | --- |
 | 上游命令与后端任务 | 谁提交、谁拆分，原始命令与后端任务怎样对应 | [SDMA 现有摘要](README.md)、[CF 入口](../CF/README.md)；仅保留现存说明，字段/精确握手待原文 |
-| 地址与身份 | 源/目的各用什么地址空间，谁请求翻译，如何返回权限或故障 | [UTCL1 方案](../UTCL1/research-plan.md)、[UTCL2 方案](../UTCL2/research-plan.md)；[P2 GPUVM](https://docs.kernel.org/6.12/gpu/amdgpu/driver-core.html#amdgpu-virtual-memory) 仅作公开基础 |
+| 地址与身份 | 源/目的各用什么地址空间，谁请求翻译，如何返回权限或故障 | [UTCL1 方案](../UTCL1/research-plan.md)、[UTCL2 方案](../UTCL2/research-plan.md)；[P2 GPUVM](https://docs.kernel.org/6.12/gpu/amdgpu/driver-core.html#amdgpu-virtual-memory) 仅作公开基础  技术笔记：[P2](../GC/sources/P2-amdgpu-hardware.md)。 |
 | 数据服务 | 读请求与写请求怎样关联，返回数据/接收容量/完成是什么 | [DF 方案](../DF/research-plan.md)、[HUBS 方案](../HUBS/research-plan.md)；是否缓存、经过哪些端点以资料确认 |
-| 完成、错误及软件可见性 | credit、EOC、写入可见、fence、IH 通知是否同一完成点 | [CF 摘要](../CF/README.md)、[IH 方案](../IH/research-plan.md)；[P2 SDMA/IH 职责](https://docs.kernel.org/6.12/gpu/amdgpu/driver-core.html#gpu-hardware-structure) |
+| 完成、错误及软件可见性 | credit、EOC、写入可见、fence、IH 通知是否同一完成点 | [CF 摘要](../CF/README.md)、[IH 方案](../IH/research-plan.md)；[P2 SDMA/IH 职责](https://docs.kernel.org/6.12/gpu/amdgpu/driver-core.html#gpu-hardware-structure)  技术笔记：[P2](../GC/sources/P2-amdgpu-hardware.md)。 |
 
 代表性工作过程采用一次内存搬运：任务被接收→分别解决源和目的地址/权限→发起读、承接返回数据并发起写→根据实际接口定义确认完成→必要时通知软件。这里是需要补齐的事务说明框架，不宣称目标流水线必须按这些阶段完全串行；读写重叠与拆分策略由外部 SDMA 研究负责。
 

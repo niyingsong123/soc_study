@@ -1,14 +1,25 @@
 # PCIe 多轮技术论文研究方案
 
-方案版本：v1.0；日期：2026-09-24；依据：[研究范本 v1.2](../chip-study-plan.md)。当前完成资料初读与规划，**论文研究轮次均未开始**。下一项：执行第 1 轮，建立主机 BAR 访问和设备 DMA 两条端到端路径，确认目标端口角色与协议代际。
+方案版本：v1.1；日期：2026-09-24；依据：[研究范本 v1.3](../chip-study-plan.md)。当前完成资料初读与规划，**论文研究轮次均未开始**。下一项：执行第 1 轮，建立主机 BAR 访问和设备 DMA 两条端到端路径，确认目标端口角色与协议代际。
 
 接续入口：[模块上下文](README.md) → 本方案 → [资料集 IO1–IO4、IO8–IO9](../sources.md#io1)。后续在本目录维护一份技术正文，各轮整合回同一整体架构；论文文件建立后在本方案登记链接。
+
+## 逐篇笔记与本方案的研究落点
+
+先查[模块资料索引](sources/README.md)了解每篇讲什么，再读对应详细笔记；笔记内保留原文链接、版本、阅读位置、机制及重要限制。本次仅补资料与修订规划，下面的论文轮次完成状态不变。
+
+| 微架构位置 | 对应轮次 | 可直接复用的技术笔记 | 本次补充的研究重点 |
+| --- | --- | --- | --- |
+| BAR/DMA 与请求完成 | 第 1–2 轮 | [IO1](sources/IO1-pg213-transactions.md)、[IO2](../HDP/sources/IO2-linux-device-io.md)、[IO3](sources/IO3-linux-dma-api.md)、[IO4](sources/IO4-base-spec-gap.md) | 区分地址域、descriptor/payload/byte enable、Split Completion 与在途身份。 |
+| 有限资源、保序与翻译扩展 | 第 3–4 轮 | [IO1](sources/IO1-pg213-transactions.md)、[IO11](sources/IO11-ats-pri-pasid.md)、[IO5](../NBIF/sources/IO5-nbio74-host-bridge.md)、[IO13](../NBIF/sources/IO13-nbio79-partition-doorbell.md) | CQ NP credit 与链路 credit 分池；ATS/PRI/PASID 的能力、额度和 PF/VF 共享分别核对。 |
+| 通知、链路和恢复 | 第 4–5 轮 | [IO8](../IH/sources/IO8-linux-msi.md)、[IO9](sources/IO9-pci-error-recovery.md)、[IO12](sources/IO12-aer-error-path.md)、[MEM6](../PHY/sources/MEM6-pcie-equalization.md)、[MEM7](../PHY/sources/MEM7-versal-cdr-equalizer.md) | MSI 排序、AER 严重性、早期 MMIO 与正常 DMA 恢复有不同完成条件。 |
+
 
 ## 范围、术语与上下游
 
 保留 PCIe/PCI Express 名称。Endpoint、Root Port、Root Complex、host bridge 是角色或系统组件；transaction layer、data link layer、PHY 是协议分层，不自动等于目标 RTL 分块。AMD GPU 的 PCIe 接口、NBIF、HDP 分别建模，不把它们看成同义词，也不与本仓库 NoC/D2D SWITCH 混同。
 
-学习以主机发起请求的方向安排为 PCIe → NBIF → HDP，但后两者的实际连接及哪些访问绕过 HDP 待确认。设备 DMA 时 requester 位于 GPU 侧，请求方向反转；CPU BAR/MMIO 访问不会因使用同一链路就成为 DMA。地址空间基础先读 [Linux 6.12 DMA guide：CPU and DMA addresses](https://docs.kernel.org/6.12/core-api/dma-api-howto.html) [IO3]。
+学习以主机发起请求的方向安排为 PCIe → NBIF → HDP，但后两者的实际连接及哪些访问绕过 HDP 待确认。设备 DMA 时 requester 位于 GPU 侧，请求方向反转；CPU BAR/MMIO 访问不会因使用同一链路就成为 DMA。地址空间基础先读 [Linux 6.12 DMA guide：CPU and DMA addresses](https://docs.kernel.org/6.12/core-api/dma-api-howto.html) [IO3]。 技术笔记：[IO3](sources/IO3-linux-dma-api.md)。
 
 | 场景 | 上游输入 | 本模块交付的下游结果与闭环 |
 | --- | --- | --- |
@@ -47,22 +58,22 @@ flowchart TD
 
 | 架构位置与优先级 | 必须解决的问题 | 就近资料与阅读目的 |
 | --- | --- | --- |
-| 配置与入口，核心 | BAR 是地址窗口还是存储本体？寄存器、VRAM aperture、doorbell 如何区分？ | [IO2：device I/O](https://docs.kernel.org/6.12/driver-api/device-io.html)，Accessing the device 与 mapping modes；[IO3](https://docs.kernel.org/6.12/core-api/dma-api-howto.html)，地址图 |
-| Completer，核心 | posted/non-posted/completion 分类；读拆分、字节使能与错误如何关联原请求？ | [IO1：Memory Read](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Completer-Memory-Read-Operation) 与 [Memory Write](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Completer-Memory-Write-Operation)；正文已读，接口名仅属示例 |
-| Requester，核心 | Tag 分配、completion 收集、timeout 与回收；DMA 请求地址和主机 CPU 地址怎样关联？ | [IO3](https://docs.kernel.org/6.12/core-api/dma-api-howto.html)；IO1 的 Tag Management 正文仍待取，结合 [IO4 规范入口](https://pcisig.com/PCIExpress/Specs/Base/_5.0_1.0)核验 |
-| 缓冲、流控与保序，核心 | 区分链路信用与内部接收许可；NP 阻塞时哪些事务仍须前进？跨请求流如何防止死锁？ | [IO1：Selective Flow Control](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Selective-Flow-Control-for-Non-Posted-Requests) 与 [Maintaining Transaction Order](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Maintaining-Transaction-Order)；区分示例实现与标准义务 |
-| 返回、通知与恢复，核心 | Completion、MSI、软件 fence 各证明了什么？链路重放和软件恢复由谁处理？ | [IO8：MSI 第 4.2–4.3 节](https://docs.kernel.org/6.12/PCI/msi-howto.html)、[IO9：Error Recovery 第 7.1 节](https://docs.kernel.org/6.12/PCI/pci-error-recovery.html) |
-| 虚拟化与翻译，条件相关 | PF/VF、ATS/PASID/PRI、ACS/P2P 在目标中是否存在，功能边界如何交给 UTCL2/IOMMU 专题？ | [IO4](https://pcisig.com/PCIExpress/Specs/Base/_5.0_1.0) 为候选入口；目标能力表与相关扩展规范待查，不提前宣称支持 |
+| 配置与入口，核心 | BAR 是地址窗口还是存储本体？寄存器、VRAM aperture、doorbell 如何区分？ | [IO2：device I/O](https://docs.kernel.org/6.12/driver-api/device-io.html)，Accessing the device 与 mapping modes；[IO3](https://docs.kernel.org/6.12/core-api/dma-api-howto.html)，地址图  技术笔记：[IO2](../HDP/sources/IO2-linux-device-io.md)、[IO3](sources/IO3-linux-dma-api.md)。 |
+| Completer，核心 | posted/non-posted/completion 分类；读拆分、字节使能与错误如何关联原请求？ | [IO1：Memory Read](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Completer-Memory-Read-Operation) 与 [Memory Write](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Completer-Memory-Write-Operation)；正文已读，接口名仅属示例  技术笔记：[IO1](sources/IO1-pg213-transactions.md)。 |
+| Requester，核心 | Tag 分配、completion 收集、timeout 与回收；DMA 请求地址和主机 CPU 地址怎样关联？ | [IO3](https://docs.kernel.org/6.12/core-api/dma-api-howto.html)；IO1 的 Tag Management 正文仍待取，结合 [IO4 规范入口](https://pcisig.com/PCIExpress/Specs/Base/_5.0_1.0)核验  技术笔记：[IO3](sources/IO3-linux-dma-api.md)、[IO4](sources/IO4-base-spec-gap.md)。 |
+| 缓冲、流控与保序，核心 | 区分链路信用与内部接收许可；NP 阻塞时哪些事务仍须前进？跨请求流如何防止死锁？ | [IO1：Selective Flow Control](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Selective-Flow-Control-for-Non-Posted-Requests) 与 [Maintaining Transaction Order](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Maintaining-Transaction-Order)；区分示例实现与标准义务  技术笔记：[IO1](sources/IO1-pg213-transactions.md)。 |
+| 返回、通知与恢复，核心 | Completion、MSI、软件 fence 各证明了什么？链路重放和软件恢复由谁处理？ | [IO8：MSI 第 4.2–4.3 节](https://docs.kernel.org/6.12/PCI/msi-howto.html)、[IO9：Error Recovery 第 7.1 节](https://docs.kernel.org/6.12/PCI/pci-error-recovery.html)  技术笔记：[IO8](../IH/sources/IO8-linux-msi.md)、[IO9](sources/IO9-pci-error-recovery.md)。 |
+| 虚拟化与翻译，条件相关 | PF/VF、ATS/PASID/PRI、ACS/P2P 在目标中是否存在，功能边界如何交给 UTCL2/IOMMU 专题？ | [IO4](https://pcisig.com/PCIExpress/Specs/Base/_5.0_1.0) 为候选入口；目标能力表与相关扩展规范待查，不提前宣称支持  技术笔记：[IO4](sources/IO4-base-spec-gap.md)。 |
 
 ## 五轮研究与写作
 
 | 轮次 | 架构范围、核心问题与前置基础 | 阅读入口与具体定位 | 文档产出及完成条件 |
 | --- | --- | --- | --- |
-| 1. 端点角色与最小闭环 | 从 CPU BAR 访问走到内部目标，反向补 GPU DMA；前置为目标角色/代际调查，缺失时明确参考范围 | [IO2](https://docs.kernel.org/6.12/driver-api/device-io.html) mapping modes；[IO3](https://docs.kernel.org/6.12/core-api/dma-api-howto.html) CPU and DMA addresses；[IO1](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Completer-Request-Interface-Operation) | 角色/地址表、整体图、读写两例；每一跳的请求与返回对象明确，不能把 BAR、GPUVA、DMA 地址合成同一地址 |
-| 2. 事务引擎与关联状态 | 沿接收、内部交付、返回、发送深化；前置为第 1 轮端口契约 | [IO1 读处理](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Completer-Memory-Read-Operation)及写处理；从 [IO4](https://pcisig.com/PCIExpress/Specs/Base/_5.0_1.0)取合法目标版规范核验 Tag、Completion 状态、MPS/MRRS/RCB | 请求分类与生命周期图；解释拆分读如何收齐、失败如何结束，posted 写不凭空生成返回包；未取得规范的精确规则保留待核验 |
-| 3. 有限资源与顺序 | 接收空间、发送竞争、Tag/返回空间；前置为事务生命周期和资源释放点 | [IO1 NP 反压](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Selective-Flow-Control-for-Non-Posted-Requests)、[发送顺序](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Maintaining-Transaction-Order)，配合目标版规范 | 资源依赖图及阻塞案例；区分内部 ready/credit、链路信用、重放状态，能解释允许绕行与禁止超越的理由，不照搬示例容量 |
-| 4. 软件可见性与隔离边界 | BAR 写、doorbell、DMA、通知与翻译/虚拟化边界；前置为第 3 轮顺序语义以及 NBIF/HDP 接口摘要 | [IO2](https://docs.kernel.org/6.12/driver-api/device-io.html) posted/readback/WC；[IO8](https://docs.kernel.org/6.12/PCI/msi-howto.html) §4.2–4.3；复用 NBIF/HDP 方案 | CPU 发布数据→通知设备、GPU 写结果→通知 CPU 两条有前提的时序；明确 fence、readback、HDP flush、TLB invalidate 的对象；ATS 等仅在证实支持后展开 |
-| 5. 恢复与性能整合 | link/事务/软件三个错误层次、复位后的状态恢复；前置为可见性与隔离边界 | [IO9](https://docs.kernel.org/6.12/PCI/pci-error-recovery.html) §7.1；[IO1](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Selective-Flow-Control-for-Non-Posted-Requests)资源讨论；目标 LTSSM/AER 资料待补 | 正常、资源受限、错误恢复三类走读；用负载大小、并发、往返延迟解释瓶颈，检查所有图与接口一致。仅确有未决定量问题才另做模型 |
+| 1. 端点角色与最小闭环 | 从 CPU BAR 访问走到内部目标，反向补 GPU DMA；前置为目标角色/代际调查，缺失时明确参考范围 | [IO2](https://docs.kernel.org/6.12/driver-api/device-io.html) mapping modes；[IO3](https://docs.kernel.org/6.12/core-api/dma-api-howto.html) CPU and DMA addresses；[IO1](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Completer-Request-Interface-Operation) | 角色/地址表、整体图、读写两例；每一跳的请求与返回对象明确，不能把 BAR、GPUVA、DMA 地址合成同一地址  技术笔记：[IO2](../HDP/sources/IO2-linux-device-io.md)、[IO3](sources/IO3-linux-dma-api.md)、[IO1](sources/IO1-pg213-transactions.md)。 |
+| 2. 事务引擎与关联状态 | 沿接收、内部交付、返回、发送深化；前置为第 1 轮端口契约 | [IO1 读处理](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Completer-Memory-Read-Operation)及写处理；从 [IO4](https://pcisig.com/PCIExpress/Specs/Base/_5.0_1.0)取合法目标版规范核验 Tag、Completion 状态、MPS/MRRS/RCB | 请求分类与生命周期图；解释拆分读如何收齐、失败如何结束，posted 写不凭空生成返回包；未取得规范的精确规则保留待核验  技术笔记：[IO1](sources/IO1-pg213-transactions.md)、[IO4](sources/IO4-base-spec-gap.md)。 |
+| 3. 有限资源与顺序 | 接收空间、发送竞争、Tag/返回空间；前置为事务生命周期和资源释放点 | [IO1 NP 反压](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Selective-Flow-Control-for-Non-Posted-Requests)、[发送顺序](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Maintaining-Transaction-Order)，配合目标版规范 | 资源依赖图及阻塞案例；区分内部 ready/credit、链路信用、重放状态，能解释允许绕行与禁止超越的理由，不照搬示例容量  技术笔记：[IO1](sources/IO1-pg213-transactions.md)。 |
+| 4. 软件可见性与隔离边界 | BAR 写、doorbell、DMA、通知与翻译/虚拟化边界；前置为第 3 轮顺序语义以及 NBIF/HDP 接口摘要 | [IO2](https://docs.kernel.org/6.12/driver-api/device-io.html) posted/readback/WC；[IO8](https://docs.kernel.org/6.12/PCI/msi-howto.html) §4.2–4.3；复用 NBIF/HDP 方案 | CPU 发布数据→通知设备、GPU 写结果→通知 CPU 两条有前提的时序；明确 fence、readback、HDP flush、TLB invalidate 的对象；ATS 等仅在证实支持后展开  技术笔记：[IO2](../HDP/sources/IO2-linux-device-io.md)、[IO8](../IH/sources/IO8-linux-msi.md)。 |
+| 5. 恢复与性能整合 | link/事务/软件三个错误层次、复位后的状态恢复；前置为可见性与隔离边界 | [IO9](https://docs.kernel.org/6.12/PCI/pci-error-recovery.html) §7.1；[IO1](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Selective-Flow-Control-for-Non-Posted-Requests)资源讨论；目标 LTSSM/AER 资料待补 | 正常、资源受限、错误恢复三类走读；用负载大小、并发、往返延迟解释瓶颈，检查所有图与接口一致。仅确有未决定量问题才另做模型  技术笔记：[IO9](sources/IO9-pci-error-recovery.md)、[IO1](sources/IO1-pg213-transactions.md)。 |
 
 ## 待决事项与接续条件
 

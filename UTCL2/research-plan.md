@@ -1,8 +1,19 @@
 # UTCL2 多轮研究与论文方案
 
-依据范本：v1.2；方案版本：v1.0；日期：2026-09-24。**状态：规划完成，六轮详细研究均待执行。** 下一步确认服务边界与地址空间模型。本方案只建立研究基础，公开软件接口与研究模型不代表 shaobo/anshi 实现。
+依据范本：v1.3；方案版本：v1.1；日期：2026-09-24。**状态：规划完成，六轮详细研究均待执行。** 下一步确认服务边界与地址空间模型。本方案只建立研究基础，公开软件接口与研究模型不代表 shaobo/anshi 实现。
 
-接续：[模块上下文](README.md) → 本页 → [资料集 VM1–VM5](../sources.md#vm1) → 具体原文。每轮维护资料集的阅读范围，在本页记录真实进度，详细内容逐步合入后续创建的本目录 `technical-paper.md`。C01–C04 缺失正文不恢复；本次未读取本地原件或仓库现有页面图片，不把既有资料标题当作技术证据。
+接续：[模块上下文](README.md) → 本页 → [资料集 VM1–VM5](../sources.md#vm1) → 具体原文。每轮维护资料集的阅读范围，在本页记录真实进度，详细内容逐步合入后续创建的本目录 `technical-paper.md`。C01–C04 缺失转换正文不恢复；本次已读现有页图并形成逐篇笔记，未访问本地原件。页图中的参考结构及目标映射仍须分开。
+
+## 逐篇笔记与本方案的研究落点
+
+先查[模块资料索引](sources/README.md)了解每篇讲什么，再读对应详细笔记；笔记内保留原文链接、版本、阅读位置、机制及重要限制。本次仅补资料与修订规划，下面的论文轮次完成状态不变。
+
+| 微架构位置 | 对应轮次 | 可直接复用的技术笔记 | 本次补充的研究重点 |
+| --- | --- | --- | --- |
+| 整体结构、页表层级与回填 | 第 1–2 轮 | [C03](sources/C03-utcl2-topology.md)、[C02](sources/C02-utcl2-cache-organization.md)、[C01](sources/C01-mm-utcl2-testbench.md)、[VM1](sources/VM1-gpuvm-address-spaces.md)、[VM8](sources/VM8-gem5-page-walker.md) | 区分页图中的 GPUVM/ATC 分路；BigK 回填条件按特定结构理解，不推广成 MMU 定理。 |
+| 并发、fault、失效和外部翻译 | 第 3–5 轮 | [VM5](sources/VM5-mask-paper.md)、[VM3](sources/VM3-gpuvm-invalidation.md)、[VM11](sources/VM11-vmid-lifetime.md)、[VM10](sources/VM10-iommu-spec.md)、[IO11](../PCIE/sources/IO11-ats-pri-pasid.md)、[VM2](../HUBS/sources/VM2-mmhub-v2.md) | 分别记录客户端请求、PTW 读、已翻译业务事务；系统失效完成与本地完成分开。 |
+| 预取、观测与纠错 | 第 6 轮 | [C04](sources/C04-translation-prefetch.md)、[P5](../GC/sources/P5-mi200-counters.md)、[VM7](../UTCL1/sources/VM7-gem5-vega-tlb.md)、[VM9](../UTCL1/sources/VM9-gem5-coalescer.md) | 围绕预取对象、反馈、配额和失效展开；C04 地址例子有逐位纠错，先读笔记再复用。 |
+
 
 ## 对象、术语与上下游
 
@@ -10,7 +21,7 @@
 
 上游是需要共享翻译服务的 UTCL1/客户端；shaobo TBE 的 UTCL1 miss 向 UTCL2 请求，是仓库既有摘要支持的部分关系 [L2]。先复用 [UTCL1](../UTCL1/research-plan.md)的请求身份、返回和失效约定，再研究服务端。下游包含“取得页表/其他翻译服务”以及“向客户端返回结果”两类接口；页表遍历单元的位置、访存经过哪个 hub、是否经过 GL2 都待目标证据确认。后续 [HUBS](../HUBS/research-plan.md)接续 hub 集成，不以目录顺序推断包含。
 
-**必须保持两个分离：** GL2 缓存业务数据，UTCL2 研究翻译信息；GPUVM 处理 GPU 地址空间，系统 IOMMU 处理系统侧 I/O 翻译与保护。系统内存访问是否还需 IOMMU、是否启用 ATS/ATC、地址处于 GPUVA/IOVA/系统 PA 的哪一层，应逐场景说明。[VM1 GPUVM 段](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c)与 [VM4 AMD IOMMU 驱动](https://github.com/torvalds/linux/blob/v6.12/drivers/iommu/amd/iommu.c)提供不同软件边界；二者代码名称不构成硬件等价证明。
+**必须保持两个分离：** GL2 缓存业务数据，UTCL2 研究翻译信息；GPUVM 处理 GPU 地址空间，系统 IOMMU 处理系统侧 I/O 翻译与保护。系统内存访问是否还需 IOMMU、是否启用 ATS/ATC、地址处于 GPUVA/IOVA/系统 PA 的哪一层，应逐场景说明。[VM1 GPUVM 段](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c)与 [VM4 AMD IOMMU 驱动](https://github.com/torvalds/linux/blob/v6.12/drivers/iommu/amd/iommu.c)提供不同软件边界；二者代码名称不构成硬件等价证明。 技术笔记：[VM1](sources/VM1-gpuvm-address-spaces.md)、[VM4](sources/VM4-amd-iommu-commands.md)。
 
 ## 整体功能微架构与请求闭环
 
@@ -40,13 +51,13 @@ flowchart TD
 
 | 架构位置 / 优先级 | 需要回答的问题 | 资料直链与定位 |
 | --- | --- | --- |
-| 接入与上下文 / 核心 | VMID/PASID/地址空间如何关联？哪些属性参与隔离，哪些只影响目标路由？ | [VM1](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c)，`DOC: GPUVM`；[VM3](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gmc_v9_0.c)，VMID/PASID flush 路径 |
-| 查询与遍历服务 / 核心 | final translation、PDE/PTE 缓存、PTW 各解决什么？未命中由谁补齐？ | [VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，`init_cache_regs`；[VM5](https://rausavar.github.io/pubs/mask-asplos18.pdf)，第 3 节，比较 TLB 与 walk cache |
-| 共享并发 / 核心 | 客户端公平性、同页合并条件、请求追踪、服务反压和返回拥塞如何影响吞吐？ | [VM5](https://rausavar.github.io/pubs/mask-asplos18.pdf)，第 4 节，研究干扰与阻塞；算法只作对照 |
-| 权限与 fault / 核心 | 无映射、权限失败、遍历读失败、可重试事件如何区分并通知原请求？ | [VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，`print_l2_protection_fault_status`、`setup_vmid_config` |
-| 失效 / 核心 | 清哪些层级、如何防旧回填、哪个 outstanding 需等待、谁返回完成？ | [VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，`get_invalidate_req`；[VM3](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gmc_v9_0.c)，`flush_gpu_tlb` |
-| 系统翻译 / 条件 | IOMMU 缓存失效与设备 ATC 失效有哪些不同参与者？目标场景支持哪条路径？ | [VM4](https://github.com/torvalds/linux/blob/v6.12/drivers/iommu/amd/iommu.c)，`build_inv_iommu_pages`、`device_flush_iotlb`、`domain_flush_complete` |
-| 预取与优化 / 条件或扩展 | 预取对象是 PTE/PDE、翻译结果还是数据？跨页权限、fault、资源配额和失效如何约束？ | [VM5](https://rausavar.github.io/pubs/mask-asplos18.pdf)，第 4 节支持干扰分析，**不证明 AMD 预取算法**；目标机制资料待查 |
+| 接入与上下文 / 核心 | VMID/PASID/地址空间如何关联？哪些属性参与隔离，哪些只影响目标路由？ | [VM1](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c)，`DOC: GPUVM`；[VM3](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gmc_v9_0.c)，VMID/PASID flush 路径  技术笔记：[VM1](sources/VM1-gpuvm-address-spaces.md)、[VM3](sources/VM3-gpuvm-invalidation.md)。 |
+| 查询与遍历服务 / 核心 | final translation、PDE/PTE 缓存、PTW 各解决什么？未命中由谁补齐？ | [VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，`init_cache_regs`；[VM5](https://rausavar.github.io/pubs/mask-asplos18.pdf)，第 3 节，比较 TLB 与 walk cache  技术笔记：[VM2](../HUBS/sources/VM2-mmhub-v2.md)、[VM5](sources/VM5-mask-paper.md)。 |
+| 共享并发 / 核心 | 客户端公平性、同页合并条件、请求追踪、服务反压和返回拥塞如何影响吞吐？ | [VM5](https://rausavar.github.io/pubs/mask-asplos18.pdf)，第 4 节，研究干扰与阻塞；算法只作对照  技术笔记：[VM5](sources/VM5-mask-paper.md)。 |
+| 权限与 fault / 核心 | 无映射、权限失败、遍历读失败、可重试事件如何区分并通知原请求？ | [VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，`print_l2_protection_fault_status`、`setup_vmid_config`  技术笔记：[VM2](../HUBS/sources/VM2-mmhub-v2.md)。 |
+| 失效 / 核心 | 清哪些层级、如何防旧回填、哪个 outstanding 需等待、谁返回完成？ | [VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，`get_invalidate_req`；[VM3](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gmc_v9_0.c)，`flush_gpu_tlb`  技术笔记：[VM2](../HUBS/sources/VM2-mmhub-v2.md)、[VM3](sources/VM3-gpuvm-invalidation.md)。 |
+| 系统翻译 / 条件 | IOMMU 缓存失效与设备 ATC 失效有哪些不同参与者？目标场景支持哪条路径？ | [VM4](https://github.com/torvalds/linux/blob/v6.12/drivers/iommu/amd/iommu.c)，`build_inv_iommu_pages`、`device_flush_iotlb`、`domain_flush_complete`  技术笔记：[VM4](sources/VM4-amd-iommu-commands.md)。 |
+| 预取与优化 / 条件或扩展 | 预取对象是 PTE/PDE、翻译结果还是数据？跨页权限、fault、资源配额和失效如何约束？ | [VM5](https://rausavar.github.io/pubs/mask-asplos18.pdf)，第 4 节支持干扰分析，**不证明 AMD 预取算法**；已读 C04 参考预取机制，目标对应仍待查  技术笔记：[VM5](sources/VM5-mask-paper.md)。 |
 
 ## 六轮研究安排
 
@@ -60,7 +71,7 @@ flowchart TD
 ### 第二轮：翻译层级与 miss 服务
 
 - **前置与范围：** 第一轮上下文确定后，研究最终条目、中间页表信息、页大小及页表服务；PTW 内外归属未知时采用服务边界。
-- **阅读：** VM2 `init_cache_regs`，VM5 第 3 节与 Fig.2。
+- **阅读：** C03 双服务路径；C02 的 PDE/PTE cache、BigK 回填限制和页大小；C01 的验证环境；VM8 的 walker 状态；VM2 `init_cache_regs`、VM5 第 3 节。
 - **产出：** 命中层级与缺失信息的路径图、遍历依赖和返回关联；说明 translation cache 与缓存页表数据的 data cache 差异。
 - **完成条件：** 对“中间信息命中但叶级缺失”能解释剩余工作及错误出口；不复制研究论文的级数或容量为目标参数。
 
@@ -81,16 +92,20 @@ flowchart TD
 ### 第五轮：系统 IOMMU 与 ATS 条件分支
 
 - **前置与范围：** 第四轮失效基础完成，先核实目标系统是否启用相关能力；不支持时缩为边界说明，与第四轮合并。
-- **阅读：** VM4 两类 invalidate 构造、`__domain_flush_pages` 与 `domain_flush_complete`；AMD IOMMU 文档 48882 和 PCIe ATS 原文的版本/可访问章节仍待取得。
+- **阅读：** VM4 两类 invalidate 构造、`__domain_flush_pages` 与 `domain_flush_complete`；补读 VM10 的 AMD IOMMU 48882 rev3.09 选读笔记与 IO11 的 ATS/PRI/PASID 代码；完整 PCIe 扩展规范仍待取得。
 - **产出：** GPUVM、系统 IOMMU、设备 ATC 的参与者图，地址与身份转换表，外部失效和本地失效的责任差异。
 - **完成条件：** 不把 GPUVM TLB、ATC 与 IOMMU cache 当作同一缓存；没有协议原文支持时不确定 NACK、heavy 排空或自动续跑细节。
 
 ### 第六轮：预取、性能与全文收敛
 
 - **前置与范围：** 基础正确性闭环后，判断预取是否适用；分析命中率、服务延迟、并发度与下游干扰，优化只在已存在的资源上讨论。
-- **阅读：** VM5 第 4、5.3 节作干扰研究；目标预取证据尚待补充，不能凭 C04 标题还原设计。
+- **阅读：** VM5 第 4、5.3 节作干扰研究；补读 C04 的 miss 采样、预取对象、控制状态及地址算例纠错；该参考机制与目标芯片的对应仍待确认。
 - **产出：** 条件机制取舍、瓶颈诊断、需要验证的代表性序列；回写整体图和边界，移除无证据的具体实现断言。
 - **完成条件：** 每个优化能对应性能问题且保留权限/失效/fault 约束；最终论文的正常与异常流程一致，不以功能列表代替微架构。
+
+## 页图版本与计算纠错
+
+C01–C04 提供用户参考设计的更具体结构，不能统一假设为同一 AMD 产品。C01/C05 对 VM 类型的 UTCL1/ATCL1 标签存在差异；C02 的 BigK 回填条件有特定 cache 组织前提；C04 的连续地址示例已重新核算 PDE/PTE 索引，阈值定义仍有不明确处。以上差异在对应笔记保留，后续不得抄入目标论文而丢掉条件。
 
 ## 优先未知项与下一步
 

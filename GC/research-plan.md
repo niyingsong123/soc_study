@@ -1,8 +1,19 @@
 # GC 多轮研究与论文规划
 
-方案版本：v1.0；依据 [研究范本 v1.2](../chip-study-plan.md)；日期：2026-09-24。
+方案版本：v1.1；依据 [研究范本 v1.3](../chip-study-plan.md)；日期：2026-09-24。
 状态：规划与定向资料阅读完成；下列五轮详细研究均待执行。下一项：第 1 轮，先明确目标代际及 GL2 输入地址和外部接口。
 [模块上下文](README.md) · [资料集](../sources.md#gc1) · [整体研究安排](../research-roadmap.md)
+
+## 逐篇笔记与本方案的研究落点
+
+先查[模块资料索引](sources/README.md)了解每篇讲什么，再读对应详细笔记；笔记内保留原文链接、版本、阅读位置、机制及重要限制。本次仅补资料与修订规划，下面的论文轮次完成状态不变。
+
+| 微架构位置 | 对应轮次 | 可直接复用的技术笔记 | 本次补充的研究重点 |
+| --- | --- | --- | --- |
+| 存储层次与 GL2 请求边界 | 第 1–2 轮 | [P2](sources/P2-amdgpu-hardware.md)、[GC1](sources/GC1-cdna2-memory.md)、[P3](sources/P3-gl2-metrics.md)、[P5](sources/P5-mi200-counters.md) | 分别固定 CDNA/RDNA 语境；按命中、miss、下游服务和计数器分母建立主线。 |
+| GRBM/RLC 的选择状态与恢复 | 第 3–4 轮 | [GC2](sources/GC2-gfx943-rlc-grbm.md)、[GC4](sources/GC4-rlc-common.md)、[P4](sources/P4-grbm-utilization.md)、[IO10](../CF/sources/IO10-gfx90-register-control.md) | 区分实例选择、广播、safe mode、固件装载和 idle/统计，错误退出恢复共享状态。 |
+| 可见性与性能解释 | 第 2、5 轮 | [GC3](sources/GC3-llvm-memory-model.md)、[VM6](../EA/sources/VM6-gcea-metrics.md)、[FAB7](../DF/sources/FAB7-amdgpu-fence-lifecycle.md)、[IO6](../HDP/sources/IO6-hdp40-maintenance.md) | 按地址空间与同步范围理解 cache 维护；fence、HDP、语言内存模型不能互相替代。 |
+
 
 ## 范围、术语与上下游
 
@@ -44,12 +55,12 @@ flowchart TD
 
 | 架构位置与优先级 | 需要解释的问题 | 就近资料与阅读目的 |
 | --- | --- | --- |
-| GL2 分片和数据阵列；核心 | 地址选择、hit/miss、读写路径、替换与脏数据；分片带宽和下游带宽为何不同 | [AMD CDNA 2 白皮书 p.5](https://www.amd.com/content/dam/amd/en/documents/instinct-business-docs/white-papers/amd-cdna2-white-paper.pdf#page=5) 的分片/排队/原子操作描述，作为 GC1 的 CDNA 参考；[gfx115x GL2](https://rocm.docs.amd.com/projects/rocprofiler-compute/en/docs-7.14.0/conceptual/rdna/gl2-cache.html) 的缓存与 GCEA 观测边界，见 P3 |
-| miss 跟踪和返回；核心 | 何时接收请求，哪些资源被占用，回填如何关联等待者，反压如何传回客户端 | 同上 [GL2 请求与带宽指标](https://rocm.docs.amd.com/projects/rocprofiler-compute/en/docs-7.14.0/conceptual/rdna/gl2-cache.html)；公开指标只支持观察位置，不证明 MSHR 或返回队列实现 |
-| 内存语义；核心/条件 | writeback、invalidate、原子操作和访问属性分别影响什么；CPU/GPU 一致性只在什么平台成立 | [GC1 p.5、p.8](https://www.amd.com/content/dam/amd/en/documents/instinct-business-docs/white-papers/amd-cdna2-white-paper.pdf#page=5)；目标 GCR/flush 行为仍需目标资料，不能由普通 cache 教程推定 |
-| GRBM 访问与观测；核心 | 实例/广播选择、选择寄存器的并发保护；busy 指标的统计窗口与分母 | [GC2：gfx_v9_4_3_xcc_select_se_sh](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_4_3.c#L692-L717)；[P5：MI200 GRBM counters](https://rocm.docs.amd.com/en/docs-6.0.0/conceptual/gpu-arch/mi200-performance-counters.html)，用于提出指标口径核对问题 |
-| RLC 控制与恢复；核心 | firmware/硬件职责、safe mode、启停/复位、clock-gating 顺序、超时后如何处理 | [GC2：safe mode 与 register-access control](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_4_3.c#L1364-L1418)、[clock-gating 更新](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_4_3.c#L2710-L2746)；代码代表该公开 IP 版本的软件接口 |
-| 多实例/虚拟化/功耗；条件 | 目标是否有多个 XCC、VF 限制或分区，哪些状态隔离、哪些共享 | [GC2：RLC resume](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_4_3.c#L1597-L1635) 与 [P2：GC/RLC 职责](https://docs.kernel.org/6.12/gpu/amdgpu/driver-core.html#gpu-hardware-structure)；不由代码分支推广到全部 AMD 产品 |
+| GL2 分片和数据阵列；核心 | 地址选择、hit/miss、读写路径、替换与脏数据；分片带宽和下游带宽为何不同 | [AMD CDNA 2 白皮书 p.5](https://www.amd.com/content/dam/amd/en/documents/instinct-business-docs/white-papers/amd-cdna2-white-paper.pdf#page=5) 的分片/排队/原子操作描述，作为 GC1 的 CDNA 参考；[gfx115x GL2](https://rocm.docs.amd.com/projects/rocprofiler-compute/en/docs-7.14.0/conceptual/rdna/gl2-cache.html) 的缓存与 GCEA 观测边界，见 P3  技术笔记：[GC1](sources/GC1-cdna2-memory.md)、[P3](sources/P3-gl2-metrics.md)。 |
+| miss 跟踪和返回；核心 | 何时接收请求，哪些资源被占用，回填如何关联等待者，反压如何传回客户端 | 同上 [GL2 请求与带宽指标](https://rocm.docs.amd.com/projects/rocprofiler-compute/en/docs-7.14.0/conceptual/rdna/gl2-cache.html)；公开指标只支持观察位置，不证明 MSHR 或返回队列实现  技术笔记：[P3](sources/P3-gl2-metrics.md)。 |
+| 内存语义；核心/条件 | writeback、invalidate、原子操作和访问属性分别影响什么；CPU/GPU 一致性只在什么平台成立 | [GC1 p.5、p.8](https://www.amd.com/content/dam/amd/en/documents/instinct-business-docs/white-papers/amd-cdna2-white-paper.pdf#page=5)；目标 GCR/flush 行为仍需目标资料，不能由普通 cache 教程推定  技术笔记：[GC1](sources/GC1-cdna2-memory.md)。 |
+| GRBM 访问与观测；核心 | 实例/广播选择、选择寄存器的并发保护；busy 指标的统计窗口与分母 | [GC2：gfx_v9_4_3_xcc_select_se_sh](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_4_3.c#L692-L717)；[P5：MI200 GRBM counters](https://rocm.docs.amd.com/en/docs-6.0.0/conceptual/gpu-arch/mi200-performance-counters.html)，用于提出指标口径核对问题  技术笔记：[GC2](sources/GC2-gfx943-rlc-grbm.md)、[P5](sources/P5-mi200-counters.md)。 |
+| RLC 控制与恢复；核心 | firmware/硬件职责、safe mode、启停/复位、clock-gating 顺序、超时后如何处理 | [GC2：safe mode 与 register-access control](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_4_3.c#L1364-L1418)、[clock-gating 更新](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_4_3.c#L2710-L2746)；代码代表该公开 IP 版本的软件接口  技术笔记：[GC2](sources/GC2-gfx943-rlc-grbm.md)。 |
+| 多实例/虚拟化/功耗；条件 | 目标是否有多个 XCC、VF 限制或分区，哪些状态隔离、哪些共享 | [GC2：RLC resume](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_4_3.c#L1597-L1635) 与 [P2：GC/RLC 职责](https://docs.kernel.org/6.12/gpu/amdgpu/driver-core.html#gpu-hardware-structure)；不由代码分支推广到全部 AMD 产品  技术笔记：[GC2](sources/GC2-gfx943-rlc-grbm.md)、[P2](sources/P2-amdgpu-hardware.md)。 |
 
 扩展内容为替代缓存组织和更深入的时序/面积优化。只有它们能解释目标瓶颈时再加入，不为凑轮数展开通用 cache 教科书。
 
@@ -69,4 +80,4 @@ flowchart TD
 
 优先确认目标产品/IP 代际、GL2 和 TCC 的名称关系、翻译边界、实际客户端与下游接口；随后核对分片映射、写策略、原子/一致性范围和 RLC 固件可见性。队列深度及逐周期实现放入第 2 或第 4 轮，不影响当前规划交付。
 
-后续 Codex 先读 [README 的资料集入口](README.md#资料集与接续)，再读本文件第 1 轮所列材料。资料主条目集中在根 sources.md 的 P2–P5、GC1–GC2；新增细节写入本目录单一技术正文，回链本方案并更新轮次状态。上游入口关系可先借用 [SDMA 系统接口方案](../SDMA/research-plan.md)；不得因此在 GC 扩展 FE/BE/TBE 或其他 GC 引擎的内部实现。
+后续 Codex 先读 [README 的资料集入口](README.md#资料集与接续)，再读本文件第 1 轮所列材料。逐篇导读集中在本模块 sources/README.md，根 sources.md 保留全局编号；新增细节写入本目录单一技术正文，回链本方案并更新轮次状态。上游入口关系可先借用 [SDMA 系统接口方案](../SDMA/research-plan.md)；不得因此在 GC 扩展 FE/BE/TBE 或其他 GC 引擎的内部实现。

@@ -1,8 +1,19 @@
 # UTCL1 多轮研究与论文方案
 
-依据范本：v1.2；方案版本：v1.0；日期：2026-09-24。**状态：规划完成，四轮详细研究均待执行。** 下一步从第一轮的客户端接口与命中闭环开始。本页是写作任务安排，不是目标芯片的已验证规格。
+依据范本：v1.3；方案版本：v1.1；日期：2026-09-24。**状态：规划完成，四轮详细研究均待执行。** 下一步从第一轮的客户端接口与命中闭环开始。本页是写作任务安排，不是目标芯片的已验证规格。
 
 接续顺序：[模块上下文](README.md) → 本页整体骨架 → [资料集](../sources.md#vm1)中的 VM1、VM2、VM3、VM5 → 对应原文。资料简介与实际阅读范围集中在资料集；每轮完成后更新本页状态，并把新增结论合入后续创建的本目录 `technical-paper.md`，不另建并行教程。
+
+## 逐篇笔记与本方案的研究落点
+
+先查[模块资料索引](sources/README.md)了解每篇讲什么，再读对应详细笔记；笔记内保留原文链接、版本、阅读位置、机制及重要限制。本次仅补资料与修订规划，下面的论文轮次完成状态不变。
+
+| 微架构位置 | 对应轮次 | 可直接复用的技术笔记 | 本次补充的研究重点 |
+| --- | --- | --- | --- |
+| 客户端身份、命中与 miss | 第 1–2 轮 | [VM1](../UTCL2/sources/VM1-gpuvm-address-spaces.md)、[C01](../UTCL2/sources/C01-mm-utcl2-testbench.md)、[C03](../UTCL2/sources/C03-utcl2-topology.md)、[VM7](sources/VM7-gem5-vega-tlb.md) | 用本地页图与 gem5 功能模型对照；模型中 ASID/失效简化不能当成目标能力。 |
+| 合并、等待与资源释放 | 第 2–3 轮 | [VM9](sources/VM9-gem5-coalescer.md)、[VM5](../UTCL2/sources/VM5-mask-paper.md)、[C05](../HUBS/sources/C05-mmhub-dagb-ea.md) | 区分合并键、上游请求数和下游翻译数；保留客户端返回与 credit 释放。 |
+| 失效与地址空间复用 | 第 3–4 轮 | [VM3](../UTCL2/sources/VM3-gpuvm-invalidation.md)、[VM11](../UTCL2/sources/VM11-vmid-lifetime.md)、[VM10](../UTCL2/sources/VM10-iommu-spec.md)、[IO11](../PCIE/sources/IO11-ats-pri-pasid.md) | 把 VMID 重用、翻译失效、IOMMU/ATC 分支分别解释，不套统一流水。 |
+
 
 ## 研究范围与上下游
 
@@ -14,7 +25,7 @@ AMD 名称沿用 Unified Translation Cache – Level 1，既有术语依据为 [
 
 ## 整体功能微架构
 
-下图为公开 TLB 机制启发的**研究骨架**；命中检查、未完成请求记录等是必须解释的功能，不代表已确认的 RTL 子块。主要参考 [GPUVM 软件接口 VM1](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c)与 [MASK 第 3 节 VM5](https://rausavar.github.io/pubs/mask-asplos18.pdf)，后者是研究模型。
+下图为公开 TLB 机制启发的**研究骨架**；命中检查、未完成请求记录等是必须解释的功能，不代表已确认的 RTL 子块。主要参考 [GPUVM 软件接口 VM1](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c)与 [MASK 第 3 节 VM5](https://rausavar.github.io/pubs/mask-asplos18.pdf)，后者是研究模型。 技术笔记：[VM1](../UTCL2/sources/VM1-gpuvm-address-spaces.md)、[VM5](../UTCL2/sources/VM5-mask-paper.md)。
 
 ```mermaid
 flowchart TD
@@ -40,12 +51,12 @@ flowchart TD
 
 | 架构位置 / 优先级 | 核心问题 | 就近资料与阅读用途 |
 | --- | --- | --- |
-| 输入与查询 / 核心 | 请求身份如何与 VA、页大小、访问类型关联？同一 VA 不同 VMID 如何隔离？ | [VM1](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c)，`DOC: GPUVM`，理解地址空间和权限的软件契约 |
-| 命中与返回 / 核心 | 条目保存哪些翻译属性？命中是否仍可能权限不符？地址页偏移在哪里组合？ | [VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，`setup_vmid_config`、fault 状态；仅用于提出需要核实的边界 |
-| miss 交接 / 核心 | outstanding 的身份、资源占用和返回配对；下游停顿如何传回客户端？ | [VM5](https://rausavar.github.io/pubs/mask-asplos18.pdf)，第 3、4.1 节，理解 TLB miss 对等待者的影响 |
-| 回填与失效 / 核心 | 失效期间仍在途的旧翻译能否回填？ACK 表示什么已经完成？ | [VM3](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gmc_v9_0.c)，`flush_gpu_tlb` 的请求/ACK；不能从驱动推定内部排空规则 |
-| 合并、预取、多页大小 / 条件 | 哪些客户端/代际支持？减少 miss 与增加资源占用如何权衡？ | [VM5](https://rausavar.github.io/pubs/mask-asplos18.pdf)，第 3、4 节为比较起点；目标 UTCL1 预取机制尚无直接证据 |
-| 性能观察 / 核心 | 区分查询吞吐、miss 服务时间、等待者数量和被阻塞周期 | [P5](https://rocm.docs.amd.com/en/docs-6.0.0/conceptual/gpu-arch/mi200-performance-counters.html)，既有 MI200 计数器入口；先核实实际可用计数器再设计观测 |
+| 输入与查询 / 核心 | 请求身份如何与 VA、页大小、访问类型关联？同一 VA 不同 VMID 如何隔离？ | [VM1](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c)，`DOC: GPUVM`，理解地址空间和权限的软件契约  技术笔记：[VM1](../UTCL2/sources/VM1-gpuvm-address-spaces.md)。 |
+| 命中与返回 / 核心 | 条目保存哪些翻译属性？命中是否仍可能权限不符？地址页偏移在哪里组合？ | [VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，`setup_vmid_config`、fault 状态；仅用于提出需要核实的边界  技术笔记：[VM2](../HUBS/sources/VM2-mmhub-v2.md)。 |
+| miss 交接 / 核心 | outstanding 的身份、资源占用和返回配对；下游停顿如何传回客户端？ | [VM5](https://rausavar.github.io/pubs/mask-asplos18.pdf)，第 3、4.1 节，理解 TLB miss 对等待者的影响  技术笔记：[VM5](../UTCL2/sources/VM5-mask-paper.md)。 |
+| 回填与失效 / 核心 | 失效期间仍在途的旧翻译能否回填？ACK 表示什么已经完成？ | [VM3](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gmc_v9_0.c)，`flush_gpu_tlb` 的请求/ACK；不能从驱动推定内部排空规则  技术笔记：[VM3](../UTCL2/sources/VM3-gpuvm-invalidation.md)。 |
+| 合并、预取、多页大小 / 条件 | 哪些客户端/代际支持？减少 miss 与增加资源占用如何权衡？ | [VM5](https://rausavar.github.io/pubs/mask-asplos18.pdf)，第 3、4 节为比较起点；目标 UTCL1 预取机制尚无直接证据  技术笔记：[VM5](../UTCL2/sources/VM5-mask-paper.md)。 |
+| 性能观察 / 核心 | 区分查询吞吐、miss 服务时间、等待者数量和被阻塞周期 | [P5](https://rocm.docs.amd.com/en/docs-6.0.0/conceptual/gpu-arch/mi200-performance-counters.html)，既有 MI200 计数器入口；先核实实际可用计数器再设计观测  技术笔记：[P5](../GC/sources/P5-mi200-counters.md)。 |
 
 ## 四轮研究安排
 

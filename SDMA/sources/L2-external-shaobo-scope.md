@@ -1,0 +1,23 @@
+# L2：外部 shaobo 摘要：两条后端路径的待复查接口
+
+更新日期：2026-09-24。
+
+导读：原登记涉及 FE 两条后端路径、CF_IF/DF_IF、TBE 内 UTCL1、UTCL2 请求和 MMHUB 写回；适合后续本地核实 SDMA 与 SoC 的连接。
+来源：外部只读项目 `D:\project\no_preject\sdma_repo\docs\context\shaobo.md`；原始依据定位在外部 `docs/sources.md` 的 S1/S2 等；历史登记见[全局入口](../../sources.md#本地只读参考)。
+阅读状态：本次未取得外部摘要或原始资料全文；仅保留现有来源登记，不补造时序、格式和内部职责。
+
+## 现有接口线索
+
+本仓库历史摘要提到 FE 连接两条后端路径，存在 CF_IF/DF_IF，TBE 中有 UTCL1，并涉及 UTCL2 请求和 MMHUB 写回。它们可作为后续询问/核查对象，但不足以重建完整请求/数据/响应拓扑。
+
+不能因都涉及翻译，就把所有数据都画成 FE→TBE→UTCL1→UTCL2→MMHUB 的固定串行链；命中、旁路、控制请求和数据写回可能有不同路径。具体分支必须回原图和接口说明核对。
+
+## 本地补读的最小目标
+
+先追一条读和一条写：发起者、地址空间、翻译命中/未命中、数据通道、返回身份、完成点；再定位 CF_IF/DF_IF 各承载什么类别及背压。只记录 SoC 侧需要的契约，SDMA 内部论文留在独立项目。
+
+可先用 [SD2](../../SDMA/sources/SD2-sdma52-completion-maintenance.md) 建立公开系统接口问题清单，用 [C03](../../UTCL2/sources/C03-utcl2-topology.md)/[C05](../../HUBS/sources/C05-mmhub-dagb-ea.md) 对照参考翻译/写回结构，但不能认定这些材料就是同一目标版本。外部 S1–S9 编号保持其原义，不改成仓库公开来源编号。
+
+---
+
+[本模块资料索引](README.md) · [模块研究方案](../research-plan.md) · [全局资料入口](../../sources.md)

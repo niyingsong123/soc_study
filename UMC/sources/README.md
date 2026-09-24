@@ -1,0 +1,56 @@
+# UMC 资料索引与逐篇技术笔记
+
+更新日期：2026-09-24。先读模块整体微架构与当前问题，再用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
+
+本模块列出 30 个可复用来源，主笔记归档 5 篇。跨模块来源链接到唯一主笔记，计数不能跨模块直接相加。资料阅读不计为论文轮次完成。
+
+[模块上下文](../README.md) · [研究方案](../research-plan.md) · [全局来源编号](../../sources.md) · [研究范本](../../chip-study-plan.md)
+
+## 按微架构问题选读
+
+| 研究位置 | 推荐顺序 | 重点与适用轮次 |
+| --- | --- | --- |
+| 请求、映射与命令调度 | [MEM1](MEM1-pg276-hbm-controller.md) → [MEM2](MEM2-ramulator2-paper.md) → [MEM12](MEM12-ramulator-hbm-controller.md) → [MEM13](../../HBM/sources/MEM13-ramulator-hbm3-model.md) | 第 1–3 轮：两级重排、行/bank 状态、行列命令槽、共享命令总线与维护请求共同决定可发性。 |
+| PHY 交接与刷新/低功耗 | [MEM4](../../PHY/sources/MEM4-dfi-version-boundary.md) → [MEM5](../../PHY/sources/MEM5-ug586-phy.md) → [MEM15](../../PHY/sources/MEM15-pg150-dqs-gate.md) → [MEM9](../../HBM/sources/MEM9-micron-hbm3e.md) | 第 3–4 轮：先写训练/就绪所有权；DFI 6.0 公告并不证明 PG276 历史接口符合该 profile。 |
+| 错误、地址隔离与观测 | [MEM3](MEM3-amdgpu-ras.md) → [MEM14](MEM14-umc810-ras-address.md) → [MG5](../../RSMU/sources/MG5-rsmu-umc-index.md) → [MG11](../../RSMU/sources/MG11-umc67-ras-comparison.md) | 第 4–5 轮：错误分类、地址有效、候选 PA 和坏页状态分开；重复读可能清除状态。 |
+
+## 每篇资料讲什么
+
+| 编号与技术笔记 | 核心内容与何时值得读 | 资料性质及实际阅读范围 | 原文入口 |
+| --- | --- | --- | --- |
+| [GC1：CDNA 2 的分片 L2、内存与互联边界](../../GC/sources/GC1-cdna2-memory.md) | 从 MI200 的公开整体结构理解 GCD 内 L2、内存控制器、HBM 和多种互联的分工。适合建立模块间地图与带宽层级；不提供内部队列或一致性状态机。 | 厂商/项目官方资料。精读打印页 2、5–8 的架构/存储/通信，视觉核对 p.3 Fig.1a；计算指令章节不在本笔记范围。 | [原文](https://www.amd.com/content/dam/amd/en/documents/instinct-business-docs/white-papers/amd-cdna2-white-paper.pdf) |
+| [VM5：MASK：把地址翻译需求传递到共享缓存和 DRAM 调度](../../UTCL2/sources/VM5-mask-paper.md) | 解释一次 TLB miss 为何能阻塞许多 warp，以及共享 TLB、数据 cache、DRAM 三层怎样共同放大翻译开销。适合设计跨模块性能研究问题；不是 AMD 实现证据。 | 原始论文。精读 §3–6 的结构、干扰、三项机制及实验方法，阅读 §7.1 的主要对比；未复现模拟器或重新计算全部结果。 | [原文](https://rausavar.github.io/pubs/mask-asplos18.pdf) |
+| [VM6：GCEA 的接纳、停顿、目标与返回观测](../../EA/sources/VM6-gcea-metrics.md) | 按 read/write、SARB 和 return 三个边界整理 gfx115x 的 GCEA 指标，帮助判断请求缺乏、下游背压和返回受阻的区别。 | 厂商/项目官方资料。页面正文全部已读；未跑硬件计数或核验所有 YAML。2026-09-24 另查 develop 页，只作内容对照，版本不混算。 | [原文](https://rocm.docs.amd.com/projects/rocprofiler-compute/en/docs-7.14.0/conceptual/rdna/gcea.html) |
+| [VM8：gem5 Vega 页表遍历器的依赖状态与端口重试](../../UTCL2/sources/VM8-gem5-page-walker.md) | 具体解释一个 page walk 如何保存上下文、逐级读 PDE/PTE、等待内存、遇到背压重试并回填。适合建立 walker 与缓存/内存服务之间的接口。 | 固定版本公开代码。精读 startTiming/initState、startWalk/stepWalk、walkStateMachine、sendPackets、recvTimingResp/retry、pageFault；未执行模拟。 | [原文](https://github.com/gem5/gem5/blob/v24.1.0.1/src/arch/amdgpu/vega/pagetable_walker.cc) |
+| [EA1：轮转仲裁 RTL：成功传输、背压锁定与公平性](../../EA/sources/EA1-rr-arbiter.md) | 提供能追踪到状态更新的仲裁器参考，解释选中、grant、真正交付和优先级轮转的区别。适合补足 EA 方案中的可实现机制，但不代表 AMD EA 采用本设计。 | 固定版本公开代码。精读参数、树形选择、rr 状态更新、LockIn、FairArb 与断言；未综合、仿真或复现面积时序说明。 | [原文](https://github.com/pulp-platform/common_cells/blob/e73baaec2ca665cd80c3c384e9258e35242b829c/src/cc_rr_arb_tree.sv) |
+| [C02：UTCL2 结构与使用：页表格式、cache 映射和 BigK 性能反例](../../UTCL2/sources/C02-utcl2-cache-organization.md) | 解释 Group/VML2/Walker/ATC 的分工、PTE cache 的 bank/set/way/tag、表布局粒度与映射粒度的区别，并保存 BigK 增大反而禁止填充的具体案例。 | 用户页图·参考设计。读取 38 页文字并核看结构及第 34–35 页关键条件；本笔记保留原资料案例的配置前提，不把建议寄存器值写成可直接应用的优化命令。 | [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/UTCL2%20%E7%BB%93%E6%9E%84%E5%92%8C%E4%BD%BF%E7%94%A8%E7%AE%80%E4%BB%8B%20by%20Wang%20Junmin) |
+| [C04：地址翻译与预取：rdif 扩展、资源竞争和已核算勘误](../../UTCL2/sources/C04-translation-prefetch.md) | 把常见翻译预取思想与资料中 shaobo 的 rdif 方案分开，说明 history table、独立预取缓存、需求请求优先和返回分类；同时记录地址例题和阈值描述中的问题。 | 用户页图·参考设计。读取 26 页文字，直接核看第 18、22、23、25 页；完成第 18 页地址索引的独立逐位核算。未取得 RTL、专利公开号或性能原始测量条件。 | [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/UTCL2%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91%E5%8F%8A%E9%A2%84%E5%8F%96%E6%8A%80%E6%9C%AF%E4%BB%8B%E7%BB%8D) |
+| [P1：AMD GDC 2019：CCM、CS、CAKE 与本地/远端访存路径](../../DF/sources/P1-ryzen-fabric-topology.md) | 提供 CS、CAKE 等 AMD 名称的官方出处，并用本地 DRAM、同 die 其他 CCX、远端 die DRAM 三条路径说明一致性端点与传输层的分工；历史性能数字不可外推。 | 厂商/项目官方资料。已读取 PDF 的 cache/NUMA/本地及远端 refill 相关页；软件优化、编译器和核心流水线部分不是本笔记覆盖重点。 | [原文](https://gpuopen.com/gdc-presentations/2019/gdc-2019-s2-amd-ryzen-processor-software-optimization.pdf) |
+| [FAB1：CDNA 3 白皮书：XCD/IOD、memory-side cache 与一致性层次](../../DF/sources/FAB1-cdna3-iod-memory.md) | 解释 CDNA 3 把计算侧 L2、IOD 存储侧 cache、HBM 与互联重新分配后的职责，特别区分 snoop filter、cache 数据和 CPU/GPU 统一内存；适合校准模块边界与带宽口径。 | 厂商/项目官方资料。已核读 XCD、memory architecture、IOD/Infinity Cache、HBM 和分区段落，重点印刷第 9–13 页；没有据此补写未公开的 DF 协议状态机。 | [原文](https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-3-white-paper.pdf) |
+| [FAB2：Linux DF 3.6：通道编码、hash、实例访问与性能计数器](../../DF/sources/FAB2-df36-registers-counters.md) | 从 AMDGPU 的 DF 3.6 回调识别软件能观察的配置与计数器生命周期，特别说明寄存器编码不等于实际通道数、计数器零值也可能来自未支持或重装失败。 | 固定版本公开代码。已读 channel/hash、broadcast、clock gating、PMC 分配/启动/读回/停止及 poison-query 相关函数；本文件是软件编程视图，不是 DF RTL。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/df_v3_6.c) |
+| [FAB3：AMD ATL：从 UMC 归一化地址恢复系统物理地址](../../DF/sources/FAB3-atl-address-core.md) | 展示 RAS 地址解码必须结合 socket/die/CS、DRAM map、interleave/hash、base 与 MMIO hole；用于避免把 UMC 错误地址直接解释成系统 PA。 | 固定版本公开代码。已读完整文件，重点 norm_to_sys_addr、base/hole 处理及初始化/decoder 注册。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/ras/amd/atl/core.c) |
+| [FAB6：AMD ATL denormalize：非二次幂通道与 hash 的逆向重建](../../DF/sources/FAB6-atl-denormalization.md) | 解释 3/5 倍通道模式为何不能靠插入几位 channel ID 还原 PA，以及 DF4.5 如何枚举丢失位和余数，再用正向映射与 CS 身份校验候选地址。 | 固定版本公开代码。已读模式分派、DF4/DF4.5 非二次幂路径及 candidate verification；大量具体位段仅在本版本代码中有效，本笔记不逐个复制。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/ras/amd/atl/denormalize.c) |
+| [MEM1：PG276：HBM 拓扑、地址映射、重排与错误边界](MEM1-pg276-hbm-controller.md) | 研究请求进入内存控制器后为何排队、如何选 bank/行、何时返回错误。重点是两级重排、共享命令资源、地址映射对调度的影响；适合 UMC 主线与 EA/HBM 联读。 | 厂商/项目官方资料。已读上述章节正文；AMD FPGA HBM2 IP 实例，不是 GPU UMC 规格；未读全指南或运行 IP。 | [原文](https://docs.amd.com/r/en-US/pg276-axi-hbm) |
+| [MEM2：Ramulator 2.0：控制器、DRAM 模型与验证边界](MEM2-ramulator2-paper.md) | 解释如何把请求调度、命令前置条件、时序状态和维护策略拆开建模；适合搭建 UMC 教学模型与理解验证覆盖，不是 AMD UMC 实现说明。 | 原始论文。已读架构、DRAM 表达方式及 III 节验证/实验正文；未复现实验；当前源码另见 MEM12/MEM13，不能与论文当成同一版本。 | [原文](https://arxiv.org/html/2308.11030v2) |
+| [MEM3：AMDGPU RAS：错误计数、坏页与恢复策略](MEM3-amdgpu-ras.md) | 从软件侧梳理 CE/UE、坏页状态和恢复动作，适合连接 UMC 检测、IH 通知及页面隔离；不能用软件状态替代硬件错误定位。 | 厂商/项目官方资料。已读文档正文的支持、控制、计数和坏页接口；未执行注错、复位或 EEPROM 操作。 | [原文](https://docs.kernel.org/6.12/gpu/amdgpu/ras.html) |
+| [MEM4：DFI 官方资料：控制器与 PHY 的边界及 6.0 变化](../../PHY/sources/MEM4-dfi-version-boundary.md) | 用于确定 controller/PHY 分工、训练所有权与规范版本；尤其修正“DFI 不支持 HBM”的过时概括。公开更新不能代替接口信号规范。 | 规范组织公开介绍。已读公开介绍与发布消息；未取得登录下载的完整 DFI 规范，不填写未核实的信号、时序或 HBM profile。 | [原文](https://ddr-phy.org/) |
+| [MEM5：UG586：字节组 PHY 与初始化、校准分工](../../PHY/sources/MEM5-ug586-phy.md) | 研究 DQ/DQS、相位调节、FIFO 和校准逻辑如何组成 PHY；用于从控制器侧跨到物理接口侧，需注意实际读取的是 LPDDR2 章节。 | 厂商/项目官方资料。已读上述路径实际解析到的 7 Series LPDDR2 PHY 架构/初始化说明；未核验全书各 DDR 类型训练顺序或图中全部阶段。 | [原文](https://docs.amd.com/r/en-US/ug586_7Series_MIS) |
+| [MEM9：Micron HBM3E：组织、容量与带宽口径](../../HBM/sources/MEM9-micron-hbm3e.md) | 提供 HBM3E 器件组织与产品级指标，用于容量/通道/带宽的数量级检查；不包含完整命令时序或端到端性能保证。 | 厂商/项目官方资料。已读产品说明及 FAQ；部分时间表仍为历史表述，不据此判定当前供货；未取得 datasheet。 | [原文](https://www.micron.com/products/memory/hbm/hbm3e) |
+| [MEM10：Samsung HBM3：产品指标与 ODECC 表述边界](../../HBM/sources/MEM10-samsung-hbm3.md) | 用于与 HBM3E 对照容量和原始带宽，并识别器件内部 ECC 宣传与系统 RAS 的区别；不提供可实现的 ECC 编码或命令规范。 | 厂商/项目官方资料。已读速度、容量、功耗和可靠性正文；正式 datasheet 需另行取得，当前未读。 | [原文](https://semiconductor.samsung.com/dram/hbm/hbm3/) |
+| [MEM11：JESD238：HBM3 正式标准入口与待补范围](../../HBM/sources/MEM11-jedec-scope-gap.md) | 这是完整规范尚未取得的缺口记录；用于判断哪些 HBM3 细节必须回查正式标准，不能作为时序、编码或合规依据。 | 规范全文未取得。未取得全文；不声明已读标准，不推定最新修订字母或具体字段。当前笔记是范围索引和后续补读任务。 | [原文](https://www.jedec.org/standards-documents/docs/jesd238) |
+| [MEM12：Ramulator 当前 HBM 控制器：双命令槽与 FRFCFS](MEM12-ramulator-hbm-controller.md) | 研究请求如何变成可发出的列/行命令，以及优先级、激活缓冲和共享命令总线怎样约束吞吐；提供代码级 UMC 对照实例。 | 固定版本公开代码。已读所列文件的队列选择、时钟推进、slot eligibility、发命令和调度比较函数；未运行仿真，未通读所有插件/完成回调实现。 | [原文](https://github.com/CMU-SAFARI/ramulator2/blob/72427a1bba3771564c4fb0e494ba02242fd1eaa7/src/ramulator/controller/impl/hbm34_controller.cpp) |
+| [MEM13：Ramulator HBM3：层级状态、时序与生成式模型](../../HBM/sources/MEM13-ramulator-hbm3-model.md) | 适合逐项理解 HBM3 模型的共享/独立资源、命令依赖与时序作用范围；可与控制器代码联读，不能替代 JEDEC 标准。 | 固定版本公开代码。已读层级、命令/时序声明、命令总线分类及主要 timing 约束；未运行模型，未与完整 JEDEC 逐条核验。 | [原文](https://github.com/CMU-SAFARI/ramulator2/blob/72427a1bba3771564c4fb0e494ba02242fd1eaa7/src/ramulator/dram/impl/HBM3.cpp) |
+| [MEM14：UMC 8.10 驱动：错误分类与地址候选展开](MEM14-umc810-ras-address.md) | 研究错误地址为何不是现成系统物理地址，以及 UE 计数为何可能没有可隔离页面；提供具体寄存器与转换路径，适合 RAS 联读。 | 固定版本公开代码。已读错误计数、通道索引、地址转换、状态清除及固件 ECC 信息分支；未读取目标芯片寄存器，不能推广到其他 UMC 代际。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/umc_v8_10.c) |
+| [MEM15：PG150：DQS gate 搜索、细调与失败定位](../../PHY/sources/MEM15-pg150-dqs-gate.md) | 详细解释读数据门控如何找到 DQS 起始位置，覆盖粗/细调、重复采样、rank 统一及诊断；适合 PHY 校准专题，不能据此宣称已读所有训练阶段。 | 厂商/项目官方资料。已读 DQS gate 算法正文与失败定位说明；总阶段页图未成功读取，未据目录推定完整训练先后顺序。 | [原文](https://docs.amd.com/r/en-US/pg150-ultrascale-memory-ip/Calibration-Stages) |
+| [IO6：HDP 4.0 驱动：flush、invalidate 与 RAS 代际差异](../../HDP/sources/IO6-hdp40-maintenance.md) | 研究 HDP 维护命令怎样由 CPU 或 ring 发起、哪些 IP 跳过 invalidate，以及计数清除为何有读清/写清区别；用于准确写完成与恢复边界。 | 固定版本公开代码。已读 flush/invalidate、RAS query/reset、初始化及相关代际判断；没有目标硬件测试。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/hdp_v4_0.c) |
+| [MG3：SMU 13.0.0 ABI：DPM 描述、表结构与指标语义](../../SMU/sources/MG3-smu13-firmware-abi.md) | 研究固件接口版本、参数表和 telemetry 的字段差异；重点是 target/pre-DS/post-DS、平均时间常数与累计量，适合设计可信观测表。 | 固定版本公开代码。已读版本、feature 定义、DpmDescriptor、PPTable 组合、DriverSmuConfig、DriverInfo 和 SmuMetrics；未逐字段研究完整板级参数/算法。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/pm/swsmu/inc/pmfw_if/smu13_driver_if_v13_0_0.h) |
+| [MG5：RSMU 寄存器线索与 UMC 6.1 访问模式](../../RSMU/sources/MG5-rsmu-umc-index.md) | 这是 RSMU 最直接的公开接口证据：UMC index mode 及错误采集前后的状态切换。适合建立职责边界，不能据少量寄存器推定完整 RAS 控制器。 | 固定版本公开代码。已读两个短寄存器头及 UMC index enable/disable/state、RAS count 调用序列；不声明读到 RSMU 完整功能规格。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/include/asic_reg/rsmu/rsmu_0_0_2_offset.h) |
+| [MG9：AMDGPU 温度/功耗接口：单位、策略与同步快照](../../SMU/sources/MG9-thermal-power-observability.md) | 用于设计性能实验的观测表，区分功率上限、实际功率、档位与平均频率；适合 SMU 的反馈路径，不是固件调频算法说明。 | 厂商/项目官方资料。已读 hwmon、performance level、pp_dpm 与 gpu_metrics 段；未执行任何调频、功耗或风扇写操作。 | [原文](https://docs.kernel.org/6.12/gpu/amdgpu/thermal.html) |
+| [MG10：AMD ATL system.c：Fabric 身份字段与版本发现](../../SMN/sources/MG10-atl-system-identity.md) | 解释 socket/die/node/component ID 的代际解码和未知版本处理；适合控制寻址与错误地址定位的前置研究，不能用固定移位套所有芯片。 | 固定版本公开代码。已读 node ID 构造、DF2/3/3.5/4 mask/shift、版本发现及系统配置采集；这是 CPU DF/ATL 软件上下文，不是 GPU SMN 路由表。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/ras/amd/atl/system.c) |
+| [MG11：UMC 6.7：错误地址展开与 poison 模式的代际对照](../../RSMU/sources/MG11-umc67-ras-comparison.md) | 补充 RSMU 相邻的 UMC RAS 路径，解释 hash/列位模糊如何扩大隔离候选，及 poison 查询如何依赖寄存器；用于对照 UMC 8.10。 | 固定版本公开代码。已读地址转换、直接/固件错误地址路径及 poison 查询；这不是 RSMU 内部实现证据。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/umc_v6_7.c) |
+
+## 使用与维护
+
+先复用笔记中已核实的解释与定位；只看摘要或未取得全文的条目不能支持精确机制。更新来源时补原笔记，并同步本索引的导读、状态及受影响方案；不在上下文复制全文。
+AMD 名称是归档基础，行业类比仅扩大资料范围。保留产品/代际、规范/论文/模型/代码/用户参考的区别；代码空函数、模拟器简化和资料中的疑似笔误必须一并带入后续引用。
+用户参考页图不等于 AMD 官方材料或目标芯片已确认规格；外部 SDMA 和原始文件继续遵守项目边界。

@@ -1,8 +1,19 @@
 # HUBS（MMHUB / CH）多轮研究与论文方案
 
-依据范本：v1.2；方案版本：v1.0；日期：2026-09-24。**状态：规划完成，五轮详细研究均待执行。** 下一步核实客户端和地址接口，建立 MMHUB 的基本访问闭环。
+依据范本：v1.3；方案版本：v1.1；日期：2026-09-24。**状态：规划完成，五轮详细研究均待执行。** 下一步核实客户端和地址接口，建立 MMHUB 的基本访问闭环。
 
-接续：[模块上下文](README.md) → 本页 → [资料集](../sources.md#vm1)的 P2、VM1–VM3 → 原文。资料集保存内容简介和真实阅读范围；本页保存任务与进度。后续在本目录创建 `technical-paper.md`，MMHUB 与 CH 分节维护，不创建子目录。C05 正文仍缺失，本次未读取或恢复本地原件。
+接续：[模块上下文](README.md) → 本页 → [资料集](../sources.md#vm1)的 P2、VM1–VM3 → 原文。资料集保存内容简介和真实阅读范围；本页保存任务与进度。后续在本目录创建 `technical-paper.md`，MMHUB 与 CH 分节维护，不创建子模块目录；逐篇资料保存在 `sources/`。C05 转换正文仍缺失；本次已读仓库现有页图，未访问或恢复本地原件，结构与版本边界见 C05 笔记。
+
+## 逐篇笔记与本方案的研究落点
+
+先查[模块资料索引](sources/README.md)了解每篇讲什么，再读对应详细笔记；笔记内保留原文链接、版本、阅读位置、机制及重要限制。本次仅补资料与修订规划，下面的论文轮次完成状态不变。
+
+| 微架构位置 | 对应轮次 | 可直接复用的技术笔记 | 本次补充的研究重点 |
+| --- | --- | --- | --- |
+| Hub 集成及翻译服务边界 | 第 1–2 轮 | [P2](../GC/sources/P2-amdgpu-hardware.md)、[C03](../UTCL2/sources/C03-utcl2-topology.md)、[C05](sources/C05-mmhub-dagb-ea.md)、[VM2](sources/VM2-mmhub-v2.md)、[VM12](sources/VM12-gfxhub-v2.md) | 用 MMHUB/GFXHUB 版本差异核对 aperture、client 与翻译服务；CH 继续待定位。 |
+| 数据/地址交接与共享资源 | 第 2–3 轮 | [C05](sources/C05-mmhub-dagb-ea.md)、[EA1](../EA/sources/EA1-rr-arbiter.md)、[VM6](../EA/sources/VM6-gcea-metrics.md)、[IO3](../PCIE/sources/IO3-linux-dma-api.md) | DAGB、地址 TLB/数据 FIFO、scoreboard、EA 共享存储及 bank-group 需放回同一工作流。 |
+| 失效、故障和通知 | 第 3–5 轮 | [VM3](../UTCL2/sources/VM3-gpuvm-invalidation.md)、[VM10](../UTCL2/sources/VM10-iommu-spec.md)、[IO11](../PCIE/sources/IO11-ats-pri-pasid.md)、[MG6](../IH/sources/MG6-ih60-ring-hardware.md) | 核对 GPUVM/ATC 分支、VM 类型标签差异和 fault 出口，不把不同来源编码合并。 |
+
 
 ## 范围与先后关系
 
@@ -41,13 +52,13 @@ flowchart TD
 
 | 架构位置 / 优先级 | 研究问题 | 资料直链与阅读用途 |
 | --- | --- | --- |
-| 客户端接入 / 核心 | 每类客户端送入 VA 还是已翻译地址？实例与接入随代际如何变化？ | [P2](https://docs.kernel.org/gpu/amdgpu/driver-core.html#gpu-hardware-structure)，GMC、hub 连接说明；[VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，client ID 表，仅代表列出的 IP 版本 |
-| 地址窗口与上下文 / 核心 | GPUVM、aperture、system/local memory 如何选路，哪些属性影响权限和后续服务？ | [VM1](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c)，GPUVM；[VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，`init_gart_aperture_regs` / `init_system_aperture_regs` |
-| 翻译集成 / 核心 | 哪些逻辑在 hub 内，哪些为外部服务？UTCL2、PTW 与 ATC 是否都存在？ | [VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，TLB/cache 初始化与 2.1.x ATCL2 相关注释，防止跨版本拼图 |
+| 客户端接入 / 核心 | 每类客户端送入 VA 还是已翻译地址？实例与接入随代际如何变化？ | [P2](https://docs.kernel.org/gpu/amdgpu/driver-core.html#gpu-hardware-structure)，GMC、hub 连接说明；[VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，client ID 表，仅代表列出的 IP 版本  技术笔记：[VM2](sources/VM2-mmhub-v2.md)。 |
+| 地址窗口与上下文 / 核心 | GPUVM、aperture、system/local memory 如何选路，哪些属性影响权限和后续服务？ | [VM1](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c)，GPUVM；[VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，`init_gart_aperture_regs` / `init_system_aperture_regs`  技术笔记：[VM1](../UTCL2/sources/VM1-gpuvm-address-spaces.md)、[VM2](sources/VM2-mmhub-v2.md)。 |
+| 翻译集成 / 核心 | 哪些逻辑在 hub 内，哪些为外部服务？UTCL2、PTW 与 ATC 是否都存在？ | [VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，TLB/cache 初始化与 2.1.x ATCL2 相关注释，防止跨版本拼图  技术笔记：[VM2](sources/VM2-mmhub-v2.md)。 |
 | 业务交接与返回 / 核心 | 地址、访问属性、顺序和响应标识由谁保持？下游背压和错误怎么返回？ | [P2](https://docs.kernel.org/gpu/amdgpu/driver-core.html#gpu-hardware-structure)提供外部边界；具体目标协议待查，不据公共框图确定队列 |
-| 失效、fault、恢复 / 核心 | 哪个 hub 收到失效？哪个客户端报错？如何避免复位/门控期间丢失完成？ | [VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，fault 解码；[VM3](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gmc_v9_0.c)，`flush_gpu_tlb` |
+| 失效、fault、恢复 / 核心 | 哪个 hub 收到失效？哪个客户端报错？如何避免复位/门控期间丢失完成？ | [VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，fault 解码；[VM3](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gmc_v9_0.c)，`flush_gpu_tlb`  技术笔记：[VM2](sources/VM2-mmhub-v2.md)、[VM3](../UTCL2/sources/VM3-gpuvm-invalidation.md)。 |
 | CH 与压缩属性 / 条件 | CH 是处理、传递还是消费属性？是否改变数据布局、长度或元数据路径？ | [既有 CH 边界](README.md)，仅有 L3 摘要；目标模块说明与接口资料待查，没有足够证据时不展开算法 |
-| 性能与集成 / 条件 | 区分翻译等待、业务下游拥塞、返回阻塞和控制停顿 | [VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，读写请求/返回及翻译门控名称只作观察入口，不推断精确实现 |
+| 性能与集成 / 条件 | 区分翻译等待、业务下游拥塞、返回阻塞和控制停顿 | [VM2](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c)，读写请求/返回及翻译门控名称只作观察入口，不推断精确实现  技术笔记：[VM2](sources/VM2-mmhub-v2.md)。 |
 
 ## 五轮研究安排
 
@@ -90,4 +101,4 @@ flowchart TD
 
 优先补目标 hub 顶层、客户端与地址模式、UTCL2/PTW/ATC 归属、下游接口和写完成定义。CH 首先需要全称或功能说明与端口，随后才能决定研究轮次；不因用户分组而推定父子或串接关系。
 
-本地 Codex 从第一轮开始，在本目录论文中落实一个有边界的 MMHUB 请求闭环。对目前未读的本地资料，在文件实际可用的本地环境按既有只读约定核对，原件继续不上传；新增可引用结论依项目证据规则维护，不恢复缺失正文。本轮未读取仓库现有页面图片，不能据图片标题补出目标结构。
+本地 Codex 从第一轮开始，在本目录论文中落实一个有边界的 MMHUB 请求闭环。对目前未读的本地资料，在文件实际可用的本地环境按既有只读约定核对，原件继续不上传；新增可引用结论依项目证据规则维护，不恢复缺失正文。本次已读现有页图，具体结构、原始标签冲突和阅读范围见 C05/C03 笔记；不能将参考图自动认定为目标结构。

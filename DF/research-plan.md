@@ -1,8 +1,19 @@
 # DF：从客户端数据事务到内存与远端节点的研究方案
 
-版本：v1.0；日期：2026-09-24；依据：[研究范本 v1.2](../chip-study-plan.md)。状态：规划完成，以下五轮详细研究均未开始。下一步执行第 1 轮，先核对目标代际与 BE 数据接口，再建立本地读写闭环。
+版本：v1.1；日期：2026-09-24；依据：[研究范本 v1.3](../chip-study-plan.md)。状态：规划完成，以下五轮详细研究均未开始。下一步执行第 1 轮，先核对目标代际与 BE 数据接口，再建立本地读写闭环。
 
 资料集：[sources.md](../sources.md)，本模块优先 P1、FAB1–FAB3。接续时先读 [README](README.md)、本方案，再看资料简介与实际阅读范围；不要把资料登记当成目标设计已核验。
+
+## 逐篇笔记与本方案的研究落点
+
+先查[模块资料索引](sources/README.md)了解每篇讲什么，再读对应详细笔记；笔记内保留原文链接、版本、阅读位置、机制及重要限制。本次仅补资料与修订规划，下面的论文轮次完成状态不变。
+
+| 微架构位置 | 对应轮次 | 可直接复用的技术笔记 | 本次补充的研究重点 |
+| --- | --- | --- | --- |
+| 本地/远端目标与身份 | 第 1–2 轮 | [P1](sources/P1-ryzen-fabric-topology.md)、[FAB1](sources/FAB1-cdna3-iod-memory.md)、[FAB2](sources/FAB2-df36-registers-counters.md)、[MG10](../SMN/sources/MG10-atl-system-identity.md) | CS/CAKE 命名、XCD/IOD 与地址发现各保留产品范围，不合成一颗参考芯片。 |
+| 地址归属、hash 与 XGMI | 第 2–3 轮 | [FAB3](sources/FAB3-atl-address-core.md)、[FAB6](sources/FAB6-atl-denormalization.md)、[FAB5](sources/FAB5-xgmi-topology.md) | NP2 通道反解要校验候选；XGMI 驱动的空操作不证明链路实际变频。 |
+| 事务完成、流控和恢复 | 第 3–5 轮 | [FAB4](sources/FAB4-dma-fence-contract.md)、[FAB7](sources/FAB7-amdgpu-fence-lifecycle.md)、[R7](../SWITCH/sources/R7-floonoc-paper.md)、[R16](../SWITCH/sources/R16-remote-control-deadlock.md) | fence、传输空间和端点进展分开；跨 die 延迟/完成不只由链路状态决定。 |
+
 
 ## 研究对象与上下游
 
@@ -39,11 +50,11 @@ flowchart TD
 
 | 位置与优先级 | 关键研究问题 | 资料及阅读目的 |
 | --- | --- | --- |
-| 入口与目标选择，核心 | 客户端属性如何保留；地址范围、交织/hash、目的节点及返回源如何对应；重映射配置何时生效 | [FAB2：Linux v6.12 df_v3_6.c](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/df_v3_6.c)，读 `df_v3_6_query_hashes` 与通道查询；只支持所列 GPU 的配置观察 |
-| 内存侧地址边界，核心 | 系统地址与控制器 normalized address 怎样区分；hole、base/limit、交织与 GPUVA 翻译为何是不同问题 | [FAB3：AMD ATL core.c](https://github.com/torvalds/linux/blob/v6.12/drivers/ras/amd/atl/core.c)，读 `norm_to_sys_addr`；这是 RAS 软件反解参考，不是 DF 在线流水图 |
-| CS 相关协调，条件相关 | 哪些访问进入一致性域；home/序列化点、缓存探测、数据来源与内存接口各由谁负责；atomic 在何处执行 | [P1：GDC 2019](https://gpuopen.com/gdc-presentations/2019/gdc-2019-s2-amd-ryzen-processor-software-optimization.pdf)，打印页 21–23 的本地/远端 refill；[FAB1：CDNA 3 白皮书](https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-3-white-paper.pdf)，Memory 部分。只比较职责，不拼接两代微架构 |
+| 入口与目标选择，核心 | 客户端属性如何保留；地址范围、交织/hash、目的节点及返回源如何对应；重映射配置何时生效 | [FAB2：Linux v6.12 df_v3_6.c](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/df_v3_6.c)，读 `df_v3_6_query_hashes` 与通道查询；只支持所列 GPU 的配置观察  技术笔记：[FAB2](sources/FAB2-df36-registers-counters.md)。 |
+| 内存侧地址边界，核心 | 系统地址与控制器 normalized address 怎样区分；hole、base/limit、交织与 GPUVA 翻译为何是不同问题 | [FAB3：AMD ATL core.c](https://github.com/torvalds/linux/blob/v6.12/drivers/ras/amd/atl/core.c)，读 `norm_to_sys_addr`；这是 RAS 软件反解参考，不是 DF 在线流水图  技术笔记：[FAB3](sources/FAB3-atl-address-core.md)。 |
+| CS 相关协调，条件相关 | 哪些访问进入一致性域；home/序列化点、缓存探测、数据来源与内存接口各由谁负责；atomic 在何处执行 | [P1：GDC 2019](https://gpuopen.com/gdc-presentations/2019/gdc-2019-s2-amd-ryzen-processor-software-optimization.pdf)，打印页 21–23 的本地/远端 refill；[FAB1：CDNA 3 白皮书](https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-3-white-paper.pdf)，Memory 部分。只比较职责，不拼接两代微架构  技术笔记：[P1](sources/P1-ryzen-fabric-topology.md)、[FAB1](sources/FAB1-cdna3-iod-memory.md)。 |
 | CAKE 相关远端边界，条件相关 | 本地/远端路由如何划分；跨封装与封装内链路是否不同；流控、可靠性和事务重试责任在哪里 | P1 打印页 21–23；FAB1 “Communication and Scaling”；进入链路细节时引用 SWITCH/PHY，不重写 Router 教程 |
-| 全路径进展与可观测性，核心 | 何时释放事务/返回资源；何种等待会成环；如何区分链路拥塞与目标服务慢 | [R7：FlooNoC](https://arxiv.org/html/2409.17606v1)，III-A 的端点排序与资源预留作方法参考；FAB2 的 `df_v3_6_pmc_get_count` 等计数器访问作观察入口，事件含义另查匹配代际资料 |
+| 全路径进展与可观测性，核心 | 何时释放事务/返回资源；何种等待会成环；如何区分链路拥塞与目标服务慢 | [R7：FlooNoC](https://arxiv.org/html/2409.17606v1)，III-A 的端点排序与资源预留作方法参考；FAB2 的 `df_v3_6_pmc_get_count` 等计数器访问作观察入口，事件含义另查匹配代际资料  技术笔记：[R7](../SWITCH/sources/R7-floonoc-paper.md)。 |
 
 NUMA/分区、虚拟化隔离、原子与复杂一致性按目标场景触发；adaptive routing 等优化是扩展，不能先于基本事务闭环。
 

@@ -1,8 +1,19 @@
 # CF：命令分发、返回与控制事件的研究方案
 
-版本：v1.0；日期：2026-09-24；依据：[研究范本 v1.2](../chip-study-plan.md)。状态：规划完成，三轮详细研究均未开始。下一步先核对 shaobo 的 CF 接口角色及消息语义，再写正常命令闭环。
+版本：v1.1；日期：2026-09-24；依据：[研究范本 v1.3](../chip-study-plan.md)。状态：规划完成，三轮详细研究均未开始。下一步先核对 shaobo 的 CF 接口角色及消息语义，再写正常命令闭环。
 
 资料集：[sources.md](../sources.md)。先读 [模块 README](README.md)、本方案与 L1/L2 的仓库摘要，随后按问题查看 R7/R8、FAB4；这些公开材料提供设计方法，不能替代缺失的独立 CF 规格。
+
+## 逐篇笔记与本方案的研究落点
+
+先查[模块资料索引](sources/README.md)了解每篇讲什么，再读对应详细笔记；笔记内保留原文链接、版本、阅读位置、机制及重要限制。本次仅补资料与修订规划，下面的论文轮次完成状态不变。
+
+| 微架构位置 | 对应轮次 | 可直接复用的技术笔记 | 本次补充的研究重点 |
+| --- | --- | --- | --- |
+| 命令身份与端点访问 | 第 1 轮 | [L1](../SDMA/sources/L1-external-glossary-scope.md)、[L2](../SDMA/sources/L2-external-shaobo-scope.md)、[IO10](sources/IO10-gfx90-register-control.md)、[MG4](../SMN/sources/MG4-smn-indirect-access.md) | CF 保持 Command Fabric；GRBM/SMN 只是控制访问参照，外部目标接口需本地复查。 |
+| 接纳、排序和完成 | 第 1–2 轮 | [R8](../SWITCH/sources/R8-axi-ordering-contract.md)、[R7](../SWITCH/sources/R7-floonoc-paper.md)、[FAB4](../DF/sources/FAB4-dma-fence-contract.md)、[FAB7](../DF/sources/FAB7-amdgpu-fence-lifecycle.md)、[SD2](../SDMA/sources/SD2-sdma52-completion-maintenance.md) | credit、接收确认、工作完成及原命令完成逐项找责任者，不把 AXI 默认当 CF 协议。 |
+| 共享状态与异常退出 | 第 3 轮 | [MG1](../SMU/sources/MG1-smu-message-table.md)、[IO9](../PCIE/sources/IO9-pci-error-recovery.md)、[MG8](../IH/sources/MG8-irq-dispatch-lifecycle.md) | 控制请求也会等待共享资源；超时、取消和复位后的旧返回必须有退出约定。 |
+
 
 ## 名称、边界与事件上下游
 
@@ -40,9 +51,9 @@ flowchart TD
 | 架构位置与级别 | 需要回答的问题 | 就近阅读入口与边界 |
 | --- | --- | --- |
 | 发起与分发，核心 | 谁发命令、谁选后端；目的/上下文/任务 ID 如何区分；一项请求拆分成多少后端工作，谁保留关联 | [CF README](README.md) 与 [模块映射](../module-map.md) 中的 L1/L2 摘要；本地接续核对原始资料已有定位。没有公开规格支持的字段不填写位宽 |
-| 接收与容量，核心 | 信用代表命令槽、队列项还是其他资源；返还条件是否依赖执行；返回通道能否被命令堵死 | [R8：AXI Issue H](https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/IHI0022H_amba_axi_protocol_spec.pdf)，A3.3 的握手依赖用于学习怎样写接口规则；CF 不因此采用 AXI 握手或通道 |
-| 标识与顺序，核心 | 同一上下文不同目标的返回怎样匹配；允许哪些乱序；命令顺序与数据观察顺序在哪里建立 | [R7：FlooNoC v1](https://arxiv.org/html/2409.17606v1)，III-A 比较端点重排与限制注入；仅作设计取舍参考，不预定 CF 必须有 ROB |
-| 完成与错误，核心 | EOC 到底终结哪一层任务；软件可见成功需要哪些额外条件；失败是否仍然需要终结并归还资源 | [FAB4：Linux v6.12 dma-fence.h](https://github.com/torvalds/linux/blob/v6.12/include/linux/dma-fence.h)，`dma_fence_get_status_locked`、`dma_fence_set_error`：软件完成可区分成功/失败。它不证明 CF EOC 与 Linux fence 一一对应 |
+| 接收与容量，核心 | 信用代表命令槽、队列项还是其他资源；返还条件是否依赖执行；返回通道能否被命令堵死 | [R8：AXI Issue H](https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/IHI0022H_amba_axi_protocol_spec.pdf)，A3.3 的握手依赖用于学习怎样写接口规则；CF 不因此采用 AXI 握手或通道  技术笔记：[R8](../SWITCH/sources/R8-axi-ordering-contract.md)。 |
+| 标识与顺序，核心 | 同一上下文不同目标的返回怎样匹配；允许哪些乱序；命令顺序与数据观察顺序在哪里建立 | [R7：FlooNoC v1](https://arxiv.org/html/2409.17606v1)，III-A 比较端点重排与限制注入；仅作设计取舍参考，不预定 CF 必须有 ROB  技术笔记：[R7](../SWITCH/sources/R7-floonoc-paper.md)。 |
+| 完成与错误，核心 | EOC 到底终结哪一层任务；软件可见成功需要哪些额外条件；失败是否仍然需要终结并归还资源 | [FAB4：Linux v6.12 dma-fence.h](https://github.com/torvalds/linux/blob/v6.12/include/linux/dma-fence.h)，`dma_fence_get_status_locked`、`dma_fence_set_error`：软件完成可区分成功/失败。它不证明 CF EOC 与 Linux fence 一一对应  技术笔记：[FAB4](../DF/sources/FAB4-dma-fence-contract.md)。 |
 | 取消、复位与并发，核心/条件 | 取消的发起者、作用范围、确认点；取消和正常返回交叉如何裁决；reset 是否需要 quiesce/drain；VF/上下文隔离是否由此接口承担 | 本地目标规格待查；先复用 [SWITCH 正文](../switch/switch_detailed_guide.md) 第 21、32、38.4 章的生命周期问题，再核对 CF 特性，不复制其教学状态机作为目标答案 |
 
 公平性和延迟需求只在真实竞争处研究；广播、多播、独立取消网络、优先级、跨 die CF、完整虚拟化上下文切换均为条件相关。扩展研究可以比较集中与分布式跟踪，但必须由已观察的瓶颈或恢复困难驱动。

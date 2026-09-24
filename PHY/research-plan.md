@@ -1,8 +1,19 @@
 # PHY 微架构研究与论文规划
 
-依据范本 v1.2；方案 v1.0，2026-09-24。当前完成规划与相关章节初读，**论文轮次尚未开始**。下一步执行第 1 轮：先确定内存 PHY 的两侧接口与训练所有权，接续 UMC 的读写场景。
+依据范本 v1.3；方案 v1.1，2026-09-24。当前完成规划与相关章节初读，**论文轮次尚未开始**。下一步执行第 1 轮：先确定内存 PHY 的两侧接口与训练所有权，接续 UMC 的读写场景。
 
 资料集：[MEM1、MEM4–MEM8](../sources.md#mem4)。先读本方案及 [UMC 方案](../UMC/research-plan.md) 的接口约定，再读资料简介；按内存主线回到原文，PCIe/D2D 分支在对应协议基础具备后展开。所有实例仍保留在本目录一份技术稿中，不预建子目录。
+
+## 逐篇笔记与本方案的研究落点
+
+先查[模块资料索引](sources/README.md)了解每篇讲什么，再读对应详细笔记；笔记内保留原文链接、版本、阅读位置、机制及重要限制。本次仅补资料与修订规划，下面的论文轮次完成状态不变。
+
+| 微架构位置 | 对应轮次 | 可直接复用的技术笔记 | 本次补充的研究重点 |
+| --- | --- | --- | --- |
+| 内存接口、时钟与校准 | 第 1–3 轮 | [MEM1](../UMC/sources/MEM1-pg276-hbm-controller.md)、[MEM4](sources/MEM4-dfi-version-boundary.md)、[MEM5](sources/MEM5-ug586-phy.md)、[MEM15](sources/MEM15-pg150-dqs-gate.md) | 先数字/电气边界，再训练观测和配置；UG586 所读是 LPDDR2，PG150 是另一个实例。 |
+| 串行采样和协议训练 | 第 4 轮 PCIe 分支 | [MEM6](sources/MEM6-pcie-equalization.md)、[MEM7](sources/MEM7-versal-cdr-equalizer.md) | CDR、均衡、眼图测量位置与协议阶段完成分开，done 必须带当前状态语境。 |
+| D2D 与性能裕量 | 第 4–5 轮 | [R14](sources/R14-ucie-electrical-training.md)、[MEM8](sources/MEM8-ucie-official-qa.md)、[R10](../SWITCH/sources/R10-ucie-protocol-adapter.md)、[MEM11](../HBM/sources/MEM11-jedec-scope-gap.md) | lane/sideband 与协议重试分层；器件电气表未取得时不填写数值裕量或宣称合规。 |
+
 
 ## 范围、命名与上下游
 
@@ -35,7 +46,7 @@ flowchart TD
     I -.->|就绪或失败| C
 ```
 
-主线先解释初始化：控制端提供复位/时钟与配置，PHY 或约定的训练所有者执行初始化和采样校准，报告就绪或失败；UMC 在满足接口条件后才开放正常访问。这个分阶段模型可参考 [UG586 初始化](https://docs.amd.com/r/en-US/ug586_7Series_MIS/Memory-Initialization-and-Calibration-Sequence)，其 LPDDR2 具体训练阶段不能原样移植到 HBM。
+主线先解释初始化：控制端提供复位/时钟与配置，PHY 或约定的训练所有者执行初始化和采样校准，报告就绪或失败；UMC 在满足接口条件后才开放正常访问。这个分阶段模型可参考 [UG586 初始化](https://docs.amd.com/r/en-US/ug586_7Series_MIS/Memory-Initialization-and-Calibration-Sequence)，其 LPDDR2 具体训练阶段不能原样移植到 HBM。 技术笔记：[MEM5](sources/MEM5-ug586-phy.md)。
 
 一次写从 UMC 的命令与写数据交接开始，适配逻辑保持相位/延迟关系，将数据送入驱动，经封装连接抵达 HBM；接口有效窗口必须满足器件要求。一次读由 UMC 先发命令，HBM 在规定窗口输出数据，PHY 在接收时钟/选通信号约束下采样、对齐并返回数据及有效信息。训练就绪不是持续无误的证明；运行中变化、错误与重训必须有状态反馈。
 
@@ -45,12 +56,12 @@ PHY 正常运行的数据窗口通常受既定协议时序约束，不能把 fab
 
 | 架构位置与优先级 | 关键问题与资料 |
 | --- | --- |
-| 数字接口，核心 | 命令/写数据/读有效的延迟和时钟关系，配置、训练及低功耗谁拥有控制权？读 [PG276 PHY Only Mode](https://docs.amd.com/r/en-US/pg276-axi-hbm/PHY-Only-Mode) 与 [DFI 组织说明](https://ddr-phy.org/)；未取得目标接口规范时先列契约，勿臆造 DFI 信号。 |
-| 时钟、换宽和采样，核心 | 数字处理频率如何对应 I/O 传输节拍；相位/频偏/跨字节 skew 在哪里消化？读 [PG276 Clocking](https://docs.amd.com/r/en-US/pg276-axi-hbm/Clocking) 与 [UG586 PHY Architecture](https://docs.amd.com/r/en-US/ug586_7Series_MIS/Overall-PHY-Architecture)。明确同步分频与异步域不同。 |
-| 校准及生命周期，核心 | 初始窗口如何建立、校准结果存在哪里、失败何时阻止访问、重训是否影响存储内容？读 [UG586 Initialization](https://docs.amd.com/r/en-US/ug586_7Series_MIS/Memory-Initialization-and-Calibration-Sequence) 和 [DFI 5.0/6.0 公告](https://ddr-phy.org/)；只把它们当责任划分入口，HBM 专用训练仍待查。 |
-| 电气与封装预算，核心 | 抖动、skew、信道损耗、串扰、电源噪声与温度怎样缩小有效窗口？采用目标协议的 eye/timing mask、封装模型与 PVT 条件。 [AM002 RX Equalizer](https://docs.amd.com/r/en-US/am002-versal-gty-transceivers/RX-Equalizer-DFE-and-LPM)只支持串行损耗/均衡对照，不能替代 HBM 电气表。 |
-| PCIe 串行收发，条件相关 | 将采样恢复、均衡与上层训练交互分开；读 [AM002 RX CDR](https://docs.amd.com/r/en-US/am002-versal-gty-transceivers/RX-CDR) 与 [PG239 Equalization](https://docs.amd.com/r/en-US/pg239-pcie-phy/Equalization-Sequences)。解释数据通路和训练反馈的联系，避免只列模拟术语。 |
-| D2D 物理接口，条件相关 | mainband 与 sideband、logical/physical lane、训练/修复与封装通道预算分别在哪？读 [UCIe 1.0 Q&A](https://www.uciexpress.org/post/introduction-to-ucie-webinar-q-a-recap) 的 Physical Questions；完整规范另行定位，差错重传归属与适配器方案对齐。 |
+| 数字接口，核心 | 命令/写数据/读有效的延迟和时钟关系，配置、训练及低功耗谁拥有控制权？读 [PG276 PHY Only Mode](https://docs.amd.com/r/en-US/pg276-axi-hbm/PHY-Only-Mode) 与 [DFI 组织说明](https://ddr-phy.org/)；未取得目标接口规范时先列契约，勿臆造 DFI 信号。  技术笔记：[MEM1](../UMC/sources/MEM1-pg276-hbm-controller.md)、[MEM4](sources/MEM4-dfi-version-boundary.md)。 |
+| 时钟、换宽和采样，核心 | 数字处理频率如何对应 I/O 传输节拍；相位/频偏/跨字节 skew 在哪里消化？读 [PG276 Clocking](https://docs.amd.com/r/en-US/pg276-axi-hbm/Clocking) 与 [UG586 PHY Architecture](https://docs.amd.com/r/en-US/ug586_7Series_MIS/Overall-PHY-Architecture)。明确同步分频与异步域不同。  技术笔记：[MEM1](../UMC/sources/MEM1-pg276-hbm-controller.md)、[MEM5](sources/MEM5-ug586-phy.md)。 |
+| 校准及生命周期，核心 | 初始窗口如何建立、校准结果存在哪里、失败何时阻止访问、重训是否影响存储内容？读 [UG586 Initialization](https://docs.amd.com/r/en-US/ug586_7Series_MIS/Memory-Initialization-and-Calibration-Sequence) 和 [DFI 5.0/6.0 公告](https://ddr-phy.org/)；只把它们当责任划分入口，HBM 专用训练仍待查。  技术笔记：[MEM5](sources/MEM5-ug586-phy.md)、[MEM4](sources/MEM4-dfi-version-boundary.md)。 |
+| 电气与封装预算，核心 | 抖动、skew、信道损耗、串扰、电源噪声与温度怎样缩小有效窗口？采用目标协议的 eye/timing mask、封装模型与 PVT 条件。 [AM002 RX Equalizer](https://docs.amd.com/r/en-US/am002-versal-gty-transceivers/RX-Equalizer-DFE-and-LPM)只支持串行损耗/均衡对照，不能替代 HBM 电气表。  技术笔记：[MEM7](sources/MEM7-versal-cdr-equalizer.md)。 |
+| PCIe 串行收发，条件相关 | 将采样恢复、均衡与上层训练交互分开；读 [AM002 RX CDR](https://docs.amd.com/r/en-US/am002-versal-gty-transceivers/RX-CDR) 与 [PG239 Equalization](https://docs.amd.com/r/en-US/pg239-pcie-phy/Equalization-Sequences)。解释数据通路和训练反馈的联系，避免只列模拟术语。  技术笔记：[MEM7](sources/MEM7-versal-cdr-equalizer.md)、[MEM6](sources/MEM6-pcie-equalization.md)。 |
+| D2D 物理接口，条件相关 | mainband 与 sideband、logical/physical lane、训练/修复与封装通道预算分别在哪？读 [UCIe 1.0 Q&A](https://www.uciexpress.org/post/introduction-to-ucie-webinar-q-a-recap) 的 Physical Questions；完整规范另行定位，差错重传归属与适配器方案对齐。  技术笔记：[MEM8](sources/MEM8-ucie-official-qa.md)。 |
 | 可观察性与验证，核心；电路仿真扩展 | 如何区分锁定失败、训练失败、读采样错误、写路径错误和协议错误？先建立症状→测量点→候选原因，再按需要安排 eye scan/PRBS/loopback；工具存在与否由实例资料决定。 |
 
 ## 五轮实施方案
@@ -59,11 +70,11 @@ PHY 正常运行的数据窗口通常受既定协议时序约束，不能把 fab
 
 | 轮次与范围 | 前置、阅读位置与核心问题 | 文档产出与完成条件 |
 | --- | --- | --- |
-| 1：实例边界与端到端交接 | 前置 UMC 的发令与返回约定。读 [PG276 PHY Only Mode](https://docs.amd.com/r/en-US/pg276-axi-hbm/PHY-Only-Mode)、[Clocking](https://docs.amd.com/r/en-US/pg276-axi-hbm/Clocking) 和 MEM4。核对目标接口类型、版本及训练所有者。 | 一张实例范围表、内存 PHY 主图和读写流程。验收：数字接口与 DRAM 引脚协议区分，每条时钟标有来源/关系或明确未知。 |
-| 2：发送、接收与时序预算 | 前置为第 1 轮接口。读 [UG586 PHY Architecture](https://docs.amd.com/r/en-US/ug586_7Series_MIS/Overall-PHY-Architecture)，补目标 HBM datasheet 的 AC/DC 与 timing 章节（待查，见 MEM11）。研究换宽、有效窗口、采样对齐和跨域交接。 | 分解读写时序链及误差预算构成，不预设数值。验收：说明每项误差从哪里来、由谁补偿；芯片内部路径与封装路径能够对应。 |
-| 3：初始化、训练和运行期变化 | 前置为采样链。读 [UG586 Initialization](https://docs.amd.com/r/en-US/ug586_7Series_MIS/Memory-Initialization-and-Calibration-Sequence)，按目标补 HBM 训练、变频及低功耗文档。 | 形成初始化/就绪/运行/退出与恢复流程，标明 UMC 停流和存储内容保持要求。验收：成功与失败都能走完，不把一次校准成功当作所有 PVT 下成立。 |
-| 4：PCIe 与 D2D 的具体差异 | 前置对应 PCIe、SWITCH 方案中的协议/适配器边界。读 [PG239 Equalization](https://docs.amd.com/r/en-US/pg239-pcie-phy/Equalization-Sequences)、[AM002 CDR](https://docs.amd.com/r/en-US/am002-versal-gty-transceivers/RX-CDR)、[UCIe Q&A](https://www.uciexpress.org/post/introduction-to-ucie-webinar-q-a-recap)。 | 在同一稿内分别画需要的分支结构，比较时钟方式、lane 对齐、训练交互、错误责任。验收：不会把 HBM 当 PCIe SerDes，也不会把所有 D2D 视作同一物理链路。 |
-| 5：可观察性、性能与稿件整合 | 前置前三轮及适用分支。回读目标资料的调试章节；[AM002 RX Margin Analysis](https://docs.amd.com/r/en-US/am002-versal-gty-transceivers/RX-Margin-Analysis)仅登记为后续待读入口。 | 按故障症状选择测量点，解释 PHY 延迟/带宽预算与协议开销的关系；需要时提出最小验证。验收：每个结论有适用实例，调试不会混淆数字模型通过与实际信号裕量。 |
+| 1：实例边界与端到端交接 | 前置 UMC 的发令与返回约定。读 [PG276 PHY Only Mode](https://docs.amd.com/r/en-US/pg276-axi-hbm/PHY-Only-Mode)、[Clocking](https://docs.amd.com/r/en-US/pg276-axi-hbm/Clocking) 和 MEM4。核对目标接口类型、版本及训练所有者。 | 一张实例范围表、内存 PHY 主图和读写流程。验收：数字接口与 DRAM 引脚协议区分，每条时钟标有来源/关系或明确未知。  技术笔记：[MEM1](../UMC/sources/MEM1-pg276-hbm-controller.md)。 |
+| 2：发送、接收与时序预算 | 前置为第 1 轮接口。读 [UG586 PHY Architecture](https://docs.amd.com/r/en-US/ug586_7Series_MIS/Overall-PHY-Architecture)，补目标 HBM datasheet 的 AC/DC 与 timing 章节（待查，见 MEM11）。研究换宽、有效窗口、采样对齐和跨域交接。 | 分解读写时序链及误差预算构成，不预设数值。验收：说明每项误差从哪里来、由谁补偿；芯片内部路径与封装路径能够对应。  技术笔记：[MEM5](sources/MEM5-ug586-phy.md)。 |
+| 3：初始化、训练和运行期变化 | 前置为采样链。读 [UG586 Initialization](https://docs.amd.com/r/en-US/ug586_7Series_MIS/Memory-Initialization-and-Calibration-Sequence)，按目标补 HBM 训练、变频及低功耗文档。 | 形成初始化/就绪/运行/退出与恢复流程，标明 UMC 停流和存储内容保持要求。验收：成功与失败都能走完，不把一次校准成功当作所有 PVT 下成立。  技术笔记：[MEM5](sources/MEM5-ug586-phy.md)。 |
+| 4：PCIe 与 D2D 的具体差异 | 前置对应 PCIe、SWITCH 方案中的协议/适配器边界。读 [PG239 Equalization](https://docs.amd.com/r/en-US/pg239-pcie-phy/Equalization-Sequences)、[AM002 CDR](https://docs.amd.com/r/en-US/am002-versal-gty-transceivers/RX-CDR)、[UCIe Q&A](https://www.uciexpress.org/post/introduction-to-ucie-webinar-q-a-recap)。 | 在同一稿内分别画需要的分支结构，比较时钟方式、lane 对齐、训练交互、错误责任。验收：不会把 HBM 当 PCIe SerDes，也不会把所有 D2D 视作同一物理链路。  技术笔记：[MEM6](sources/MEM6-pcie-equalization.md)、[MEM7](sources/MEM7-versal-cdr-equalizer.md)、[MEM8](sources/MEM8-ucie-official-qa.md)。 |
+| 5：可观察性、性能与稿件整合 | 前置前三轮及适用分支。回读目标资料的调试章节；[AM002 RX Margin Analysis](https://docs.amd.com/r/en-US/am002-versal-gty-transceivers/RX-Margin-Analysis)已补读均衡后内部眼观测的介绍，扫描细节仍待查。 | 按故障症状选择测量点，解释 PHY 延迟/带宽预算与协议开销的关系；需要时提出最小验证。验收：每个结论有适用实例，调试不会混淆数字模型通过与实际信号裕量。  技术笔记：[MEM7](sources/MEM7-versal-cdr-equalizer.md)。 |
 
 ## 待确认与完成边界
 

@@ -16,6 +16,10 @@ CF 与 DF 分开管理；CF、SMN、anshi 的 CANE 不自动等同。不同代�
 
 ## 资料集与接续
 
-资料集入口：[本模块来源主条目](../sources.md#fab4)；[资料集总入口](../sources.md)。覆盖本方案使用的公开材料与既有来源；建议阅读顺序：L1/L2 已存摘要 → P6 的 R7/R8 → FAB4。内容简介、版本及已读范围集中维护在资料集中。
+资料入口：[本模块逐篇索引](sources/README.md)；[全局编号与阅读状态](../sources.md)。每篇索引说明讲什么、何时值得读，链接详细技术笔记和原文；跨模块来源只有一份主笔记。
 
-后续 Codex 先读本入口及已有方案/整体架构，再浏览相关资料简介，按需阅读原文。这里保留位置与阅读顺序，简介在资料集中维护；若后续建立或移动模块资料集，同步更新本节和总索引。具体方法见 [研究范本](../chip-study-plan.md)。
+优先阅读：[L1](../SDMA/sources/L1-external-glossary-scope.md) → [L2](../SDMA/sources/L2-external-shaobo-scope.md) → [IO10](sources/IO10-gfx90-register-control.md) → [MG4](../SMN/sources/MG4-smn-indirect-access.md)。覆盖：命令身份与端点访问；接纳、排序和完成；共享状态与异常退出。
+
+后续 Codex 先读本模块上下文和 research-plan.md 的整体架构，再按问题选择笔记。笔记保留版本、机制、重要细节、实际阅读范围及证据边界；精确字段、新版本或未读部分再回原资料。补充资料时同步索引、主笔记与受影响方案，不在上下文复制整份资料集。
+
+本次资料扩充完成，不计为新的论文轮次；论文的下一项仍按上文实际进度执行。方法见[研究范本 v1.3](../chip-study-plan.md)。
