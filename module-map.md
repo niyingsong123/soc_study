@@ -28,7 +28,7 @@
 | UTCL1 | [UTCL1](UTCL1/README.md) | 一级翻译；TBE 实例属于 SDMA.TBE |
 | EA | [EA](EA/README.md) | 仲裁主题；不直接等同于目标设计的 GCEA |
 | NBIF | [NBIF](NBIF/README.md) | 不自动改名 NBIO |
-| 芯片互联（switch） | [SWITCH](SWITCH/README.md) | 尚未确认是片内、跨 die 或 PCIe switch |
+| 芯片互联（switch） | [SWITCH](SWITCH/README.md) | 本次学习主线为片内 NoC/D2D；目标拓扑、协议与归属仍待确认，板级 PCIe switch 不在当前正文范围 |
 | UMC | [UMC](UMC/README.md) | 控制器 |
 | HBM | [HBM](HBM/README.md) | 存储器，不是 UMC 内部子模块 |
 | PCIE / PCIe | [PCIE](PCIE/README.md) | 目录大写，正文通常写 PCIe |

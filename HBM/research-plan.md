@@ -1,0 +1,68 @@
+# HBM 微架构研究与论文规划
+
+依据范本 v1.2；方案 v1.0，2026-09-24。当前完成规划与相关资料初读，**论文轮次尚未开始**。下一步执行第 1 轮：选择一个明确代际的器件参考，建立逻辑存储层级与物理堆叠两种视图。
+
+资料集：[MEM1、MEM2、MEM9–MEM11](../sources.md#mem9)。接续先读 [UMC 方案](../UMC/research-plan.md) 的命令/维护约定和 [PHY 方案](../PHY/research-plan.md) 的采样/就绪约定，再浏览来源简介。后续在本目录集中维护一份技术稿；规范或数据手册拿到后先更新资料集的版本与阅读范围。
+
+## 研究对象、行业入口与最小前置
+
+HBM 是 High Bandwidth Memory，属于 stacked DRAM / 3D-stacked memory；stack/cube、channel、pseudo-channel、bank、row buffer、TSV 是不同层面的研究入口，不是同义词。HBM2、HBM2E、HBM3、HBM3E 等必须注明代际及产品来源，不能将一代参数填入另一代的图。
+
+代表性请求路径为上游 UMC 发命令，经内存 PHY 到 HBM 的通道与存储阵列，再由读路径反向返回；HBM 是这条支路的目标端。它与 UMC 是接口关系，不归为 UMC 内部逻辑；芯片侧 PHY 与 HBM 器件侧 I/O 也须分清。HBM 内部同样按命令接收→资源选择→阵列访问→数据返回展开研究，不把其硬套成 packet router。
+
+UMC 第 1 轮可先从本方案借用最小前置：bank 中开放行决定访问状态，读写列操作依赖相应行准备，切换行及刷新占用时间。HBM 全部研究仍排在内存 PHY 之后。主线选有较完整公开技术说明的 PG276 HBM2 接口实例，后续以实际目标代际替换；不据此宣称 AMD GPU 使用相同器件、控制器数或地址映射。
+
+## 结构骨架与一次读写
+
+下图表示单个相关访问域的**逻辑功能参考视图**，不是 die/TSV 的物理连线。channel、pseudo-channel、bank 的数量及共享资源以所选器件为准；另画物理 stack 图时必须区分封装连接、base/interface die、DRAM dies 与 TSV，不能把逻辑 channel 数等同堆叠层数。
+
+```mermaid
+flowchart TD
+    P[芯片侧内存 PHY] -->|命令 地址 写数据| I[HBM 器件 I/O]
+    I --> C[通道命令与地址处理]
+    C --> B[目标 bank 控制]
+    B --> A[存储阵列与行访问]
+    A --> R[感放及开放行数据]
+    R --> D[列选择与数据通路]
+    D -->|读数据| I
+    I -->|采样返回| P
+    I -->|写数据| D
+    D -->|写入| R
+    R --> A
+    C -.->|刷新或维护| A
+```
+
+一次读开始时，UMC 已选出符合器件状态/时序要求的命令。若 bank 无所需开放行，先完成必要的 PRE/ACT；行数据经感放建立可访问状态，RD 选择列并按 burst 送出数据，PHY 采样后交回 UMC。访问同 bank 的另一行需要转换行状态，访问不同 bank 也可能共享命令或数据资源，因此“很多 bank”并不自动意味着完全并行。
+
+一次写以同样的行准备为前提，WR 及关联数据通过 I/O/列路径进入选定行，再按器件要求完成写恢复和后续状态转换。HBM 接收到命令不能被当作 GPU 写请求已完成：事务响应/排序由 UMC 和上游协议解释。器件刷新或 self-refresh 改变可访问窗口，UMC 的维护安排与器件实际执行共同闭环；错误检测和上报也要分别核实器件、接口及控制器的责任。
+
+## 子模块与 feature 研究重点
+
+| 位置与优先级 | 要建立的认识与就近资料 |
+| --- | --- |
+| 封装与逻辑层级，核心 | 为什么 stack、channel、pseudo-channel、bank、die 不可互换计数？读 [PG276 Topology](https://docs.amd.com/r/en-US/pg276-axi-hbm/HBM-Topology) 与 [Micron HBM3E FAQ](https://www.micron.com/products/memory/hbm/hbm3e) 的组织条目。物理 die 映射需目标器件手册，不由容量反推。 |
+| 通道与共享接口，核心 | 哪些命令/数据资源独立，哪些在 pseudo-channel 间共享？访问粒度、burst 与上游请求粒度怎样对应？读 [PG276 Topology](https://docs.amd.com/r/en-US/pg276-axi-hbm/HBM-Topology) 的共享 CAC 与 pseudo-channel 讨论；仅用于该 HBM2 实例。 |
+| bank、开放行及命令，核心 | 从 bank 状态解释 ACT/PRE/RD/WR 的前置，区分行命中、行冲突与 bank 并行。读 [PG276 Address Map](https://docs.amd.com/r/en-US/pg276-axi-hbm/HBM-Address-Map-and-Protocol-Considerations)；[Ramulator II-B](https://arxiv.org/html/2308.11030v2#S2.SS2)作为状态/时序约束的表达方法，非规范。 |
+| 刷新和内容保持，核心 | 普通刷新、self-refresh、温度条件对可访问资源及恢复等待有何影响？读 [PG276 Refresh/Power](https://docs.amd.com/r/en-US/pg276-axi-hbm/Reorder-Refresh-and-Power-Savings-Options-Tab)，再核目标 [JEDEC/器件文档](https://www.jedec.org/standards-documents/docs/jesd238)（全文待查）。不把控制器 GUI 选项当器件命令完整定义。 |
+| 器件 RAS，核心边界；具体机制条件相关 | on-die ECC、接口 parity、控制器 ECC、scrub/repair 各保护何处、向外可见什么？[Samsung HBM3](https://semiconductor.samsung.com/dram/hbm/hbm3/)的 ODECC 概述只用于提出核验问题，不能据其宣传文字确定码字、所有错误覆盖或上报语义。 |
+| 带宽、容量与功耗，核心 | 区分 pin rate、总 I/O 宽度、有效数据量与端到端带宽，解释命令资源、行冲突、刷新和温度引起的限制。读 [PG276 Raw Throughput](https://docs.amd.com/r/en-US/pg276-axi-hbm/Raw-Throughput-Evaluation)（详细计算待第 4 轮读）与 Micron FAQ；厂商峰值不是目标系统实测。 |
+| 新代际与高级可靠性，条件相关/扩展 | 只在目标确实需要时研究 HBM4、repair、ECS、RFM/扰动防护及更复杂封装。先核命令与可见接口，避免由其他 DRAM 标准同名 feature 推断 HBM 必然支持。 |
+
+## 四轮实施方案
+
+HBM 四轮围绕“组织—访问—维护可靠性—系统解释”，保留器件层特色。无需另设大量调度轮次，UMC 计划覆盖的调度策略在这里仅引用其对器件流量的影响。
+
+| 轮次与范围 | 前置、阅读位置与关键问题 | 文档产出与完成条件 |
+| --- | --- | --- |
+| 1：代际、组织与接口地图 | 前置为 UMC/PHY 输入输出约定。读 [PG276 Topology](https://docs.amd.com/r/en-US/pg276-axi-hbm/HBM-Topology)、[Address Map 的物理地址表](https://docs.amd.com/r/en-US/pg276-axi-hbm/HBM-Address-Map-and-Protocol-Considerations) 和 [Micron FAQ](https://www.micron.com/products/memory/hbm/hbm3e)；确认采用哪代参考，核对单位。 | 形成逻辑组织图、物理堆叠示意与共享资源表。验收：channel/PC/bank/die/stack 能分别解释；跨代数字和目标未知参数没有混入同一结构。 |
+| 2：bank 工作过程与命令约束 | 前置为第 1 轮组织。读 PG276 Address Map 的开放行及 bank-group 讨论、[Ramulator II-B](https://arxiv.org/html/2308.11030v2#S2.SS2)；获取目标标准/器件命令时序表后核对（MEM11 待查）。 | 写读、写、行冲突和跨 bank 访问的状态/时间线，解释约束对应哪项资源。验收：能区分逻辑命令先后与精确计时参数；无原文的数字继续留空。 |
+| 3：刷新、低功耗与错误边界 | 前置为第 2 轮正常访问。读 [PG276 Refresh/Power](https://docs.amd.com/r/en-US/pg276-axi-hbm/Reorder-Refresh-and-Power-Savings-Options-Tab)、[Error Protection](https://docs.amd.com/r/en-US/pg276-axi-hbm/Data-Path-Error-Protection) 与 Samsung 产品页的数据手册入口。重点核验 refresh、自刷新、ODECC 与外部错误上报。 | 将暂停与恢复加入访问模型，形成器件/PHY/UMC 的保护职责表。验收：说明内容保持和访问恢复条件，不承诺未证实的纠错覆盖；repair 等只按实际资料展开。 |
+| 4：代际差异、资源瓶颈与论文收束 | 前置前三轮及 UMC/PHY 对应章节。读 [PG276 Raw Throughput](https://docs.amd.com/r/en-US/pg276-axi-hbm/Raw-Throughput-Evaluation) 和所选器件速度/容量表，复用 UMC 性能解释。 | 用连续、跨行、随机以及多通道不均衡场景解释有效带宽，建立带条件的代际差异表，回修整体图。验收：每项损失能落在命令、阵列、I/O 或维护资源上；不会只用 pin rate 宣称应用加速比。 |
+
+## 未决项、来源限制与接续
+
+首先确认目标 HBM 代际、厂商/料号、stack 数、容量和控制器/PHY 映射；之后确认通道共享范围、bank 组织、burst/访问粒度、训练及刷新条件、错误上报与纠错保护域。公开 PG276 的 Topology 段有容量单位混写，后续必须与 Address Map 表及具体料号交叉核对，不能机械抄写。
+
+本次已读厂商技术指南的相关正文，**没有读到 JEDEC JESD235/JESD238 全文或具体 HBM 料号完整数据手册**。JEDEC 页面不可访问、Micron Product Brief 获取被拒绝、Samsung 说明详细手册需索取，均已记入资料集。正式撰写精确命令/时序、电气与 RAS 细节时补足合法可用的一手材料；当前保留机制问题和获取入口，不凭产品概述补齐规范。
+
+第 1 轮可先完成明确标注的 HBM2 公开参考，待目标证据到来替换差异。完成本模块后，先检查 UMC/PHY/HBM 三份方案接口用词是否一致；深入研究整个 SoC 内存路径是否值得另设专题，留到全部模块规划完成后再决定。
