@@ -40,3 +40,7 @@
 资料笔记与索引已建立；2026-09-25 已执行一轮审计补齐，先查[逐项结果与剩余受限项](../source-reading-audit.md)，再读本模块索引。不能以文件数视为深度验收。资料整理不计为新的论文轮次，论文接续在用户明确要求后按上文执行。方法见[研究范本 v1.4](../chip-study-plan.md)。
 
 本次补读入口（2026-09-25）：[C01](sources/C01-mm-utcl2-testbench.md)、[VM5](sources/VM5-mask-paper.md)、[VM10](sources/VM10-iommu-spec.md)。C01 第 4 页补出 lane/client 扩张及内部 UTCL1 sideband；MASK 补定量控制与基线；IOMMU 补 nested walk、PPR 身份/队列/完成。按结构定位资源，保留 C01/C05 版本差异。
+
+## HBM 地址映射专题接续（U24）
+
+[专题方案与逐层分工](../HBM/address-interleaving-plan.md) · [本模块具体落点](research-plan.md#u24请求地址到-hbm-bank-的跨模块落点)。给出本次访问的翻译链、输出地址空间和属性，界定 GPUVM/IOMMU 分支；向后续 interleave 研究交接明确的地址语义。翻译服务与业务数据路径分别画图。 先读取现有资料索引，专题例子跨模块共用，实际连接与参数保留证据边界。

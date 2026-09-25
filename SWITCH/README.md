@@ -36,3 +36,7 @@
 资料笔记与索引已建立；2026-09-25 已执行一轮审计补齐，先查[逐项结果与剩余受限项](../source-reading-audit.md)，再读本模块索引。不能以文件数视为深度验收。资料整理不计为新的论文轮次，论文接续在用户明确要求后按上文执行。方法见[研究范本 v1.4](../chip-study-plan.md)。
 
 本次补读入口（2026-09-25）：[R1](sources/R1-pipelined-router-delay.md)、[R8](sources/R8-axi-ordering-contract.md)、[R13](sources/R13-channel-dependency-scope.md)、[R23](sources/R23-chi-ea-protocol.md)。模型公式/实验条件、burst 与错误收尾、CDG 前提、CHI 事务/两类 credit 和链路收敛已补。协议依赖与路由依赖分别分析；R9/R12 不再承担正式 CHI 规则来源。
+
+## HBM 地址映射专题接续（U24）
+
+[专题方案与逐层分工](../HBM/address-interleaving-plan.md) · [本模块具体落点](research-plan.md#u24请求地址到-hbm-bank-的跨模块落点)。将地址/目标 ID 进入 NI、下一跳路由、包拆分和返回重排分开；明确谁已经决定 HBM 归属，谁只负责输运。网络分包不自动等于内存子请求拆分，协议完成也不等于 DRAM 写完成。 先读取现有资料索引，专题例子跨模块共用，实际连接与参数保留证据边界。

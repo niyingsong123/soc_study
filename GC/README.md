@@ -29,3 +29,7 @@ RLC：公开 AMDGPU 资料明确列为 GC 内部微控制器 [P2]。
 资料笔记与索引已建立；2026-09-25 已执行一轮审计补齐，先查[逐项结果与剩余受限项](../source-reading-audit.md)，再读本模块索引。不能以文件数视为深度验收。资料整理不计为新的论文轮次，论文接续在用户明确要求后按上文执行。方法见[研究范本 v1.4](../chip-study-plan.md)。
 
 本次补读入口（2026-09-25）：[R23](../SWITCH/sources/R23-chi-ea-protocol.md)。比较缓存状态、所有权、写回责任和 CompAck 的行业语义；SC 不等于主存必定最新。仍仅研究 GL2/GRBM/RLC，目标协议需 AMD 证据。
+
+## HBM 地址映射专题接续（U24）
+
+[专题方案与逐层分工](../HBM/address-interleaving-plan.md) · [本模块具体落点](research-plan.md#u24请求地址到-hbm-bank-的跨模块落点)。从 GL2 的实际输入与下游请求粒度出发，分清 cache slice/set/bank 与 HBM bank；核对 cache 命中、旁路/写回、请求合并拆分及进入内存侧的地址。继续只研究 GL2、GRBM、RLC，源端其他引擎只作接口边界。 先读取现有资料索引，专题例子跨模块共用，实际连接与参数保留证据边界。

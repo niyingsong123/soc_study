@@ -87,3 +87,9 @@ flowchart TD
 ## 2026-09-25 资料补齐对本方案的影响
 
 第 3 轮及第 4–6 轮优先复用 [R1](sources/R1-pipelined-router-delay.md)、[R8](sources/R8-axi-ordering-contract.md)、[R13](sources/R13-channel-dependency-scope.md)、[R23](sources/R23-chi-ea-protocol.md)。模型公式/实验条件、burst 与错误收尾、CDG 前提、CHI 事务/两类 credit 和链路收敛已补。协议依赖与路由依赖分别分析；R9/R12 不再承担正式 CHI 规则来源。 本次仅更新依据和研究落点，不把任何待执行论文轮次改为完成。
+
+## U24：请求地址到 HBM bank 的跨模块落点
+
+接入轮次：第 3 轮；跨 die 时联读第 4 轮。将地址/目标 ID 进入 NI、下一跳路由、包拆分和返回重排分开；明确谁已经决定 HBM 归属，谁只负责输运。网络分包不自动等于内存子请求拆分，协议完成也不等于 DRAM 写完成。
+
+执行 [跨模块专题方案](../HBM/address-interleaving-plan.md)，将本模块的输入地址、配置/映射、输出目标与局部地址、子请求范围、返回关联填入同一组例子，结论写回本模块论文。先做资源/路径，再做映射、拆分返回和应用；不等所有模块论文完成，不将本次规划更新计为已完成研究轮次。

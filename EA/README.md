@@ -25,3 +25,7 @@ MI200 文档使用 Efficiency Arbiter [P5]；gfx115x 文档另有 GCEA（Graphic
 资料笔记与索引已建立；2026-09-25 已执行一轮审计补齐，先查[逐项结果与剩余受限项](../source-reading-audit.md)，再读本模块索引。不能以文件数视为深度验收。资料整理不计为新的论文轮次，论文接续在用户明确要求后按上文执行。方法见[研究范本 v1.4](../chip-study-plan.md)。
 
 本次补读入口（2026-09-25）：[VM5](../UTCL2/sources/VM5-mask-paper.md)、[R8](../SWITCH/sources/R8-axi-ordering-contract.md)。用 MASK 的翻译阻塞权重和 DRAM 预算研究优先级传播，保留工作负载/公平性边界；接口侧 burst、错误完成和 exclusive 例外已补，不能靠仲裁选中等同真正完成。
+
+## HBM 地址映射专题接续（U24）
+
+[专题方案与逐层分工](../HBM/address-interleaving-plan.md) · [本模块具体落点](research-plan.md#u24请求地址到-hbm-bank-的跨模块落点)。核对已选目标或地址如何进入队列、仲裁和下发；查清内部 bank/group、端口和 HBM 资源之间是否有映射；跟踪多目标反压及返回资源，不能由仲裁器名称推定地址 hash。 先读取现有资料索引，专题例子跨模块共用，实际连接与参数保留证据边界。

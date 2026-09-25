@@ -37,3 +37,7 @@ UTCL1/UTCL2 公共主题独立管理，各实例是否属于某 hub 需框图。
 资料笔记与索引已建立；2026-09-25 已执行一轮审计补齐，先查[逐项结果与剩余受限项](../source-reading-audit.md)，再读本模块索引。不能以文件数视为深度验收。资料整理不计为新的论文轮次，论文接续在用户明确要求后按上文执行。方法见[研究范本 v1.4](../chip-study-plan.md)。
 
 本次补读入口（2026-09-25）：[C01](../UTCL2/sources/C01-mm-utcl2-testbench.md)。BOWEN 双 MMHUB 总图已补读，新增 lane 带来 UTCL2 client 扩张；数据 lane 与端点内 UTCL1 sideband 分开画，图中删除线方案不能当成定案。
+
+## HBM 地址映射专题接续（U24）
+
+[专题方案与逐层分工](../HBM/address-interleaving-plan.md) · [本模块具体落点](research-plan.md#u24请求地址到-hbm-bank-的跨模块落点)。核对 aperture/base、地址空间与下游目标字段，以及 DAGB 等命令/数据配对和拆分边界；不同客户端单列路径。内部存储 bank/group 与 HBM bank 的关系需证据，不根据同名直接对应。 先读取现有资料索引，专题例子跨模块共用，实际连接与参数保留证据边界。

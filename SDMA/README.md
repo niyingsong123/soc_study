@@ -36,3 +36,7 @@ FE（Front End）、BE（Back End）、TBE（Tile Back End）属于 SDMA 研究�
 资料笔记与索引已建立；2026-09-25 已执行一轮审计补齐，先查[逐项结果与剩余受限项](../source-reading-audit.md)，再读本模块索引。不能以文件数视为深度验收。资料整理不计为新的论文轮次，论文接续在用户明确要求后按上文执行。方法见[研究范本 v1.4](../chip-study-plan.md)。
 
 本次补读入口（2026-09-25）：[L1](sources/L1-external-glossary-scope.md)、[L2](sources/L2-external-shaobo-scope.md)、[L3](sources/L3-external-open-questions.md)。三项外部资料本次未挂载，已记录本地只读接续方式与回写范围。公开 SD1/SD2 及 C01 新页只作对照，不能替代目标原文。
+
+## HBM 地址映射专题接续（U24）
+
+[专题方案与逐层分工](../HBM/address-interleaving-plan.md) · [本模块具体落点](research-plan.md#u24请求地址到-hbm-bank-的跨模块落点)。记录搬运命令与源/目的访问的粒度、地址类型、子请求范围和返回/完成关联；将跨页与跨 interleave 边界分开核对。内部拆分实现只在外部项目只读研究，本仓库仅回写系统接口结论。 先读取现有资料索引，专题例子跨模块共用，实际连接与参数保留证据边界。
