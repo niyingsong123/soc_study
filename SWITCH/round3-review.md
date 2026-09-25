@@ -1,6 +1,6 @@
 # SWITCH Round 3: NI Contract and Resource Review
 
-Date: 2026-09-25. Scope: the v2.3 revision of [the existing guide](../switch/switch_detailed_guide.md), authorized by U35. This is a review and handoff record, not a second technical paper or a new external-source note.
+Date: 2026-09-25. Scope: the v2.3 revision of [the existing guide](../SWITCH/switch_detailed_guide.md), authorized by U35. This is a review and handoff record, not a second technical paper or a new external-source note.
 
 ## Baseline and evidence
 
@@ -77,4 +77,4 @@ The final workspace check covered 15 documents, 563 local links and 36 heading a
 
 Sections 7–10 and 12 (Router mechanisms) and section 14 (the existing D2D baseline) matched the pre-edit workspace snapshot after line-ending normalization. SHA-256 checks of the Router script and saved result file also matched their pre-edit workspace hashes. These preservation checks are separate from executing the model.
 
-Completion state is recorded in [RESEARCH_PROGRESS.md](../switch/RESEARCH_PROGRESS.md). The next research task is round 4: compose the now-explicit NI, target, Router and consumer resources into an end-to-end dependency analysis and a defined drain/reset/epoch recovery contract.
+Completion state is recorded in [RESEARCH_PROGRESS.md](../SWITCH/RESEARCH_PROGRESS.md). The next research task is round 4: compose the now-explicit NI, target, Router and consumer resources into an end-to-end dependency analysis and a defined drain/reset/epoch recovery contract.

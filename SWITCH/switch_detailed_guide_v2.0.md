@@ -1588,7 +1588,7 @@ tail departure latches old routing metadata before local state reuse
 仓库附带 `examples/reference_checks.py`，只依赖 Python 标准库。它是本文原创参考算法检查，不是下载某个 simulator 后宣称完成整网验证。
 
 ```bash
-python3 switch/examples/reference_checks.py
+python3 SWITCH/examples/reference_checks.py
 ```
 
 本次本地运行通过九个测试组：包头位域无重叠且可往返编码；RR 轮转；10,000 组随机 SA 匹配约束；非最大匹配反例；100 个随机种子、每个 2,000 拍加 drain 的 credit 守恒；credit 与 ownership 分离；4×4 XY 依赖图；NoC/端到端预算算式；CRC32C、重复/缺失/回绕/epoch 检查。

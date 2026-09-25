@@ -58,7 +58,7 @@ U32 对照 v2.2、资料笔记和模型覆盖范围重新分工；U35 后的当�
 ## 可复现检查
 
 ```bash
-python3 switch/examples/router_round2.py --report /tmp/round2_results.json
+python3 SWITCH/examples/router_round2.py --report /tmp/round2_results.json
 ```
 
 代码：[router_round2.py](examples/router_round2.py)。第二轮已保存结果：[round2_results.json](examples/round2_results.json)。仅使用 Python 标准库；没有依赖本地芯片资料、gem5 安装或闭源 IP。

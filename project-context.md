@@ -19,8 +19,8 @@
 | 当前阶段 | 18 个模块方案及 SDMA 接口方案已形成；2026-09-25 按审计补读、加深笔记并同步索引/方案，目前 103 篇主笔记、19 个模块索引。已关闭项和真实剩余项见[补齐报告](source-reading-audit.md)；规划/资料进度不计为正式论文轮次 |
 | 资料集入口 | [sources.md](sources.md) 管理全局编号与模块入口；每个模块 `sources/README.md` 说明每篇讲什么、何时读，并链接详细主笔记和原文。后续 Codex 必须先看模块结构与索引，再读相关笔记；完整机制不复制进上下文，跨模块链接复用 [U19–U21] |
 | 研究顺序 | 采用 [研究路线图](research-roadmap.md) 的场景与分支顺序：源端/GC、翻译、hub/仲裁、fabric、内存下游，再安排主机、命令、管理和事件支路。先读所需接口契约，不强制相邻模块整篇论文先完成；目标完整硬件连接仍待核实 [U17、U18] |
-| SWITCH 实际进度 | 第一、二轮已完成，原第三至第六轮未完成；准确状态和下一轮入口见 [研究进度](switch/RESEARCH_PROGRESS.md)。已保存 [修订方案](SWITCH/research-plan.md)：后续按 NI 契约、D2D 交接、性能与有前置的系统复审推进；旧两轮及模型结果保留，规划修订不计作第 3 轮 |
-| 当前指定任务与默认项 | SWITCH 既有中文详细稿已重写并审核为 v2.2，采用需求→功能→上下游及整体微架构→接口与完整过程→核心机制的顺序；不算第 3 轮。本次未另行复查六轮安排，后续轮次仍按既有方案接续。只有未指定模块且明确启动新的模块论文时才默认 GC 第 1 轮。按具体问题复用资料并查[补齐报告](source-reading-audit.md)的相关缺口，不从零重读全部来源 |
+| SWITCH 实际进度 | 第 1–3 轮已完成。U35 已将 NI transaction contract 原位融入[详细稿 v2.3](SWITCH/switch_detailed_guide.md)，并完成逐事件审查、资源台账和 byte coverage 算术校验；本轮未新增 NI 仿真。[方案 v2.1](SWITCH/research-plan.md)的第 4–6 轮仍待执行，依次深化片内 progress/恢复、D2D、性能与模块收尾。完整系统复审进入跨模块阶段；v2.2 重整和规划不计额外轮次。准确状态见[研究进度](SWITCH/RESEARCH_PROGRESS.md) |
+| 当前指定任务与默认项 | SWITCH 本地 v2.3 及第三轮记录已同步，后续从第 4 轮接续。仅在未指定模块且明确启动新模块论文时默认 GC 第 1 轮；实际状态见本模块进度页。 |
 | 模块与目录边界 | 当前 19 个顶层学习模块见 [module-map.md](module-map.md)。GC 只覆盖 GL2、GRBM、RLC；HUBS 按学习分组理解。目录归档不直接代表 RTL 层级 |
 | SDMA 边界 | 本仓库只维护外部入口和 SoC 联系，详细研究继续在独立 SDMA 项目；相关文件与原件限制见下文 |
 | 模块之间的研究 | 一次集中研究一个模块，只读取必要外部接口；在模块内保存跨模块问题及其依赖、假设和影响。相关模块形成必要详细结论后，再集中研究 HBM 地址主线及有价值的搬运、维护、恢复联系；必要接口疑点当下核实，不等待全部论文完成，不另起重复论文 |
@@ -39,7 +39,7 @@
 - 做技术一致性与读者理解两种审核；图、术语、接口和完成语义应能互相对应。文字重排不默认新建测试或重跑全部模型，机制变化产生具体风险时再验证。
 - 一次聚焦一个模块，选择性读取其资料与必要外部接口，将结论及具体跨模块问题写回模块。相关模块基础具备后再做完整关联研究；资料集仍从模块 `sources/README.md` 进入，按索引选读主笔记与原文。
 
-SWITCH 最新指定的中文详细稿重写已完成为 [v2.2](switch/switch_detailed_guide.md)：旧 49 章按理解顺序整合为 17 节及两份附录，已补上下游/接口定位、贯穿读写过程，并保留核心机制、关键未知与就近可选问题。已核查必要协议/代码依据并同步章节定位与入口；本次没有另行复查六轮安排，没有改变模型或重新运行历史测试。可核实的完成点与下一步维护于[重写任务接续记录](switch/RESEARCH_PROGRESS.md#当前重写任务的接续点2026-09-25)；第 1、2 轮完成，第 3–6 轮未完成。后续遇到异常或中断时保存最后完整步骤和接续记录，不把已停止任务描述成后台运行。其他模块接续时直接采用当前范本，不因旧方案引用 v1.3/v1.4 而沿用已被更新的写法。
+SWITCH 中文详细稿已按 U35 完成第三轮为 [v2.3](SWITCH/switch_detailed_guide.md)：沿用 v2.2 的 17 节和两份附录，原位深化 NI admission、AW/W 关联、有限 outstanding、ordering、response reservation 与 retire，并联动整体架构、256 B 读写过程、地址/完成责任和教学参数。两源、快慢两目标贯穿全文；同源同 ID 同方向在上游 retire 前只允许一笔在途。19 个契约场景经逐事件审查，12 行资源台账、32 组 byte coverage 和 6 个输入边界算例完成算术校验；[核查记录](SWITCH/round3-review.md)明确这些证据不等于 NI 仿真或全局 progress 证明。前两轮 Router 模型及历史结果保留，未修改或重跑。v2.2 重整的历史完成点仍见[重写记录](SWITCH/RESEARCH_PROGRESS.md#当前重写任务的接续点2026-09-25)。实际第 1–3 轮完成，第 4–6 轮按[方案 v2.1](SWITCH/research-plan.md)继续深化片内 progress/恢复、D2D、性能与模块收尾；完整 SDMA 系统复审留在跨模块阶段，必要接口及时核实。后续中断时保存最后完整步骤和接续记录，其他模块接续时遵守当前范本。
 
 ## 项目边界
 
@@ -57,7 +57,7 @@ GitHub 中的模块入口、技术笔记和上下文文档可以直接阅读；�
 
 ## 已确定的目录与命名决策
 
-当前维持 19 个顶层学习模块的映射，不自行增加实际芯片子模块；所有名称的对应位置见 [完整映射](module-map.md)。用户另指定的公开研究正文位于小写 `switch/`，大写 `SWITCH/` 保留模块入口；本次不移动或合并目录。
+当前维持 19 个顶层学习模块的映射，不自行增加实际芯片子模块；所有名称的对应位置见 [完整映射](module-map.md)。用户于 2026-09-25 要求将研究正文、模型与模块资料统一到大写 `SWITCH/`；按原小写路径的提交顺序重放历史，再同步本地最新内容。旧目录分开维护的约定已被本次授权覆盖，见[迁移记录](switch-path-migration.md)。
 
 | 决策 | 含义与依据 |
 | --- | --- |
@@ -96,7 +96,7 @@ CF 当前按 shaobo 资料中的 Command Fabric 理解；CF、SMN 与 anshi 的 
 | 五份 PPTX/PDF 原件 | 只保存在本地 `original_file/`，不进入 Git 历史或上传内容 |
 | 转换报告与哈希清单 | [历史转换报告](conversion-report.md) 和 [历史清单](source-manifest.json) 保留当时记录，不能作为当前正文存在或可重新通过全文校验的证明 |
 | 外部附件 | C01 第 6 页提到的 `code_coverage_improve.xlsx` 未提供 |
-| Switch 公开研究 | [详细稿](switch/switch_detailed_guide.md)、[简化版](switch/switch_quick_guide.md)、[研究进度](switch/RESEARCH_PROGRESS.md)与教学检查脚本；第一、二轮完成，三至六轮尚未完成 |
+| Switch 公开研究 | [详细稿 v2.3](SWITCH/switch_detailed_guide.md)、[简化版](SWITCH/switch_quick_guide.md)、[研究进度](SWITCH/RESEARCH_PROGRESS.md)与教学检查脚本；第 1–3 轮完成，第 4–6 轮待执行；第三轮为文档契约审查与算术校验，脚本/结果仍属第二轮历史证据 |
 
 当前 [UTCL2 资料入口](UTCL2/README.md) 和 [HUBS 资料入口](HUBS/README.md) 仅提供保留的技术笔记及图像移除状态，不再链接原图；五份资料的原名、预期 Markdown 路径和页数见 [来源登记](sources.md)。
 
@@ -122,7 +122,7 @@ U24 补充（2026-09-25）：**HBM 的 stack/channel/PC/BG/bank/row/column 划�
 
 - [UTCL2 索引](UTCL2/sources/README.md)：C02 回填条件、C03 双路径、C04 预取及地址算例纠错；C01/C05 VM 类型标签差异按原版本并列，不混合。
 - [EA](EA/sources/README.md) 与 [HUBS](HUBS/sources/README.md)：C05 提供 shared command/data memory、list manager、bank/group、多类 credit 和 DAGB 配对的参考结构；不能仅研究抽象仲裁器。
-- [SWITCH](SWITCH/sources/README.md)：规范/模型/教程分类已核对；FlooNoC 当前提交与 2024 论文存在差异。后续仍从第 3 轮开始。
+- [SWITCH](SWITCH/sources/README.md)：第三轮已补读 R7/R8 并明确 R22 的终点存储比较范围；规范、模型与教学基线分开，FlooNoC 当前提交与 2024 论文存在差异。后续从第 4 轮片内 progress/恢复开始。
 - [UMC](UMC/sources/README.md)、[PHY](PHY/sources/README.md)、[HBM](HBM/sources/README.md)：控制器、命令时序、训练和器件 RAS 分层；DFI 6.0 公告的 HBM 支持与历史 PG276 接口不能直接等同。
 - [SDMA](SDMA/sources/README.md)：新增公开 SoC 接口笔记，外部 L1–L3 只保留登记范围，内部细节继续在本地独立项目核实。
 
@@ -140,7 +140,7 @@ U24 补充（2026-09-25）：**HBM 的 stack/channel/PC/BG/bank/row/column 划�
 
 用户于 2026-09-23 确认已建立名为 `niyingsong123/soc_study` 的云端环境 [U7]。环境建立的用户说明本身不证明任意会话已具有仓库或文件权限。
 
-2026-09-24 的 Switch 第二轮已实际通过 GitHub 连接器读取仓库，并在当前云端会话容器执行原创有限缓冲 Router 模型的 14 个测试组，全部通过；没有读取本地 `original_file/` 或独立 SDMA 项目。具体配置、结果、限制和下一轮入口见 [RESEARCH_PROGRESS.md](switch/RESEARCH_PROGRESS.md)。没有后台持续运行任务，也没有启动或声称完成远端 GitHub Actions CI。
+2026-09-24 的 Switch 第二轮已实际通过 GitHub 连接器读取仓库，并在当前云端会话容器执行原创有限缓冲 Router 模型的 14 个测试组，全部通过；没有读取本地 `original_file/` 或独立 SDMA 项目。具体配置、结果、限制和下一轮入口见 [RESEARCH_PROGRESS.md](SWITCH/RESEARCH_PROGRESS.md)。没有后台持续运行任务，也没有启动或声称完成远端 GitHub Actions CI。
 
 云端工作使用同一 GitHub 仓库中的资料。开始工作时先读取 `README.md`、`module-map.md`、`project-context.md` 与 `AGENTS.md`，再进入相关模块和 `sources.md`。本地绝对路径只用于说明目录位置；云端不具备 `original_file/` 或独立 SDMA 项目的文件。
 
@@ -158,3 +158,7 @@ U24 补充（2026-09-25）：**HBM 的 stack/channel/PC/BG/bank/row/column 划�
 - [UTCL2 C01](UTCL2/sources/C01-mm-utcl2-testbench.md)：第 4 页是重要总图；每 lane 的 client 增长及 sideband 分路影响结构规划，划除的建议不可当定案。
 - [SWITCH R23](SWITCH/sources/R23-chi-ea-protocol.md)：正式 CHI 规则与模型指南分开；[PHY MEM16](PHY/sources/MEM16-dfi51-interface.md) 是 DFI 5.1 转录选读，不是 6.0 HBM profile。
 - 各模块 README 和索引已同步，后续 Codex 先按问题选读，无需从头再总结已有公式/参数/实验条件。外部 SDMA 原文没有进入本会话。
+
+## SWITCH 目录统一（2026-09-25，U36）
+
+本地与 GitHub 当前版本只使用大写 `SWITCH/`。原小写路径 13 次更新按历史顺序分别重放，随后同步本地 v2.3 及第三轮资料；第 1–3 轮完成，第 4–6 轮待执行。本次迁移不增加研究轮次，不改写原有提交，不恢复受限图像。最新进度以 [SWITCH 进度页](SWITCH/RESEARCH_PROGRESS.md) 为准；[迁移记录](switch-path-migration.md)给出逐次对应关系。

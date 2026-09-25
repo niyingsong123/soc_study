@@ -1,8 +1,8 @@
 # SWITCH：多轮研究方案与当前接续
 
-版本：v2.1；日期：2026-09-25；依据：[当前研究范本](../chip-study-plan.md)及用户 U31/U32/U35。U32 以提交 8c70f1d 的 v2.2 为基线重拟轮次；U35 已实施第三轮并形成[详细稿 v2.3](../switch/switch_detailed_guide.md)。**总计六轮：第 1–3 轮已完成，第 4–6 轮待执行。** 第三轮的文档推演与台账检查范围见[核查记录](round3-review.md)，未修改或重跑既有 Router 模型。
+版本：v2.1；日期：2026-09-25；依据：[当前研究范本](../chip-study-plan.md)及用户 U31/U32/U35。U32 以提交 8c70f1d 的 v2.2 为基线重拟轮次；U35 已实施第三轮并形成[详细稿 v2.3](../SWITCH/switch_detailed_guide.md)。**总计六轮：第 1–3 轮已完成，第 4–6 轮待执行。** 第三轮的文档推演与台账检查范围见[核查记录](round3-review.md)，未修改或重跑既有 Router 模型。
 
-入口：[模块上下文](README.md) → [实际进度](../switch/RESEARCH_PROGRESS.md) → 本方案 → [逐篇资料索引](sources/README.md)。后续仍在原位修订中文详细稿，常用英文术语按[统一规则](../chip-study-plan.md#常用英文术语保留原文)保留原文。R0/R1 是教学设计编号，不是研究轮次或 AMD 目标规格。
+入口：[模块上下文](README.md) → [实际进度](../SWITCH/RESEARCH_PROGRESS.md) → 本方案 → [逐篇资料索引](sources/README.md)。后续仍在原位修订中文详细稿，常用英文术语按[统一规则](../chip-study-plan.md#常用英文术语保留原文)保留原文。R0/R1 是教学设计编号，不是研究轮次或 AMD 目标规格。
 
 ## U32 的基线审查：保留什么，后续补什么
 
@@ -149,7 +149,7 @@ adapter/replay 的实际归属须按所选实现核对；图中只固定本研�
 5. 为要量化的 NI/target 或 D2D 因果关系增加最小有限行为模型或局部实验；未建模部分只能给注明假设的预算/上界，不能填成测量数据。既有 219 ns 和历史 credit sweep 保留原来源及条件，不冒称本轮新结果。
 6. 把结果与取舍回写现稿，沿同一读写例子完成模块级技术及读者审核；同步简化版、术语、接口图、进度、模型边界和跨模块依赖问题。
 
-**阅读定位：** [R3](sources/R3-booksim-method.md) §II–V 的模型与源端排队/统计口径；[R1](sources/R1-pipelined-router-delay.md) 的延迟/credit/负载前提；[R7](sources/R7-floonoc-paper.md) §III-A、IV-A1、VI-A/B 的 NI、多 stream 与性能观察。R7 §II–VI 已有阅读记录，按问题复用及补核实验条件，不再笼统列成“IV–V 未读”。现有代码与历史报告从[进度页](../switch/RESEARCH_PROGRESS.md)进入。
+**阅读定位：** [R3](sources/R3-booksim-method.md) §II–V 的模型与源端排队/统计口径；[R1](sources/R1-pipelined-router-delay.md) 的延迟/credit/负载前提；[R7](sources/R7-floonoc-paper.md) §III-A、IV-A1、VI-A/B 的 NI、多 stream 与性能观察。R7 §II–VI 已有阅读记录，按问题复用及补核实验条件，不再笼统列成“IV–V 未读”。现有代码与历史报告从[进度页](../SWITCH/RESEARCH_PROGRESS.md)进入。
 
 **产出与落点：** 深化第 15、17 节，按结果修订第 6、9、11、14、16 节；保存实际使用的参数、方法、结果及解释。无需引入无关仿真平台或复制第二套正文。
 

@@ -34,7 +34,7 @@ Revisited the original v1 HTML, especially III-A1/A2 and III-B, while drafting C
 
 本次回查原论文 §III-A、§III-A1/2，确认 response 空间预约、reorder table 移除及同 ID 目标限制的职责。论文以确定性路由和同目标响应顺序作为优化条件；迁移到多 VC、不同 target issue 或 response scheduler 后，必须重新证明完整路径上的顺序，不能只保留“XY”这个名称。
 
-R0 第三轮采用更保守的单 domain 单笔在途，其他 domain 有限并发，并为每笔读预约完整 response slot。该 slot 是返回落点，不包含同 ID 多笔按 sequence 提交的 ROB。FlooNoC 的 RoB-less 表示省去重排结构，不等于整个 NI、网络或消费者完全无 buffer；本文也不直接套用论文首响应免预约的优化。比较落点见[NI ordering](../../switch/switch_detailed_guide.md#65-ordering先把需要保持的顺序定义清楚)。
+R0 第三轮采用更保守的单 domain 单笔在途，其他 domain 有限并发，并为每笔读预约完整 response slot。该 slot 是返回落点，不包含同 ID 多笔按 sequence 提交的 ROB。FlooNoC 的 RoB-less 表示省去重排结构，不等于整个 NI、网络或消费者完全无 buffer；本文也不直接套用论文首响应免预约的优化。比较落点见[NI ordering](../../SWITCH/switch_detailed_guide.md#65-ordering先把需要保持的顺序定义清楚)。
 
 ---
 

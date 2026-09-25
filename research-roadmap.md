@@ -2,7 +2,7 @@
 
 版本：v1.5；日期：2026-09-25；依据 [研究范本 v1.5](chip-study-plan.md)。
 
-本次已形成 **18 个模块的多轮研究方案，以及 SDMA 的系统接口接续方案**，并完成支撑规划的定向资料阅读。详细论文由后续本地 Codex 按轮次展开；SWITCH 既有第 1、2 轮保持完成，其余新列轮次均未执行。规划完成不代表目标芯片内部实现已经查明。
+本次已形成 **18 个模块的多轮研究方案，以及 SDMA 的系统接口接续方案**，并完成支撑规划的定向资料阅读。详细论文由后续本地 Codex 按轮次展开；SWITCH 第 1–3 轮已完成，第 4–6 轮待执行。规划完成不代表目标芯片内部实现已经查明。
 
 [项目上下文](project-context.md) · [资料集与来源](sources.md) · [模块名称与关系](module-map.md)
 
@@ -31,7 +31,7 @@
 | 3：集成与服务交接 | [HUBS：MMHUB、CH](HUBS/research-plan.md) | 5 轮，CH 先定位 | hub 的地址/属性、业务请求与翻译交接；CH 未知不填假架构 |
 | 3：集成与服务交接 | [EA](EA/research-plan.md) | 4 轮 | 接纳、可服务判断、下发、返回与性能观察；不强定仲裁算法 |
 | 4：目标与输运 | [DF：CS、CAKE](DF/research-plan.md) | 5 轮 | 本地/远端目标、地址归属、事务语义和资源；CS/CAKE 核对代际 |
-| 4：目标与输运 | [SWITCH](SWITCH/research-plan.md) | 已完成 1–2，修订后续 3–6 | 先 NI 事务契约，再 D2D 交接和性能；AXI/CHI/UCIe 均有参照边界 |
+| 4：目标与输运 | [SWITCH](SWITCH/research-plan.md) | 已完成 1–3；4–6 待执行 | 3：NI transaction contract 已融入 v2.3；后续 4：片内 progress/恢复；5：D2D；6：性能与模块收尾。完整系统复审另入跨模块阶段 |
 | 5：内存下游 | [UMC](UMC/research-plan.md) | 5 轮 | 请求如何成为受 bank 状态、时序、刷新约束的命令 |
 | 5：内存下游 | [PHY](PHY/research-plan.md) | 5 轮，PCIe/D2D 分支可拆分 | 内存数字接口、发送/采样、训练和状态反馈；不同 PHY 分别研究 |
 | 5：内存下游 | [HBM](HBM/research-plan.md) | 4 轮 | channel/pseudo-channel、bank、命令、刷新与保护域 |
@@ -62,11 +62,11 @@ HUBS 与 EA 分别安排研究，不代表二者直接相连。CF 作为独立�
 
 2026-09-25 已完成本次可访问范围的资料补齐和索引/方案同步；继续工作时只处理[报告中的具体剩余项](source-reading-audit.md)，不要从零重读全部资料。以下默认项只在用户未指定模块且明确开始新模块论文时适用。
 
-**当前指定的 SWITCH 详细稿重整已完成。** [v2.2 正文](switch/switch_detailed_guide.md)按[详细文档写作方法](chip-study-plan.md#详细文档写作方法)组织需求、功能、上下游及整体微架构、接口与完整过程，区分核心机制、可选深入问题与关键未知。进度仍为第 1、2 轮完成；本次只重写既有成果与同步入口，未重新复查六轮安排或开展第 3 轮。
+**U35 的 SWITCH 第三轮已完成。** [v2.3 正文](SWITCH/switch_detailed_guide.md)在既有结构中深化 NI transaction contract，联动 admission、AW/W 关联、ordering、response reservation、完整错误交付与 retire，并同步整体架构和 256 B 过程。[核查记录](SWITCH/round3-review.md)区分逐事件文档审查、资源/byte coverage 算术校验和历史 Router 模型结果，本轮未新增 NI 仿真。实际第 1–3 轮完成；按[方案 v2.1](SWITCH/research-plan.md)，第 4–6 轮继续深化片内 progress/恢复、D2D 状态交接和性能归因。完整系统复审进入跨模块阶段，必要接口不延后。
 
 **未指定模块时的默认项：GC 第 1 轮。** 先浏览 SDMA 现有系统接口摘要和 GC 的职责图，按 GC 方案确定参考代际、请求接口与最小闭环，再创建 GC/technical-paper.md。目标资料缺失处保留明确参考边界，不暂停其他可开展的规划或研究，也不填写猜测的芯片参数。
 
-其他模块同样在自己的目录逐步形成一份 technical-paper.md；现有正文存在时原位修订。SWITCH 继续维护小写 switch/ 的现有详细稿，上述重整审核已完成，后续从修订后的第 3 轮接续；其真实进度只记在 [RESEARCH_PROGRESS.md](switch/RESEARCH_PROGRESS.md)。SDMA 本仓库仅更新接口说明，详细正文留外部项目。每轮结束同时更新方案状态、模块入口、受影响图示及资料条目。
+其他模块同样在自己的目录逐步形成一份 technical-paper.md；现有正文存在时原位修订。SWITCH 统一维护大写 SWITCH/ 的现有详细稿，第三轮已完成，后续从第 4 轮接续；其真实进度只记在 [RESEARCH_PROGRESS.md](SWITCH/RESEARCH_PROGRESS.md)。SDMA 本仓库仅更新接口说明，详细正文留外部项目。每轮结束同时更新方案状态、模块入口、受影响图示及资料条目。
 
 ## 已确定的跨模块主线与其他候选
 
@@ -76,7 +76,7 @@ HUBS 与 EA 分别安排研究，不代表二者直接相连。CF 作为独立�
 
 | 后续候选 | 为什么需要 | 进入条件及维护位置 |
 | --- | --- | --- |
-| 一次正常/异常内存搬运 | 检查翻译与数据返回、请求身份、反压、fault 和完成是否前后一致 | 相关模块的基础详细结论形成后，在现有 SDMA 系统接口说明及 SWITCH 第 6 轮复核 |
+| 一次正常/异常内存搬运 | 检查翻译与数据返回、请求身份、反压、fault 和完成是否前后一致 | 相关模块的必要详细结论形成后，在现有 SDMA 系统接口说明及 SWITCH 详细稿第 16 节集中复核；不再固定为 SWITCH 第 6 轮。本模块必需的接口先在第 3–5 轮核实 |
 | 页表/缓存维护后的可见性 | GPUVM/ATC 失效、数据 cache/HDP 维护、业务 outstanding 和软件通知的完成范围容易混淆 | 先完成 UTCL2 失效与适用系统分支、HDP/GC 维护、CF/IH 完成接口；按责任模块修订原稿 |
 | 复位、停流与恢复 | 跨端点的旧请求、返回身份和局部重放可能与 reset/drain 交叉 | SWITCH/DF/内存及相关管理模块已形成恢复约定后再选代表场景；无需提前建立大型仿真工程 |
 

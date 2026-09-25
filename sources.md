@@ -45,7 +45,7 @@
 - **U5：** SOC 项目仅关联 `soc_repo`，取消独立 `sdma_repo` 的附加关联；SDMA 文件继续独立管理。
 - **U6：** GitHub 同步只包含当前已有文件，不补回已缺失的五份 Markdown 正文。
 - **U7：** 用户说明已建立云端 `niyingsong123/soc_study` 环境，并希望连接该环境；本条不表示本地任务已经切换到云端。
-- **U8：** 用户要求以高质量公开资料研究 NoC 与 D2D 的完整微架构，按六轮迭代维护 `switch/`；本次明确授权在云端开始第二轮 Router 专项。具体轮次和执行边界见 [研究进度](switch/RESEARCH_PROGRESS.md)。
+- **U8：** 用户要求以高质量公开资料研究 NoC 与 D2D 的完整微架构，按六轮迭代维护原小写路径（现统一为 `SWITCH/`，见 U36）；本次明确授权在云端开始第二轮 Router 专项。具体轮次和执行边界见 [研究进度](SWITCH/RESEARCH_PROGRESS.md)。
 
 - **U9（2026-09-24）：** 用户明确 SWITCH 仅完成两轮，原六轮规划可根据新研究修订；其他模块轮数按需增减。当前先用高质量资料逐模块完成研究与撰写方案，详细内容由后续本地 Codex 展开；各模块规划完成后再评估跨模块研究。U8 的固定六轮安排是当时计划，后续可按本条复核调整。
 - **U10（2026-09-24）：** 用户要求始终以整体微架构为基础规划子模块和 feature：先建立结构与工作流程，再分解研究，并把每轮结果整合回整体微架构。
@@ -137,7 +137,7 @@
 
 ## P6：Switch 公开研究资料组
 
-R1–R23 保留 SWITCH 原有编号体系，包含终点 NI 的 R22 与正式 CHI E.a 的 R23。第 1、2 轮事实与模型执行结果见[真实研究进度](switch/RESEARCH_PROGRESS.md)；[详细稿 v2.2](switch/switch_detailed_guide.md)已按理解顺序重写，主题旁引用对应主笔记，旧章节映射见附录 B。逐篇导读仍以[模块资料索引](SWITCH/sources/README.md)为入口。本次重写不增加来源篇数、不执行第 3–6 轮；R9 是 CHI 模型用户指南，R12 是 Arm 架构介绍，正式协议依据使用 R23。
+R1–R23 保留 SWITCH 原有编号体系，包含终点 NI 的 R22 与正式 CHI E.a 的 R23。[详细稿 v2.3](SWITCH/switch_detailed_guide.md)已完成第三轮 NI transaction contract 修订；第 1、2 轮的历史模型结果与本轮逐事件审查、资源/byte coverage 算术校验分别记录于[真实研究进度](SWITCH/RESEARCH_PROGRESS.md)，本轮未新增 NI 执行模型。第三轮补读 R7 §III-A、R8 的握手/属性/完成规则并复用 R22 既有代码阅读，均更新唯一主笔记，不增加来源篇数。逐篇导读见[模块资料索引](SWITCH/sources/README.md)。按[方案 v2.1](SWITCH/research-plan.md)，第 4–6 轮依次深化片内 progress/恢复、D2D、性能与模块收尾；完整系统复审进入跨模块阶段。R9 是 CHI 模型用户指南，R12 是 Arm 架构介绍，正式协议依据使用 R23。
 
 ### R1
 
@@ -752,3 +752,9 @@ HDP 全称和 host framebuffer 地址转换的 AMD 原厂历史依据；适合�
 [MMHUB：翻译、TAP/DAGB、EA 队列与 DF 边界](HUBS/sources/C05-mmhub-dagb-ea.md) · 原图已移出仓库 · 用户页图·参考设计
 
 连接客户端 AXI、按需翻译、TAP/DAGB 预约、EA 分组排队和 SDP 返回，是 HUBS/EA 整体微架构的重要参考；保留共享存储、独立 credit、失效路径及与 C01 的差异。
+
+## U36：SWITCH 目录统一（2026-09-25）
+
+用户要求本地与 GitHub 统一使用大写 `SWITCH/`，按小写目录原提交顺序逐次更新大写路径，最后以本地内容为准并移除当前小写路径。已授权追加迁移提交，不改写原历史；对应关系见[迁移记录](switch-path-migration.md)。旧 U8 的路径选择由本要求覆盖；历史 URL 保留其原提交中的路径。
+
+- **U35（2026-09-25）：** 用户确认实施 SWITCH 第三轮：按主题原位修改同一详细稿，深化 NI transaction contract、AW/W 关联、有限 outstanding、ordering、response reservation 与 retire，并联动整体架构、读写例子、接口和证据说明；目标版本 v2.3。使用已确认的 R0/AXI4 参考子集，逐事件核查并发、backpressure 和完整错误收尾。完成后据实更新轮次，片内全局 progress/reset、D2D 仍分别留在第 4、5 轮。实施与验证结果见[研究进度](SWITCH/RESEARCH_PROGRESS.md)。

@@ -8,14 +8,14 @@
 
 ## 已有公开技术研究
 
-用户指定的研究正文保存在小写 `switch/`；本大写目录继续作为 SoC 模块入口。当前不合并、移动或重命名两个目录。
+用户于 2026-09-25 要求统一目录大小写：研究正文、模型、模块入口与资料笔记全部维护在大写 `SWITCH/`。原小写路径的 13 次更新已按原顺序重放，随后同步本地最新内容；迁移对应关系见[记录](../switch-path-migration.md)。
 
-- [完整微架构研究稿](../switch/switch_detailed_guide.md)：v2.3 在既有主线中深化 NI transaction contract、AW/W、有限并发和 response/retire，并联动架构、读写过程及证据边界；旧章节映射见附录 B。
-- [六问简化版](../switch/switch_quick_guide.md)：为什么需要、功能、上下游/流向、关键参数、SDMA 关联及软硬件协同。
-- [研究轮次与执行证据](../switch/RESEARCH_PROGRESS.md)：第 1–3 轮完成，第 4–6 轮待研究；第三轮的文档级推演与算术检查见[核查记录](round3-review.md)。
-- [第二轮有限缓冲模型](../switch/examples/router_round2.py)与[实际测试报告](../switch/examples/round2_results.json)：教学模型，不是 RTL 或协议合规验证。
+- [完整微架构研究稿](../SWITCH/switch_detailed_guide.md)：v2.3 在既有主线中深化 NI transaction contract、AW/W、有限并发和 response/retire，并联动架构、读写过程及证据边界；旧章节映射见附录 B。
+- [六问简化版](../SWITCH/switch_quick_guide.md)：为什么需要、功能、上下游/流向、关键参数、SDMA 关联及软硬件协同。
+- [研究轮次与执行证据](../SWITCH/RESEARCH_PROGRESS.md)：第 1–3 轮完成，第 4–6 轮待研究；第三轮的文档级推演与算术检查见[核查记录](round3-review.md)。
+- [第二轮有限缓冲模型](../SWITCH/examples/router_round2.py)与[实际测试报告](../SWITCH/examples/round2_results.json)：教学模型，不是 RTL 或协议合规验证。
 
-第一轮完整原稿以[历史快照](../switch/switch_detailed_guide_v2.0.md)保留。v2.2 将前两轮合并为 17 节及两份附录，v2.3 在同一结构中整合第三轮；历史稿不再作为另一套并行设计维护。
+第一轮完整原稿以[历史快照](../SWITCH/switch_detailed_guide_v2.0.md)保留。v2.2 将前两轮合并为 17 节及两份附录，v2.3 在同一结构中整合第三轮；历史稿不再作为另一套并行设计维护。
 
 更新日期：2026-09-25。学习内容覆盖端口、路由、VC/VN、VA/SA、credit、buffer、失败路径、死锁依赖、ordering 与完成点；实际目标模块是否具备这些功能仍由目标资料决定。
 

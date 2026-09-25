@@ -1146,7 +1146,7 @@ iSLIP、共享池许可和链表入出队是局部独立检查，没有被替换
 复现既有模型可在仓库根目录运行：
 
 ```bash
-python3 switch/examples/router_round2.py --report /tmp/round2_results.json
+python3 SWITCH/examples/router_round2.py --report /tmp/round2_results.json
 ```
 
 第三轮另行完成 NI 契约、资源生命周期和场景推演：AW/W 三种到达关系、domain/身份区分、容量耗尽、目标与返回 backpressure、DECERR/SLVERR 完整收尾。第 6.10 节的 12 行资源台账与字节/包长算式做了独立算术检查；完整记录、可复核输入和局限见[第三轮核查记录](../SWITCH/round3-review.md)。这些是文档级行为推演和台账检查，未把完整 AXI NI、ROB 或新的 D2D 机制实现到第二轮模型中；历史网络测试未重跑。实际范围和下一项任务见[研究进度](RESEARCH_PROGRESS.md)。

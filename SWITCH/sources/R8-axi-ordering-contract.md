@@ -67,7 +67,7 @@ exclusive burst 总字节数必须是 1/2/4/8/16/32/64/128 之一，起点按**�
 
 A4.4 Table A4-5 中，Normal Non-cacheable Non-bufferable 的 ARCACHE/AWCACHE 都为 0b0010；该类型的正常读结果和写响应来自最终目标。第 6 节选择受控 SRAM、完整写 payload 后注入、目标写完成后应答，是具体参考契约；不外推到 Bufferable/cacheable 访问或所有 AXI 系统。
 
-本轮以 `(source/port, AXI ID, direction)` 定义参考 ordering domain，并限制单 domain 一笔到 retire；读写独立不代表可忽略跨通道业务依赖。Normal 访问的 observation 要结合 A6.5–A6.6，不能从相同数值的 ARID/AWID 推出写后读关系。多源 alias ID、原 ID 与内部 TxnID 的区分及最后 R/B handshake 的释放点，见[详细稿第 6 节](../../switch/switch_detailed_guide.md#6-ni把业务事务与网络传输接起来)。
+本轮以 `(source/port, AXI ID, direction)` 定义参考 ordering domain，并限制单 domain 一笔到 retire；读写独立不代表可忽略跨通道业务依赖。Normal 访问的 observation 要结合 A6.5–A6.6，不能从相同数值的 ARID/AWID 推出写后读关系。多源 alias ID、原 ID 与内部 TxnID 的区分及最后 R/B handshake 的释放点，见[详细稿第 6 节](../../SWITCH/switch_detailed_guide.md#6-ni把业务事务与网络传输接起来)。
 
 AXI 可以逐 R beat 携带不同 RRESP。当前 R0 目标只产生整笔一致的读 status，因此一个整包 status 足够表达它；通用 AXI-to-NoC bridge 若接收 mixed RRESP，必须保留逐 beat 结果或使用有依据的转换，不能套用这个受限格式。上述教学取舍不构成完整协议合规结论。
 
