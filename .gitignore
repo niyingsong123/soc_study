@@ -1,2 +1,6 @@
 # Original documents are local-only; never commit or upload.
 /original_file/
+
+# Removed reference images are local-only; never re-upload.
+/HUBS/assets/
+/UTCL2/assets/
