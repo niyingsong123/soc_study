@@ -45,7 +45,7 @@
 | TBE | [SDMA](SDMA/README.md) | Tile Back End |
 | GL2 | [GC](GC/README.md) | 数据缓存；不同于 UTCL2 地址翻译缓存 |
 | IH | [IH](IH/README.md) | 中断汇聚 |
-| RSMU | [RSMU](RSMU/README.md) | 与 SMU 的层级待确认 |
+| RSMU | [RSMU](RSMU/README.md) | AMD 原作者定义 remote SMU（MG5）；目标实例与 SMU 层级待确认 |
 | GRBM | [GC](GC/README.md) | 按用户纠正后的名称管理 |
 | RLC | [GC](GC/README.md) | GC 内的控制模块参考主题 |
 | SMU | [SMU](SMU/README.md) | 系统管理 |
@@ -56,7 +56,7 @@
 - **GL2 与 UTCL2：** 前者研究数据缓存，后者研究地址翻译缓存；虽然都有“L2”，不是同一个模块 [P3、P5]。
 - **UMC、PHY、HBM：** 分别从控制器、物理接口、存储器角度学习；目标芯片的 UMC/PHY 边界须看集成图，HBM 不归为控制器内部逻辑。
 - **PCIe、NBIF、HDP：** 暂视为需要核对接口的相关主题，不把三者直接画成嵌套关系。
-- **SMN、SMU、RSMU：** 网络、管理控制器与待确认模块要分别辨认，名称接近不等于包含。
+- **SMN、SMU、RSMU：** 网络、管理控制器与 remote SMU 接口模块要分别辨认（MG5 有公开职责定义，目标结构仍待确认），名称接近不等于包含。
 - **DF、CF、SWITCH：** shaobo 资料区分命令与数据网络；switch 是否实现其中某层或指跨芯片交换，需要顶层拓扑证明 [L1、L2]。
 
 ## 从已知 SDMA 路径建立整体认识

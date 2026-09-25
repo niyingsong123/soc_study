@@ -1,6 +1,6 @@
 # RSMU 条件化多轮研究方案
 
-范本：v1.3；方案：v1.1；日期：2026-09-24。状态：规划完成，三轮详细研究待执行；目标 RSMU 的职责及整体微架构尚不能确定。下一项：完成第 1 轮身份与接口定位，再判断后两轮可展开的架构范围。
+范本：v1.4；方案：v1.1；日期：2026-09-24。状态：规划完成，三轮详细研究待执行；目标 RSMU 的职责及整体微架构尚不能确定。下一项：完成第 1 轮身份与接口定位，再判断后两轮可展开的架构范围。
 
 ## 逐篇笔记与本方案的研究落点
 
@@ -8,14 +8,14 @@
 
 | 微架构位置 | 对应轮次 | 可直接复用的技术笔记 | 本次补充的研究重点 |
 | --- | --- | --- | --- |
-| 模块身份与直接寄存器证据 | 第 1 轮 | [MG5](sources/MG5-rsmu-umc-index.md)、[C05](../HUBS/sources/C05-mmhub-dagb-ea.md) | C05 的 remote SMU 名称线索与公开 RSMU index register 分别记载，目标映射仍未知。 |
+| 模块身份与直接寄存器证据 | 第 1 轮 | [MG5](sources/MG5-rsmu-umc-index.md)、[C05](../HUBS/sources/C05-mmhub-dagb-ea.md) | MG5 的 AMD 作者名称/职责、公开寄存器及 C01/C05 的参考位置分层记录，目标映射仍未知。 |
 | 端点访问及错误状态 | 条件第 2 轮 | [MG11](sources/MG11-umc67-ras-comparison.md)、[MEM14](../UMC/sources/MEM14-umc810-ras-address.md)、[MG4](../SMN/sources/MG4-smn-indirect-access.md) | UMC RAS 路径是邻接资料，不能自动归入 RSMU；地址候选与 poison 查询有代际差异。 |
 | 可访问性与恢复责任 | 条件第 3 轮 | [MG2](../SMU/sources/MG2-smu13-control.md)、[MEM3](../UMC/sources/MEM3-amdgpu-ras.md)、[MG10](../SMN/sources/MG10-atl-system-identity.md) | 结合原 mode 恢复、DF C-state 和身份配置，资料不足时不扩大为完整管理处理器。 |
 
 
 ## 已知、类比与命名边界
 
-保留 AMD RSMU 名称，不展开字母 R，不因缩写默认 remote SMU；C05 页图虽有 remote SMU 线索，仍须确认目标对应，也不把它归为 SMU 子块。联合检索先用 RSMU、目标产品/IP 名、register access、UMC index mode；后两项是这次找到的**可验证功能线索**，不是已确认的模块别名。
+保留 AMD RSMU 名称；MG5 新增 AMD 作者原始提交，已明确 remote SMU 及寄存器接口、错误处理、复位生成职责。C01/C05 提供参考设计位置，仍须核对目标对应，也不由名称判定其为 SMU 子块。联合检索使用 RSMU、remote SMU、目标产品/IP 名及 register interface、error handling、reset generation、UMC index mode；名称有原作者证据，具体实现仍按版本查证。
 
 Linux v6.12 AMDGPU 提供 [RSMU 寄存器头](https://github.com/torvalds/linux/tree/v6.12/drivers/gpu/drm/amd/include/asic_reg/rsmu) 和 [UMC v6.1 调用代码](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/umc_v6_1.c)，统一登记 [MG5](../sources.md#mg5)。头文件定义含 VG20 命名的 UMC index register 及 mode/instance/write-enable 字段；驱动确实读取、切换并恢复 index mode。它证明公开实现存在这组寄存器接口，不能证明 RSMU 全部职责、内部控制器、父级、每 die 实例数或与目标设计同名等价。 技术笔记：[MG5](sources/MG5-rsmu-umc-index.md)。
 
@@ -45,7 +45,7 @@ flowchart TD
 
 | 位置 / 优先级 | 当前问题与证据入口 |
 | --- | --- |
-| 模块身份与实例；核心 | 源码里的 RSMU IP 标识、寄存器地址和目标框图能否对应；[offset 头](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/include/asic_reg/rsmu/rsmu_0_0_2_offset.h)，再查目标 IP discovery/地址图，不能由文件名断定全称  技术笔记：[MG5](sources/MG5-rsmu-umc-index.md)。 |
+| 模块身份与实例；核心 | 源码里的 RSMU IP 标识、寄存器地址和目标框图能否对应；[offset 头](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/include/asic_reg/rsmu/rsmu_0_0_2_offset.h)，再查目标 IP discovery/地址图，全称已有 AMD 作者提交支持，目标身份不能仅凭文件名确定  技术笔记：[MG5](sources/MG5-rsmu-umc-index.md)。 |
 | 访问状态与控制字段；核心 | MODE_EN、INSTANCE、WREN 在目标模式中的作用和相互约束；[mask 头](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/include/asic_reg/rsmu/rsmu_0_0_2_sh_mask.h) 只给编码，语义仍需调用者和寄存器说明  技术笔记：[MG5](sources/MG5-rsmu-umc-index.md)。 |
 | 端点操作与返回；核心 | UMC RAS 查询为何保存/关闭/恢复 mode，读错实例会带来什么可观察问题；[umc_v6_1.c](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/umc_v6_1.c) 的 get/enable/disable_umc_index_mode、query_ras_error_count/address  技术笔记：[MG5](sources/MG5-rsmu-umc-index.md)。 |
 | 并发和状态归属；条件相关 | 该 mode 对哪些请求者共享，谁负责串行化，异常退出是否还原；同文件调用链可继续追踪，但当前不能声称它已有完整并发保护 |
@@ -68,3 +68,7 @@ flowchart TD
 
 本模块的后续研究顺序由已经确认的访问源和端点决定；UMC RAS 查询场景只需前置 UMC 寄存器接口概念，无须等待 HBM 时序论文完成。不要把管理接口线索加入内存数据通路，也不要将现有三轮规划当作三轮研究成果。
 
+
+## 2026-09-25 资料补齐对本方案的影响
+
+第 1 轮及条件第 2–3 轮优先复用 [MG5](sources/MG5-rsmu-umc-index.md)、[C01](../UTCL2/sources/C01-mm-utcl2-testbench.md)。从 AMD 作者说明确认 remote SMU 名称/职责，再结合公开 index-mode 与 BOWEN 参考连接；第一轮不再重复猜全称，重点改为目标映射和状态归属。 本次仅更新依据和研究落点，不把任何待执行论文轮次改为完成。

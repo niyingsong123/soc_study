@@ -1,8 +1,8 @@
 # PHY 资料索引与逐篇技术笔记
 
-更新日期：2026-09-24。先读模块整体微架构与当前问题，再用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
+更新日期：2026-09-25。先读模块整体微架构与当前问题，再用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
 
-本模块列出 22 个可复用来源，主笔记归档 7 篇。跨模块来源链接到唯一主笔记，计数不能跨模块直接相加。资料阅读不计为论文轮次完成。
+本模块列出 23 个可复用来源，主笔记归档 8 篇。跨模块来源链接到唯一主笔记，计数不能跨模块直接相加。资料阅读不计为论文轮次完成。
 
 [模块上下文](../README.md) · [研究方案](../research-plan.md) · [全局来源编号](../../sources.md) · [研究范本](../../chip-study-plan.md)
 
@@ -33,13 +33,15 @@
 | [MEM7：AM002：串行接收均衡与 CDR](MEM7-versal-cdr-equalizer.md) | 把链路误码问题分解为信道损耗、均衡与采样相位跟踪，适合 PHY 微架构入门；不提供 HBM 源同步接口或目标芯片的接收器设计。 | 厂商/项目官方资料。已读 Versal GTY/GTYP 接收器上述正文；未读全手册、未做眼图/BER 实测。 | [原文](https://docs.amd.com/r/en-US/am002-versal-gty-transceivers/RX-CDR) |
 | [MEM8：UCIe 官方问答：侧带、lane 与链路延迟口径](MEM8-ucie-official-qa.md) | 澄清 UCIe 初代公开介绍中的 lane 模块化、侧带和延迟数字；用于 D2D 接口与 PHY 边界，避免把物理指标当系统事务性能。 | 厂商/项目官方资料。已读问答正文；不是当前最新规范，未据此推定后续版本的 FEC、训练或封装能力。 | [原文](https://www.uciexpress.org/post/introduction-to-ucie-webinar-q-a-recap) |
 | [MEM9：Micron HBM3E：组织、容量与带宽口径](../../HBM/sources/MEM9-micron-hbm3e.md) | 提供 HBM3E 器件组织与产品级指标，用于容量/通道/带宽的数量级检查；不包含完整命令时序或端到端性能保证。 | 厂商/项目官方资料。已读产品说明及 FAQ；部分时间表仍为历史表述，不据此判定当前供货；未取得 datasheet。 | [原文](https://www.micron.com/products/memory/hbm/hbm3e) |
-| [MEM11：JESD238：HBM3 正式标准入口与待补范围](../../HBM/sources/MEM11-jedec-scope-gap.md) | 这是完整规范尚未取得的缺口记录；用于判断哪些 HBM3 细节必须回查正式标准，不能作为时序、编码或合规依据。 | 规范全文未取得。未取得全文；不声明已读标准，不推定最新修订字母或具体字段。当前笔记是范围索引和后续补读任务。 | [原文](https://www.jedec.org/standards-documents/docs/jesd238) |
+| [MEM11：JESD238A：伪通道共享、命令与时钟边界选读](../../HBM/sources/MEM11-jedec-scope-gap.md) | 从 JESD238A 的公开正文转录整理 PC 的独立与共享资源、行列命令接口及 CK/DQS 关系；可用于 HBM/UMC 的架构骨架，精确时序图和编码仍需原版核验。 | 规范正文转录选读·原版图表待核。从“仅标准入口”推进到正文文本选读：§3.1.2–3.1.3、§3.2.1/Table 6、§6.1，并定位 §6.3.2.6 与 §6.9.1。尚未取得并核验官方整本 PDF；转录有表格打散、图像缺失和水印干扰，不据其填写完整位编码/纳秒表。只将明确可读的技术事实记入下文，不宣称完整规范精读或协议合规。 | [原文](https://studylib.net/doc/28550091/jesd238a-hbm3) |
 | [MEM13：Ramulator HBM3：层级状态、时序与生成式模型](../../HBM/sources/MEM13-ramulator-hbm3-model.md) | 适合逐项理解 HBM3 模型的共享/独立资源、命令依赖与时序作用范围；可与控制器代码联读，不能替代 JEDEC 标准。 | 固定版本公开代码。已读层级、命令/时序声明、命令总线分类及主要 timing 约束；未运行模型，未与完整 JEDEC 逐条核验。 | [原文](https://github.com/CMU-SAFARI/ramulator2/blob/72427a1bba3771564c4fb0e494ba02242fd1eaa7/src/ramulator/dram/impl/HBM3.cpp) |
-| [MEM15：PG150：DQS gate 搜索、细调与失败定位](MEM15-pg150-dqs-gate.md) | 详细解释读数据门控如何找到 DQS 起始位置，覆盖粗/细调、重复采样、rank 统一及诊断；适合 PHY 校准专题，不能据此宣称已读所有训练阶段。 | 厂商/项目官方资料。已读 DQS gate 算法正文与失败定位说明；总阶段页图未成功读取，未据目录推定完整训练先后顺序。 | [原文](https://docs.amd.com/r/en-US/pg150-ultrascale-memory-ip/Calibration-Stages) |
+| [MEM15：PG150：DQS gate 搜索、细调与失败定位](MEM15-pg150-dqs-gate.md) | 解释 DQS gate 搜索、重复采样、跨 rank 收敛，并补 2022 原图的整体训练分支与灰色未实现项；适合建立 PHY 阶段、配置和业务放行的关系。 | 厂商/项目官方资料。已读 2025-12-03 网页的 DQS gate 算法与失败定位；本次另取得官方 2022-04-20 完整 PDF，直接核看第 593 页 Figure 38-5 总阶段图。两版日期分开记录，未声称 2025 总图已经核实。 | [原文](https://docs.amd.com/r/en-US/pg150-ultrascale-memory-ip/Calibration-Stages) |
 | [IO4：PCIe Base 5.0：规范入口与待补读范围](../../PCIE/sources/IO4-base-spec-gap.md) | 正式规范全文未取得的缺口记录，指明链路层/事务层哪些细节不能只靠 FPGA 指南推定；无需把它当成已完成的技术精读。 | 规范全文未取得。未取得全文；未声明规范合规阅读，版本以原有 5.0 登记为限，不推定当前最新标准。 | [原文](https://pcisig.com/PCIExpress/Specs/Base/_5.0_1.0) |
 | [MG2：SMU 13 公共控制：固件就绪、表地址和频率约束](../../SMU/sources/MG2-smu13-control.md) | 连接 SMU 初始化、固件接口、频率上下界和事件处理；适合研究管理状态机，避免把设置频率边界等同于即时完成变频。 | 固定版本公开代码。已读固件状态/版本、表地址、allowed mask、软硬频率范围、PPT 功耗上限、reset event 和 IRQ 相关段；未通读全部板级/风扇/显示策略。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/pm/swsmu/smu13/smu_v13_0.c) |
 | [MG3：SMU 13.0.0 ABI：DPM 描述、表结构与指标语义](../../SMU/sources/MG3-smu13-firmware-abi.md) | 研究固件接口版本、参数表和 telemetry 的字段差异；重点是 target/pre-DS/post-DS、平均时间常数与累计量，适合设计可信观测表。 | 固定版本公开代码。已读版本、feature 定义、DpmDescriptor、PPTable 组合、DriverSmuConfig、DriverInfo 和 SmuMetrics；未逐字段研究完整板级参数/算法。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/pm/swsmu/inc/pmfw_if/smu13_driver_if_v13_0_0.h) |
 | [MG9：AMDGPU 温度/功耗接口：单位、策略与同步快照](../../SMU/sources/MG9-thermal-power-observability.md) | 用于设计性能实验的观测表，区分功率上限、实际功率、档位与平均频率；适合 SMU 的反馈路径，不是固件调频算法说明。 | 厂商/项目官方资料。已读 hwmon、performance level、pp_dpm 与 gpu_metrics 段；未执行任何调频、功耗或风扇写操作。 | [原文](https://docs.kernel.org/6.12/gpu/amdgpu/thermal.html) |
+
+| [MEM16：DFI 5.1：启动、训练交接与读写有效期选读](MEM16-dfi51-interface.md) | 补足 DFI 官网介绍之外的接口机制：启动完成代表什么、PHY 如何取得训练控制、写命令与数据怎样对齐、读返回为什么不能假定固定连续延迟。适合 UMC/PHY 边界研究，不覆盖 DFI 6.0 HBM profile。 | 规范正文转录选读·原版图表待核。选读 §3.3.3、§3.8、§4.1–4.2、§4.7.1 的正文及 PHY-master 依赖项；未取得官方 PDF、未核全部波形图、比例转换表和低功耗交叉条件。不把官方门户登录页记成已取得规范。 | [原文](https://studylib.net/doc/27487094/ddr-phy-interface-specification-v5-1) |
 
 ## 使用与维护
 

@@ -37,4 +37,6 @@
 
 后续 Codex 先读本模块上下文和 research-plan.md 的整体架构，再按问题选择笔记。笔记保留版本、机制、重要细节、实际阅读范围及证据边界；精确字段、新版本或未读部分再回原资料。补充资料时同步索引、主笔记与受影响方案，不在上下文复制整份资料集。
 
-本批笔记与索引已建立，详细阅读与笔记完善仍有[待补项](../source-reading-audit.md)；不能以文件数视为深度验收。资料整理不计为新的论文轮次，论文接续在用户明确要求后按上文执行。方法见[研究范本 v1.3](../chip-study-plan.md)。
+资料笔记与索引已建立；2026-09-25 已执行一轮审计补齐，先查[逐项结果与剩余受限项](../source-reading-audit.md)，再读本模块索引。不能以文件数视为深度验收。资料整理不计为新的论文轮次，论文接续在用户明确要求后按上文执行。方法见[研究范本 v1.4](../chip-study-plan.md)。
+
+本次补读入口（2026-09-25）：[C01](sources/C01-mm-utcl2-testbench.md)、[VM5](sources/VM5-mask-paper.md)、[VM10](sources/VM10-iommu-spec.md)。C01 第 4 页补出 lane/client 扩张及内部 UTCL1 sideband；MASK 补定量控制与基线；IOMMU 补 nested walk、PPR 身份/队列/完成。按结构定位资源，保留 C01/C05 版本差异。

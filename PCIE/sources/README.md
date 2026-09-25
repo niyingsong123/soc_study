@@ -1,6 +1,6 @@
 # PCIE 资料索引与逐篇技术笔记
 
-更新日期：2026-09-24。先读模块整体微架构与当前问题，再用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
+更新日期：2026-09-25。先读模块整体微架构与当前问题，再用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
 
 本模块列出 20 个可复用来源，主笔记归档 6 篇。跨模块来源链接到唯一主笔记，计数不能跨模块直接相加。资料阅读不计为论文轮次完成。
 
@@ -20,9 +20,9 @@
 | --- | --- | --- | --- |
 | [VM1：GPUVM 的地址空间、VMID、PASID 与 aperture](../../UTCL2/sources/VM1-gpuvm-address-spaces.md) | 建立 GPUVA、页表、动态 VMID、PASID 与系统地址的基本关系；尤其适合防止把 GPUVM 和系统 IOMMU 合并为一个翻译器。 | 固定版本公开代码。精读开头 `DOC: GPUVM` 与 `amdgpu_vm_set_pasid`；页表 BO 搬迁和全部更新实现未系统研读。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_vm.c) |
 | [VM4：AMD IOMMU 驱动的多级翻译缓存失效与完成等待](../../UTCL2/sources/VM4-amd-iommu-commands.md) | 说明为什么更新系统映射后可能需要同时处理 IOMMU 内部缓存和 ATS 设备 IOTLB，并追踪 command queue 与 completion wait。适合与本地 GPUVM invalidate 对比。 | 固定版本公开代码。精读 command 构造、range 编码、queue/completion、device/domain flush 相关函数；中断重映射与全部 IOMMU 模式未通读。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/iommu/amd/iommu.c) |
-| [VM10：AMD IOMMU 3.09：翻译、远端 ATC 与失效完成契约](../../UTCL2/sources/VM10-iommu-spec.md) | 用规范区分 IOMMU 内部缓存、设备 ATC、页表更新与在途 DMA；重点解释失效命令的依赖、Completion Wait、QueueID 流控和安全回收页面的条件。 | 规范选读。已取得完整 303 页 PDF；重点核读 §1.3、§2.1–2.2、§2.4.1–2.4.4、§2.4.11、§2.5；本笔记不是整本规范的逐字段替代品。 | [原文](https://kib.kiev.ua/x86docs/AMD/IOMMU/48882-3.09.pdf) |
+| [VM10：AMD IOMMU 3.09：翻译、远端 ATC 与失效完成契约](../../UTCL2/sources/VM10-iommu-spec.md) | 用规范区分 IOMMU 内部缓存、设备 ATC、页表更新与在途 DMA；重点解释失效命令的依赖、Completion Wait、QueueID 流控和安全回收页面的条件。 | 规范选读。已取得完整 303 页 PDF；重点核读 §1.3、§2.1–2.2、§2.4.1–2.4.4、§2.4.11、§2.5；本次补核 §2.2.6–2.2.7.1、§2.4.7、§2.6 的 guest/nested 与 PRI/PPR 主线；本笔记不是整本规范的逐字段替代品。 | [原文](https://kib.kiev.ua/x86docs/AMD/IOMMU/48882-3.09.pdf) |
 | [C05：MMHUB：翻译、TAP/DAGB、EA 队列与 DF 边界](../../HUBS/sources/C05-mmhub-dagb-ea.md) | 连接客户端 AXI、按需翻译、TAP/DAGB 预约、EA 分组排队和 SDP 返回，是 HUBS/EA 整体微架构的重要参考；保留共享存储、独立 credit、失效路径及与 C01 的差异。 | 用户页图·参考设计。读取 41 页可提取文字，直接核看第 7、18、27、32、33、34、40 页关键图表；图中缺乏的 RTL 时序、RAM 端口数和严格完成定义保持未知。 | [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/HUBS/assets/MMHUB_introduction) |
-| [R8：AMBA AXI：握手、独立通道、ID 顺序与完成边界](../../SWITCH/sources/R8-axi-ordering-contract.md) | 保存 AXI 数据通路必须遵守的 VALID/READY、AW/W/B 依赖、burst/ID 和响应顺序规则；适合研究 bridge、NI、buffer 和“收到响应意味着什么”。 | 规范选读。已取得完整规范，重点核读 A3 握手/通道关系、A5 ID、A6 ordering/observation/completion；本笔记只覆盖 AXI 主干，不宣称完整整理 ACE、AXI5 原子等全部扩展。 | [原文](https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/IHI0022H_amba_axi_protocol_spec.pdf) |
+| [R8：AMBA AXI：握手、独立通道、ID 顺序与完成边界](../../SWITCH/sources/R8-axi-ordering-contract.md) | 保存 AXI 数据通路必须遵守的 VALID/READY、AW/W/B 依赖、burst/ID 和响应顺序规则；适合研究 bridge、NI、buffer 和“收到响应意味着什么”。 | 规范选读。已取得完整规范，重点核读 A3 握手/通道关系、A5 ID、A6 ordering/observation/completion，并补核 A3.4 burst/error 与 A7.2 exclusive；本笔记只覆盖 AXI 主干，不宣称完整整理 ACE、AXI5 原子等全部扩展。 | [原文](https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/IHI0022H_amba_axi_protocol_spec.pdf) |
 | [MEM6：PG239：PCIe PHY 均衡阶段与完成语义](../../PHY/sources/MEM6-pcie-equalization.md) | 解释 Preset Apply、接收适配、发送系数更新的不同阶段，适合 PCIe PHY 与链路状态机联读；重点是请求接受和适配完成的区别。 | 厂商/项目官方资料。已读均衡序列章节；产品规格仅作入口，未读完整 PCIe 规范或实现全部训练流程。 | [原文](https://docs.amd.com/r/en-US/pg239-pcie-phy/Product-Specification) |
 | [MEM7：AM002：串行接收均衡与 CDR](../../PHY/sources/MEM7-versal-cdr-equalizer.md) | 把链路误码问题分解为信道损耗、均衡与采样相位跟踪，适合 PHY 微架构入门；不提供 HBM 源同步接口或目标芯片的接收器设计。 | 厂商/项目官方资料。已读 Versal GTY/GTYP 接收器上述正文；未读全手册、未做眼图/BER 实测。 | [原文](https://docs.amd.com/r/en-US/am002-versal-gty-transceivers/RX-CDR) |
 | [IO1：PG213：TLP 接收、选择性流控与跨接口保序](IO1-pg213-transactions.md) | 围绕 TLP 到用户逻辑的转换，解释 descriptor、有效字节、NP credit、Split Completion 及 Posted 顺序检查点；适合 PCIe 请求/完成微架构研究。 | 厂商/项目官方资料。已读所列正文；FPGA PCIe4 IP 的接口实例，不是完整 PCIe Base 规范或 AMD GPU PCIe RTL。 | [原文](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Completer-Request-Interface-Operation) |

@@ -1,10 +1,10 @@
 # C01：MM_UTCL2 图示与验证环境：从翻译事务到可观测检查点
 
-更新日期：2026-09-24。
+更新日期：2026-09-25。
 
 导读：覆盖 MM_UTCL2 的 APT1/2/3、VML2/ATCL2、fault/retry、两类失效以及验证环境，适合建立请求生命周期和验证检查点；所有容量与字段均须保留该资料版本范围。
 来源：[仓库既有 tb_mm_utcl2 页图](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/tb_mm_utcl2)。这是用户提供且已入库的 HYGON 标识资料，不是 AMD 官方公开规范。缺失的转换正文未恢复，未读取或上传 original_file。
-阅读状态：读取已提交页图的文字并核看关键图；49 页中第 1、4 页未取得有效图像，本笔记主要依据第 3、5、15–31、33–47、49 页。图示版本与目标芯片对应关系仍需本地确认。
+阅读状态：49 页的已提交页图均已取得文字阅读或图像核看记录；2026-09-25 补回并直接核看了此前未读取的第 1、4 页。主要技术范围为第 3–5、15–31、33–47、49 页；并非对所有 OCR 字符逐字校勘。图示版本与目标芯片对应关系仍需本地确认。
 
 ## 页码导览
 
@@ -17,7 +17,19 @@
 | 33–47 | agents、寄存器/页表生成、参考模型 | 如何把接口事务变成可检查的预期结果 |
 | 49 | 未覆盖项与问答 | 哪些环境假设不能误当设计保证 |
 
-## 正常请求：地址之外还必须跟踪属性
+## 第 4 页补读：BOWEN MMHUB 与 UTCL2 客户端增长
+
+[第 1 页](../assets/tb_mm_utcl2/slide-001.png) 是 HYGON 的 MM_UTCL2 introduction 封面；[第 4 页](../assets/tb_mm_utcl2/slide-004.png) 则是有实质架构信息的 BOWEN MMHUB 总图，不能再将此前的缺图视为无影响。
+
+图中有 mmhub_ip 与 mmhub_ip1 两组；每组包含共享 UTCL2、PCTL、rsmu、rdft，SMN 接至 rsmu、DFT 接至 rdft。lane 内画出 Tap Chain、VML1、DAGB、EA 以及到 DfSdpX 的连接。它是结构图，不能仅按方框纵向位置断言所有请求无条件串行经过每一块；具体翻译开关/sideband 仍需结合其他页。
+
+左组包括 t9/t10/t6/t5/t4/t7/t8，右组 t3/t2/t1/t0；对应客户出现 SDMA、HDP、DBGU、MP、decoder/encoder 等。正文明确每增加一个 lane（一个 VML1）增加 **4 个 UTCL2 client**，lane 扩张会放大共享翻译接口数量。SDMA 内部还具有与 VML1 同类翻译作用的 UTCL1，历史 SDMA 采用 UTCL1 sideband translation；BOWEN_A0 新增的 SDMA_H0–6、decoder/encoder 可启用内部 UTCL1。这是端点内翻译与 HUB lane 翻译两种组织选择的直接参考。
+
+图中关于合并 decoder/encoder sideband 以减少客户端数的文字带删除线；只能登记为被划除的候选讨论，**不得写成已采纳设计**。据此可安排三个微架构问题：内部 UTCL1 与 lane VML1 的使能/旁路互斥怎样控制；fan-in 增加后 client/tag、返回路由及背压怎样扩展；共享 UTCL2 的队列/仲裁是否随接口数增长。页图没有回答具体队列深度和仲裁算法，后两项属于待研究问题。
+
+这页也为 [RSMU](../../RSMU/sources/MG5-rsmu-umc-index.md) 提供了“SMN 接入每个 MMHUB 的 rsmu”这一参考设计位置，不能直接映射为某代 AMD 目标芯片的实例数。
+
+## 正常请求的地址与属性处理
 
 入口携带 VA、VMID/VFID、client/tag、读写/执行属性等。APT1 依据 space、aperture、上下文模式判断是物理直通、地址空间变换还是 GPUVM 查询。VML2 命中后仍要检查表项合法性和权限；miss 交给 walker，后者沿 PDE 层级寻找 PTE。APT2 决定结果是否还需 ATC；APT3 根据 framebuffer 区间和本地节点配置作 xGMI 地址转换。多个阶段都是条件分支，不能把请求一律画成三次页表遍历。
 

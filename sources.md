@@ -1,26 +1,28 @@
 # 资料集与来源
 
-更新日期：2026-09-24。当前建立 **101 篇独立来源笔记、19 个模块资料索引**：95 篇基于已读取正文、相关章节/函数或已提交页图；R13 为摘要范围笔记；MEM11、IO4 为未取得全文的规范入口；L1–L3 为未重读外部资料的登记笔记。后六篇不能算作全文技术精读。95 篇中的官方简介、产品页和模型指南也各自保留资料层级，不等于读过完整规范。
+更新日期：2026-09-25。当前 **103 篇独立来源笔记、19 个模块资料索引**。99 篇有正文、相关章节/函数、页图或官方介绍的阅读记录，其中 MEM11、MEM16 是公开规范转录的局部选读，原版图表待核；IO4 与 L1–L3 共 4 篇仍未取得本次可读正文。这些计数不是深度完成率，也不表示 99 本资料均全文精读。
+
+本次补足 R1/VM5 定量条件、R8/VM10 协议细节、R13 原证明和 C01 缺页，新增 R23 CHI 正式规范与 MEM16 DFI 5.1 选读，更新 PHY 总阶段及 RSMU 直接证据。逐项结果及真实剩余项见[资料任务检查与补齐记录](source-reading-audit.md)。
 
 原有 41 是上一阶段新增的 GC/VM/FAB/MEM/IO/MG 主条目数量，并非当时全项目所有历史资料。此次覆盖这些条目、旧 P/C/R/L 来源并补充新资料；P6 是分组，R17 与 IO3 同源，只保留一篇主笔记，不重复充数。一个编号可包含同一指南的多个章节，或一个机制必需的紧密关联代码文件；原文入口在笔记中逐一列出。
 
-模块索引告诉你“这篇讲什么、何时读”；逐篇笔记保存技术细节、限制和位置；研究方案保存微架构问题及轮次。先读模块上下文/结构，再查索引和相关笔记，按需回原文。[维护范本 v1.3](chip-study-plan.md) · [项目上下文](project-context.md) · [研究路线图](research-roadmap.md)。
+模块索引告诉你“这篇讲什么、何时读”；逐篇笔记保存技术细节、限制和位置；研究方案保存微架构问题及轮次。先读模块上下文/结构，再查索引和相关笔记，按需回原文。[维护范本 v1.4](chip-study-plan.md) · [项目上下文](project-context.md) · [研究路线图](research-roadmap.md)。
 
-**完成状态校正：** 上述数量表示文件与阅读范围，不表示详细总结已全部验收。除 6 篇明确受限来源外，还存在局部缺图、资料覆盖与笔记深度问题；接续前阅读[资料任务检查与待补项](source-reading-audit.md)。
+**使用状态：** 已完成笔记/索引建设及本次可访问范围的补读；原版规范、器件手册、外部 SDMA 与目标 CF 证据仍有具体缺口，不用来源数替代技术验收。
 
 ## 按模块查阅资料集
 
 | 模块索引 | 主笔记数 | 含跨模块复用来源数 | 主线内容 |
 | --- | --- | --- | --- |
-| [GC](GC/sources/README.md) | 8 | 25 | 存储层次与 GL2 请求边界；GRBM/RLC 的选择状态与恢复；可见性与性能解释 |
+| [GC](GC/sources/README.md) | 8 | 26 | 存储层次与 GL2 请求边界；GRBM/RLC 的选择状态与恢复；可见性与性能解释 |
 | [UTCL1](UTCL1/sources/README.md) | 2 | 20 | 客户端身份、命中与 miss；合并、等待与资源释放；失效与地址空间复用 |
 | [UTCL2](UTCL2/sources/README.md) | 11 | 30 | 整体结构、页表层级与回填；并发、fault、失效和外部翻译；预取、观测与纠错 |
 | [HUBS](HUBS/sources/README.md) | 3 | 29 | Hub 集成及翻译服务边界；数据/地址交接与共享资源；失效、故障和通知 |
 | [EA](EA/sources/README.md) | 2 | 30 | 请求接入与下游服务；共享存储、bank/group 与资格；返回、维护与性能解释 |
-| [DF](DF/sources/README.md) | 8 | 42 | 本地/远端目标与身份；地址归属、hash 与 XGMI；事务完成、流控和恢复 |
-| [SWITCH](SWITCH/sources/README.md) | 20 | 33 | 既有 Router 两轮的证据复查；NI、排序和协议映射；D2D 交接、进展与评估 |
-| [UMC](UMC/sources/README.md) | 5 | 30 | 请求、映射与命令调度；PHY 交接与刷新/低功耗；错误、地址隔离与观测 |
-| [PHY](PHY/sources/README.md) | 7 | 22 | 内存接口、时钟与校准；串行采样和协议训练；D2D 与性能裕量 |
+| [DF](DF/sources/README.md) | 8 | 43 | 本地/远端目标与身份；地址归属、hash 与 XGMI；事务完成、流控和恢复 |
+| [SWITCH](SWITCH/sources/README.md) | 21 | 34 | 既有 Router 两轮的证据复查；NI、排序和协议映射；D2D 交接、进展与评估 |
+| [UMC](UMC/sources/README.md) | 5 | 31 | 请求、映射与命令调度；PHY 交接与刷新/低功耗；错误、地址隔离与观测 |
+| [PHY](PHY/sources/README.md) | 8 | 23 | 内存接口、时钟与校准；串行采样和协议训练；D2D 与性能裕量 |
 | [HBM](HBM/sources/README.md) | 4 | 18 | 器件组织与数量级；命令、时序和维护；保护域与持续性能 |
 | [PCIE](PCIE/sources/README.md) | 6 | 20 | BAR/DMA 与请求完成；有限资源、保序与翻译扩展；通知、链路和恢复 |
 | [NBIF](NBIF/sources/README.md) | 2 | 21 | 窗口、目标和实例；主机交付与维护连接；事件、分区与异常 |
@@ -28,11 +30,11 @@
 | [CF](CF/sources/README.md) | 1 | 18 | 命令身份与端点访问；接纳、排序和完成；共享状态与异常退出 |
 | [SMU](SMU/sources/README.md) | 4 | 25 | 管理请求和共享表；策略约束与反馈；错误、事件和恢复 |
 | [SMN](SMN/sources/README.md) | 2 | 13 | 管理访问入口与选择状态；端点与相邻接口；完成、低功耗和恢复 |
-| [RSMU](RSMU/sources/README.md) | 2 | 10 | 模块身份与直接寄存器证据；端点访问及错误状态；可访问性与恢复责任 |
+| [RSMU](RSMU/sources/README.md) | 2 | 11 | 模块身份与直接寄存器证据；端点访问及错误状态；可访问性与恢复责任 |
 | [IH](IH/sources/README.md) | 5 | 23 | 事件记录、内存和解码；通知和来源处理；溢出、恢复与吞吐 |
 | [SDMA](SDMA/sources/README.md) | 5 | 27 | 目标接口与外部范围；系统提交、寻址与维护；完成、事件和恢复 |
 
-主笔记数合计 101；复用来源数不能相加。所有来源保留原编号；固定 tag/commit 和具体章节/函数见各笔记。
+主笔记数合计 103；复用来源数不能相加。所有来源保留原编号；固定 tag/commit 和具体章节/函数见各笔记。
 
 ## 用户说明
 
@@ -67,6 +69,8 @@
 - **U20（2026-09-24）：** 用户强调笔记应足够详细，减少后续 Codex 反复阅读原资料，并支持未来多次跨模块复用；已授权实施所有既有及新增来源的整理。
 - **U21（2026-09-24）：** 用户要求每篇资料都有索引，说明大致内容，帮助 Codex 判断是否值得阅读；后续明确要求继续实施。当前采用模块 sources/README.md 的逐篇导读与唯一主笔记。
 
+
+- **U22（2026-09-25）：** 用户要求按资料任务检查报告补齐未完成工作；本次执行正文补读、笔记加深、证据纠正及索引/上下文同步。访问受限项保留可执行的本地接续范围，不冒充完成。
 
 ## 本地只读参考
 
@@ -129,7 +133,7 @@ R1–R22 保留 SWITCH 原有编号体系并补 R22。第 1、2 轮事实与模�
 
 [Peh/Dally：流水 router 延迟模型与推测分配](SWITCH/sources/R1-pipelined-router-delay.md) · [原文](https://projects.csail.mit.edu/wiki/pub/LSPgroup/PublicationList/specmodel.pdf) · 原始论文
 
-说明 router pipeline、VC 分配、switch 分配和 credit 往返如何共同决定零负载延迟与吞吐，适合审查“每跳一拍”和“增加 VC 必然更快”等简化假设。
+保存 router 级划分与逻辑努力公式、FO4 对照、8×8 mesh 实验配置及不同 buffer/VC 的结果；适合比较周期、吞吐和 credit 周转，所有数值保留原工艺与工作负载。
 
 ### R2
 
@@ -199,9 +203,9 @@ R1–R22 保留 SWITCH 原有编号体系并补 R22。第 1、2 轮事实与模�
 
 ### R13
 
-[Dally/Seitz：channel dependency 的可用结论与阅读范围](SWITCH/sources/R13-channel-dependency-scope.md) · [原文](https://authors.library.caltech.edu/records/fd0yr-br438) · 原论文仅摘要已读
+[Dally/Seitz：CDG 定理的前提、证明与虚通道构造](SWITCH/sources/R13-channel-dependency-scope.md) · [原文](https://authors.library.caltech.edu/records/fd0yr-br438) · 原始论文正文选读
 
-保存原作者记录可确认的 CDG/虚通道断环思想，并明确正文未成功取得；可用于定位死锁研究入口，不能代替原证明或覆盖所有自适应/协议级依赖。
+解释确定性 wormhole 路由为何需要检查 channel dependency graph，保存定理假设、双向证明要点、环网/torus 的 VC 断环构造和系统应用边界；适合 SWITCH 的路由、VC 与死锁研究。
 
 ### R14
 
@@ -254,6 +258,12 @@ R1–R22 保留 SWITCH 原有编号体系并补 R22。第 1、2 轮事实与模�
 [Garnet NI：终点背压、tail 保留与协议缓冲依赖](SWITCH/sources/R22-garnet-network-interface.md) · [原文](https://github.com/gem5/gem5/blob/v24.1.0.1/src/mem/ruby/network/garnet/NetworkInterface.cc) · 固定版本公开代码
 
 说明网络到达终点后仍可能因协议 MessageBuffer 无空间而持有 tail/VC，并解释 credit、回调和消息交付的关系；用于补齐端到端依赖分析。
+
+### R23
+
+[CHI E.a 原始规范：事务资源、顺序、重试与链路 credit](SWITCH/sources/R23-chi-ea-protocol.md) · [原文](https://documentation-service.arm.com/static/6087f99b5e70d934bc69f1f0) · 正式规范选读
+
+从 CHI 正式规范解释 RN/HN/SN、四类通道、TxnID/DBID 生命周期、完成与可见性、P-Credit/L-Credit 以及链路低功耗收敛；适合 SWITCH/DF/GC 的行业协议对照，不是 AMD fabric 实现说明。
 
 ## 规划阶段对既有 SWITCH 来源的补充阅读
 
@@ -315,7 +325,7 @@ R1–R22 保留 SWITCH 原有编号体系并补 R22。第 1、2 轮事实与模�
 
 [MASK：把地址翻译需求传递到共享缓存和 DRAM 调度](UTCL2/sources/VM5-mask-paper.md) · [原文](https://rausavar.github.io/pubs/mask-asplos18.pdf) · 原始论文
 
-解释一次 TLB miss 为何能阻塞许多 warp，以及共享 TLB、数据 cache、DRAM 三层怎样共同放大翻译开销。适合设计跨模块性能研究问题；不是 AMD 实现证据。
+解释 token/fill 与两种 cache 旁路、DRAM 三队列预算；保存公式、容量、工作负载筛选、基线与吞吐/公平性结果，适合 UTCL2–EA–UMC 的翻译干扰研究。
 
 ### VM6
 
@@ -473,9 +483,9 @@ R1–R22 保留 SWITCH 原有编号体系并补 R22。第 1、2 轮事实与模�
 
 ### MEM11
 
-[JESD238：HBM3 正式标准入口与待补范围](HBM/sources/MEM11-jedec-scope-gap.md) · [原文](https://www.jedec.org/standards-documents/docs/jesd238) · 规范全文未取得
+[JESD238A：伪通道共享、命令与时钟边界选读](HBM/sources/MEM11-jedec-scope-gap.md) · [原文](https://studylib.net/doc/28550091/jesd238a-hbm3) · 规范正文转录选读·原版图表待核
 
-这是完整规范尚未取得的缺口记录；用于判断哪些 HBM3 细节必须回查正式标准，不能作为时序、编码或合规依据。
+从 JESD238A 的公开正文转录整理 PC 的独立与共享资源、行列命令接口及 CK/DQS 关系；可用于 HBM/UMC 的架构骨架，精确时序图和编码仍需原版核验。
 
 ### MEM12
 
@@ -499,7 +509,13 @@ R1–R22 保留 SWITCH 原有编号体系并补 R22。第 1、2 轮事实与模�
 
 [PG150：DQS gate 搜索、细调与失败定位](PHY/sources/MEM15-pg150-dqs-gate.md) · [原文](https://docs.amd.com/r/en-US/pg150-ultrascale-memory-ip/Calibration-Stages) · 厂商/项目官方资料
 
-详细解释读数据门控如何找到 DQS 起始位置，覆盖粗/细调、重复采样、rank 统一及诊断；适合 PHY 校准专题，不能据此宣称已读所有训练阶段。
+解释 DQS gate 搜索、重复采样、跨 rank 收敛，并补 2022 原图的整体训练分支与灰色未实现项；适合建立 PHY 阶段、配置和业务放行的关系。
+
+### MEM16
+
+[DFI 5.1：启动、训练交接与读写有效期选读](PHY/sources/MEM16-dfi51-interface.md) · [原文](https://studylib.net/doc/27487094/ddr-phy-interface-specification-v5-1) · 规范正文转录选读·原版图表待核
+
+补足 DFI 官网介绍之外的接口机制：启动完成代表什么、PHY 如何取得训练控制、写命令与数据怎样对齐、读返回为什么不能假定固定连续延迟。适合 UMC/PHY 边界研究，不覆盖 DFI 6.0 HBM profile。
 
 ## 主机与控制接口
 
@@ -615,9 +631,9 @@ HDP 全称和 host framebuffer 地址转换的 AMD 原厂历史依据；适合�
 
 ### MG5
 
-[RSMU 寄存器线索与 UMC 6.1 访问模式](RSMU/sources/MG5-rsmu-umc-index.md) · [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/include/asic_reg/rsmu/rsmu_0_0_2_offset.h) · 固定版本公开代码
+[RSMU 寄存器线索与 UMC 6.1 访问模式](RSMU/sources/MG5-rsmu-umc-index.md) · [原文](https://github.com/torvalds/linux/commit/245219a66085332a30e4653db3542ea5654ff762) · 固定版本公开代码
 
-这是 RSMU 最直接的公开接口证据：UMC index mode 及错误采集前后的状态切换。适合建立职责边界，不能据少量寄存器推定完整 RAS 控制器。
+用 AMD 作者提交确认 remote SMU 名称及寄存器接口/错误/复位职责，配合 UMC index-mode 保存恢复与 BOWEN 参考位置；目标实例/内部实现仍未知。
 
 ### MG6
 

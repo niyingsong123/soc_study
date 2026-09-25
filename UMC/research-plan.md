@@ -1,6 +1,6 @@
 # UMC 微架构研究与论文规划
 
-依据范本 v1.3；方案 v1.1，2026-09-24。当前完成研究规划与相关资料初读，**论文轮次尚未开始**。下一步执行第 1 轮：固定代表性内存访问及 UMC 两侧接口，建立可工作的读写闭环。
+依据范本 v1.4；方案 v1.1，2026-09-24。当前完成研究规划与相关资料初读，**论文轮次尚未开始**。下一步执行第 1 轮：固定代表性内存访问及 UMC 两侧接口，建立可工作的读写闭环。
 
 资料集：[MEM1–MEM4](../sources.md#mem1)，另复用 [P1](../sources.md) 的 AMD 命名与 [MG5](../sources.md#mg5) 的特定 UMC 驱动代码。先读本方案骨架，再看资料简介及已读范围，按每轮链接回到原文。后续正文集中写入本目录一份技术稿，逐轮更新受影响章节与本页状态。
 
@@ -79,3 +79,7 @@ flowchart TD
 MC-PHY 接口须同时核对 [PG276 的 DFI 命名](https://docs.amd.com/r/en-US/pg276-axi-hbm/PHY-Only-Mode) 和 [DFI 标准组织](https://ddr-phy.org/)的版本覆盖，不能默认 HBM 使用 DFI 5.x，也不能因 6.0 支持 HBM 而回推旧产品采用 6.0。完整规范与器件时序表未读的范围见资料集。 技术笔记：[MEM1](sources/MEM1-pg276-hbm-controller.md)、[MEM4](../PHY/sources/MEM4-dfi-version-boundary.md)。
 
 第 1 轮产出能闭环后即可继续；目标资料暂缺时维护明确标注的功能参考模型，把实例级问题留在本节。完成 UMC 方案后沿内存请求方向接续 [PHY 方案](../PHY/research-plan.md)，HBM 仅提前提供必要接口知识。
+
+## 2026-09-25 资料补齐对本方案的影响
+
+第 2–4 轮优先复用 [MEM11](../HBM/sources/MEM11-jedec-scope-gap.md)、[MEM16](../PHY/sources/MEM16-dfi51-interface.md)。JESD238A 转录补 PC 独立状态与共享命令资源；DFI 5.1 转录补控制/数据交接，分别注明层级与版本。具体时序图和 HBM profile 尚未核验，先形成作用域明确的调度模型。 本次仅更新依据和研究落点，不把任何待执行论文轮次改为完成。

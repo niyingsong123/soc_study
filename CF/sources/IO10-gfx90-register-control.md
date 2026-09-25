@@ -1,10 +1,10 @@
 # IO10：GC 9.0 驱动：实例选择、异步寄存器访问与 HDP 完成
 
-更新日期：2026-09-24。
+更新日期：2026-09-25。
 
 导读：研究 GRBM 共享选择状态、异步读回，以及 ring 按引擎/pipe 发起 HDP request/done 等待；适合控制事务与维护完成联读，不扩展 CU/CP 内部或推定真实 CF 拓扑。
 来源：[Linux v6.12 gfx_v9_0.c](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_0.c)。
-阅读状态：已读 select_se_sh、受 grbm_idx_mutex 保护的选择/恢复模式、kiq_read_clock 的提交/fence/超时/复位分支，以及 ring_emit_hdp_flush；未展开 wait_reg_mem 包字段，文件其余大型执行模块不在本研究范围。
+阅读状态：已读实例选择/恢复、KIQ clock 读回、HDP request/done 及 WAIT_REG_MEM helper 的字段和失败路径；不是目标 CF 拓扑证据。
 
 ## 目标选择本身也是状态
 
@@ -27,6 +27,14 @@ kiq_read_clock 分配 writeback 位置，在 ring 中发起寄存器到内存的
 ## 应用于 CF 的方式
 
 保持本项目 CF=Command Fabric，使用 register/control bus、CSR fabric、indirect access 等术语扩大搜索。先确定发起者、目标身份、共享选择状态、返回路径、锁/资源和失效退出，再决定是否需要研究仲裁/QoS。此代码不能说明命令实际经过哪个硬件 fabric，也不能把 KIQ、SMN 或 GRBM 直接改名为 CF。
+
+## 下层 WAIT_REG_MEM 与失败路径补核
+
+本次继续读取同版 `gfx_v9_0_wait_reg_mem`：它依次发一个 PACKET3_WAIT_REG_MEM 头和六个 payload dword；控制字包含 mem_space、operation、比较函数 3（equal）、engine，后续为 addr0、addr1、reference、mask 和 polling interval。代码只在 memory 模式显式检查 addr0 的 dword 对齐。HDP 调用采用 register 模式、operation=1，传 request/done 两地址、相同 ref/mask 及 interval=0x20。该 interval 是包字段，源码没有在这里换算为纳秒；不能当成软件 sleep 或总体 timeout。
+
+KIQ clock 读取同样展示资源失败细节：持 ring lock 分配 writeback，发 COPY_DATA 与 polling fence，commit 后解锁，再等待。fence 发射失败先 ring_undo；reset 中不继续长等；成功后用 mb() 再拼接两个 32-bit writeback 字。失败返回全一的 64-bit 值，不是合法零时钟值。cleanup 还有 `if (reg_val_offs)` 条件，本次不据此宣称所有资源路径已形式验证，也不将注释提到的 IRQ 限制自动当成该函数具有显式 in_irq 检查。
+
+定向检索 AMD 的 Command Fabric/CF_IF 与相邻控制接口后，仍未找到能将这些公开操作映射到目标 CF 拓扑/packet format 的直接材料。因此 CF 的真实身份和路径继续依赖 [L1](../../SDMA/sources/L1-external-glossary-scope.md)/[L2](../../SDMA/sources/L2-external-shaobo-scope.md) 的本地核对；这里新增的是可追踪机制，不是通过相邻来源替 CF 填写未知 RTL。
 
 ---
 

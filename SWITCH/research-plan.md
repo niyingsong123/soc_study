@@ -1,6 +1,6 @@
 # SWITCH：保留既有两轮基础的后续研究方案
 
-版本：v1.1；日期：2026-09-24；依据：[研究范本 v1.3](../chip-study-plan.md)。状态：本次完成旧计划复核与后续规划；实际研究仍为第 1、2 轮完成，第 3–6 轮未完成。下一步是修订后的第 3 轮，不能把本次规划记作第 3 轮成果。
+版本：v1.1；日期：2026-09-24；依据：[研究范本 v1.4](../chip-study-plan.md)。状态：本次完成旧计划复核与后续规划；实际研究仍为第 1、2 轮完成，第 3–6 轮未完成。下一步是修订后的第 3 轮，不能把本次规划记作第 3 轮成果。
 
 入口：[模块上下文](README.md) → [实际研究进度](../switch/RESEARCH_PROGRESS.md) → 本方案 → [资料集 P6](../sources.md#p6switch-公开研究资料组)。正文继续原位维护 [switch_detailed_guide.md](../switch/switch_detailed_guide.md)，保留大小写目录和历史原稿。P6 内部的 R1–R21 继续沿用，本次阅读定位见资料集；当前目标芯片拓扑和协议仍未确定。
 
@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | 既有 Router 两轮的证据复查 | 复用第 1–2 轮 | [R1](sources/R1-pipelined-router-delay.md)、[R2](sources/R2-low-latency-vc-router.md)、[R3](sources/R3-booksim-method.md)、[R4](sources/R4-garnet-overview.md)、[R5](sources/R5-garnet-switch-allocator.md)、[R6](sources/R6-garnet-input-output-credit.md)、[R18](sources/R18-islip-matching.md)、[R19](sources/R19-booksim-buffer-state.md)、[R20](sources/R20-damq-buffer.md)、[R21](sources/R21-elastistore.md) | 固定 allocator/credit/free-buffer 语义；教材/论文的工作负载、工艺和吞吐例外不得遗漏。 |
 | NI、排序和协议映射 | 后续第 3 轮 | [R7](sources/R7-floonoc-paper.md)、[R8](sources/R8-axi-ordering-contract.md)、[R9](sources/R9-chi-model-user-guide.md)、[R12](sources/R12-arm-system-architecture.md)、[R15](sources/R15-floonoc-router-code.md)、[R22](sources/R22-garnet-network-interface.md)、[IO3](../PCIE/sources/IO3-linux-dma-api.md)、[FAB7](../DF/sources/FAB7-amdgpu-fence-lifecycle.md) | R9 是 CHI 模型指南，R12 是架构介绍；FlooNoC 当前代码与旧论文不同；端点背压也影响 VC 回收。 |
-| D2D 交接、进展与评估 | 后续第 4–6 轮 | [R10](sources/R10-ucie-protocol-adapter.md)、[R11](sources/R11-ucie11-streaming.md)、[R13](sources/R13-channel-dependency-scope.md)、[R14](../PHY/sources/R14-ucie-electrical-training.md)、[R16](sources/R16-remote-control-deadlock.md)、[MEM8](../PHY/sources/MEM8-ucie-official-qa.md)、[FAB1](../DF/sources/FAB1-cdna3-iod-memory.md) | R13 仅摘要已读；UCIe/Remote Control 的保证按层和前提使用，不为教学模型背书。 |
+| D2D 交接、进展与评估 | 后续第 4–6 轮 | [R10](sources/R10-ucie-protocol-adapter.md)、[R11](sources/R11-ucie11-streaming.md)、[R13](sources/R13-channel-dependency-scope.md)、[R14](../PHY/sources/R14-ucie-electrical-training.md)、[R16](sources/R16-remote-control-deadlock.md)、[MEM8](../PHY/sources/MEM8-ucie-official-qa.md)、[FAB1](../DF/sources/FAB1-cdna3-iod-memory.md) | R13 已补正文及定理前提；UCIe/Remote Control 的保证按层和前提使用，不为教学模型背书。 |
 
 
 ## 范围、术语与研究次序
@@ -83,3 +83,7 @@ flowchart TD
 第 3 轮先核对仓库当前提交及已有模型，保存教学子集的明确边界；不能为了写接口映射先改掉第二轮容量/ownership 约定。目标 SWITCH 拓扑、客户端协议、DF/CAKE 归属和 D2D 模式仍为优先未知。本次仅调整方案；旧正文第 49 章和进度页的后续安排应引用本方案，历史已完成说明保留。
 
 每轮完成后更新正文受影响章节、[实际进度](../switch/RESEARCH_PROGRESS.md)、资料集及 README 的下一步。研究门槛是解释与证据闭合，代码检查仅在能解答具体问题时增加，有限随机通过不等于全系统无死锁证明。
+
+## 2026-09-25 资料补齐对本方案的影响
+
+第 3 轮及第 4–6 轮优先复用 [R1](sources/R1-pipelined-router-delay.md)、[R8](sources/R8-axi-ordering-contract.md)、[R13](sources/R13-channel-dependency-scope.md)、[R23](sources/R23-chi-ea-protocol.md)。模型公式/实验条件、burst 与错误收尾、CDG 前提、CHI 事务/两类 credit 和链路收敛已补。协议依赖与路由依赖分别分析；R9/R12 不再承担正式 CHI 规则来源。 本次仅更新依据和研究落点，不把任何待执行论文轮次改为完成。

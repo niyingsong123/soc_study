@@ -1,6 +1,6 @@
 # L3：外部 SDMA 待确认问题：保留 anshi TBE 边界
 
-更新日期：2026-09-24。
+更新日期：2026-09-25。
 
 导读：用于接续未决问题，特别是 anshi TBE 的剩余职责；当前没有原文，禁止用公开驱动或 shaobo 架构把未知项自动填满。
 来源：外部只读项目 `D:\project\no_preject\sdma_repo\docs\context\open-questions.md`；历史登记见[全局资料集](../../sources.md#本地只读参考)。
@@ -17,6 +17,10 @@
 若当前任务只完善 SoC 方案，可将未决接口写成假设并标明适用条件，继续完成不依赖该答案的模块。若必须给出目标时序或职责归属，则需取得本地资料；这份范围笔记不能当作已完成详细技术总结。
 
 与 [L1](../../SDMA/sources/L1-external-glossary-scope.md)/[L2](../../SDMA/sources/L2-external-shaobo-scope.md) 一起保留外部项目入口，公开 [SD1](../../SDMA/sources/SD1-sdma-system-lifecycle.md)/[SD2](../../SDMA/sources/SD2-sdma52-completion-maintenance.md) 只提供独立的系统层对照。所有后续核实继续遵守外部项目只读与原始文件不上传的边界。
+
+## 2026-09-25 本次接续状态
+
+当前会话的授权工作区只有 SoC 资料缓存及本仓库文件，未挂载上文 Windows 外部项目路径。无法在云端完成本条原文核读；保留为待本地处理，未修改或复制外部资料。后续本地 Codex 按本篇问题清单只读核对，回写“所见版本/位置、SoC 接口结论、仍未解决项”即可，不上传原件，也不因本批其他资料已补充就将本条改为已读。
 
 ---
 

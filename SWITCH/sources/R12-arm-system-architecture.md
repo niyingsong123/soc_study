@@ -1,6 +1,6 @@
 # R12：Arm 系统架构入门：数据、翻译、中断与低功耗接口的分层
 
-更新日期：2026-09-24。
+更新日期：2026-09-25。
 
 导读：提供 CHI/AXI、SMMU 翻译接口、GIC 与低功耗控制的系统地图，帮助研究 AMD 模块别名和职责边界；它是入门总览，不是 CHI 事务规范。
 来源：[Learn the architecture – Arm System Architectures，110303_0100_01_en，2025-05-19](https://documentation-service.arm.com/static/682ae34f0aae2a5d8f045749)。
@@ -23,6 +23,8 @@ DTI 支持查询并缓存翻译，DTI-ATS 面向带 ATS 的 PCIe root port，DTI
 LPI 的 Q/P channel 面向时钟和电源协调；它提示研究 power-down 时要考虑请求停止、状态接受和资源 drain，而非只研究一个 clock-enable 位。具体握手状态、拒绝/恢复和时序需读对应规范；本入门资料不能证明任一 AMD SMU 实现。
 
 该资料适合规划第一轮建立系统地图和扩展检索词；到了具体 feature 论证，应转入 [R8](../../SWITCH/sources/R8-axi-ordering-contract.md)、[VM10](../../UTCL2/sources/VM10-iommu-spec.md)、[MG1](../../SMU/sources/MG1-smu-message-table.md) 等更直接来源。避免用总览文章替代 transaction FSM、寄存器规范或 RTL 证据。
+
+正式事务与链路规则已另建 [R23：CHI E.a 原始规范选读](R23-chi-ea-protocol.md)。本篇保留原资料身份，不能因新增规范而把模型/介绍的阅读记录改成规范精读。
 
 ---
 

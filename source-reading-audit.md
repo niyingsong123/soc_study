@@ -1,66 +1,55 @@
-# 资料阅读与笔记任务检查
+# 资料任务检查与补齐记录
 
-检查日期：2026-09-24。检查基线：[60c4feb](https://github.com/niyingsong123/soc_study/commit/60c4feb43c0ee7d42a22f3a09c059d5800acf13d)。
+更新日期：2026-09-25。按用户“按检查报告补齐”的要求执行；基线为 [1f09693](https://github.com/niyingsong123/soc_study/commit/1f096936670b0f3ade91493265939c87985aa469)，[2026-09-24 历史检查原文](https://github.com/niyingsong123/soc_study/blob/1f096936670b0f3ade91493265939c87985aa469/source-reading-audit.md)保留在 Git 历史中。
 
-## 结论与检查范围
+## 当前结论
 
-**资料组织与第一批笔记已经完成；“每份资料都形成足够详细、可反复复用的技术总结”尚未全部完成。** 不能把 101 个笔记文件等同于 101 份已经充分精读的资料，也不能把 95/101 当作整体任务完成率。
+**已补齐本次能够直接读取的主要机制、公式/实验、缺页与 CHI 正式协议资料，并同步笔记、索引、上下文和受影响方案；整体资料任务仍有明确的访问及原版核验缺口，不能称为全部精读完成。**
 
-本次重新读取 GitHub 当前提交，核对 101 篇笔记的阅读状态、来源/导读、所属索引和全局编号，检查 19 个模块的索引及上下文/方案入口，并复核 22 篇关键或受限笔记的正文。检查用到的 167 个 Markdown 文件均与该提交的 blob 哈希一致；检查到的 2,465 个仓库内相对路径链接均存在。此数字不包含外部网页可访问性、所有标题锚点或外部本地 SDMA 路径的有效性。
+原来 101 篇笔记，本次更新 19 篇既有笔记，新增 R23（正式 CHI E.a）和 MEM16（DFI 5.1 转录选读），共 **103 篇主笔记、19 个模块逐篇索引**。新增条目不是重复复制；同一来源仍只维护一份主笔记，其他模块链接复用。
 
-22 篇正文复核对象：R1、R2、R7、R8、R9、R12、R13、VM5、VM10、C01、MEM4、MEM9、MEM10、MEM11、MEM12、MEM15、IO4、IO10、MG5、L1、L2、L3。本次没有重新逐段核验全部原资料，不能据此宣称其余笔记的技术正确性及深度均已通过完整验收。
+按实际阅读记录，99 篇有正文/相关章节/函数/页图或官方介绍阅读记录；其中 MEM11/MEM16 仅规范转录的局部正文选读，原版图表未核。IO4、L1–L3 共 4 篇没有本次可读正文。**99/103 不是完成率**：正文选读、产品介绍和整本原文的深度不可相加当成统一精读。
 
-## 已经完成多少
+## 对上一份检查报告逐项处理的结果
 
-| 项目 | 核实结果 | 计数的含义 |
+| 检查项 | 本次实际补充 | 当前状态与接续 |
 | --- | --- | --- |
-| 来源文件 | 101 篇，均有导读、来源和阅读状态 | 包含 6 篇摘要/入口/范围笔记，并非全为正文精读 |
-| 模块资料索引 | 19/19 | 每篇主笔记可由所属模块索引找到，跨模块链接复用 |
-| 模块上下文与研究方案入口 | 19/19 | README 和 research-plan.md 均接入 sources/README.md |
-| 原有规划来源 | 41/41 保留 | 原有 41 并非项目全部历史来源；101 还包含旧 P/C/R/L 与新增来源 |
-| 有正文、章节、函数或页图阅读记录的笔记 | 95 篇 | 阅读范围不一，含规范选读、代码选读、产品页及官方介绍，不能统一称为全文精读 |
-| 未形成原文正文总结 | 6 篇 | R13、MEM11、IO4、L1、L2、L3，详见下表 |
-| 通用方法 | 范本 v1.3 已保存 | 微架构主线、AMD/行业术语、逐篇笔记和索引要求已落地 |
+| [R1：Router 延迟模型](SWITCH/sources/R1-pipelined-router-delay.md) | 流水级合法切分条件、逻辑努力/FO4、参数表对照、公式算例；mesh、流量、预热/采样、延迟口径和 buffer/VC 比较 | 报告指出的定量与设定缺口已补。未重跑仿真，原结果不外推到 AMD |
+| [VM5：MASK](UTCL2/sources/VM5-mask-paper.md) | token/epoch/阈值、旁路 cache、DRAM 预算式/队列、Table 1、工作负载筛选、基线、指标和主要结果 | 报告指出的机制/实验缺口已补。记录原表 warp 配置疑点；吞吐与公平性分别核对指标，均以所述 SharedTLB 主基线引用 |
+| [R8：AXI](SWITCH/sources/R8-axi-ordering-contract.md) | burst 长度/4 KB/非对齐地址/WRAP、禁止提前结束、读写错误收尾；exclusive 的 ID/对齐/容量限制及不支持 slave 仍执行写的例外 | 与当前 NI/bridge 相关的缺口已补。无关 ACE/AXI5 扩展不机械扩写 |
+| [VM10：IOMMU](UTCL2/sources/VM10-iommu-spec.md) | guest/nested 控制、GCR3/PASID、嵌套 walk、PPR log/组身份、COMPLETE_PPR_REQUEST、溢出保护及模式组合限制 | 所列虚拟化/PRI 主线已补，仍为明确章节选读，不声称 303 页逐字段精读 |
+| [R13：Dally/Seitz](SWITCH/sources/R13-channel-dependency-scope.md) | 取得 17 页扫描正文并 OCR；核原图定义、定理、证明及 VC 构造；保存七项前提、两个证明方向、ring/torus 和其他拓扑思路 | 原“仅摘要”缺口已关闭。纠正旧流程将无文字层误判为 PDF 未取得；未宣称目标 SoC 已获无死锁证明 |
+| [C01：缺第 1、4 页](UTCL2/sources/C01-mm-utcl2-testbench.md) | 从已提交资源读回两页并直接核图；第 4 页 BOWEN 双 MMHUB、lane/client 扩张、UTCL1 sideband、SMN→rsmu 位置 | 缺页已关闭。删除线建议不当定案，HYGON 参考设计与 AMD 目标继续分开 |
+| [MEM15：训练总阶段](PHY/sources/MEM15-pg150-dqs-gate.md) | 官方 2022-04-20 PG150 p.593 Figure 38-5；阶段先后、rank 分支、sanity checks、灰色未实现项和最终 VT tracking | 历史总图与依赖已补；2025-12-03 网页总图仍未取得，不能宣称两版完全一致 |
+| [R9](SWITCH/sources/R9-chi-model-user-guide.md)/[R12](SWITCH/sources/R12-arm-system-architecture.md)：缺正式 CHI | 新增 [R23](SWITCH/sources/R23-chi-ea-protocol.md)，从 Arm 官方完整 E.a PDF 选读事务/ID/完成/重试/一致性状态/链路 credit 与停启 | 正式协议来源缺口已关闭到所列范围；R9/R12 保持模型/介绍身份，不伪装成规范 |
+| [MEM4：DFI](PHY/sources/MEM4-dfi-version-boundary.md) | 核实官方下载到登录页；新增 [MEM16](PHY/sources/MEM16-dfi51-interface.md) 的 5.1 原文转录选读，整理 boot、写对齐、读有效期、控制权交接 | 局部推进；5.1 原版波形及 6.0 HBM profile 未取得，不能把旧版接口当 HBM 新规范 |
+| [MEM11：JESD238](HBM/sources/MEM11-jedec-scope-gap.md) | 找到 JESD238A 2023-01 原文转录，补 PC 共享/独立资源、行列命令接口、group timing 与 CK/DQS 边界 | 从纯入口推进到局部正文选读；完整原版图表/命令/维护/ECC 仍须补核，不再标为“完全没读正文”，也不标为全部完成 |
+| [MEM9](HBM/sources/MEM9-micron-hbm3e.md)/[MEM10](HBM/sources/MEM10-samsung-hbm3.md)：datasheet | 检查 Micron catalog/文档入口；Samsung 官方说明 datasheet 按请求提供；保存实际访问结果与需要匹配的料号/版本 | 器件数据表仍未取得。产品页总结不扩成命令、时序或 ODECC 规格 |
+| [IO4：PCIe Base 5.0](PCIE/sources/IO4-base-spec-gap.md) | 沿官方入口核实下载文档 13005 跳到 PCI-SIG 会员登录 | 未关闭：当前无合法会话可读正文；无需重做已读 PG213/Linux/IOMMU 周边资料 |
+| [MG5：RSMU](RSMU/sources/MG5-rsmu-umc-index.md) | AMD 作者原始提交确认 remote SMU 名称及寄存器接口/错误/复位职责；保留字段编码、UMC mode 操作与 C01 参考位置 | 名称/公开职责证据已补；目标内部结构、实例和 SMU 层级仍未知，研究首轮已改为目标映射 |
+| [CF / IO10](CF/sources/IO10-gfx90-register-control.md) | 下钻 WAIT_REG_MEM helper 和 KIQ 失败清理；定向检索 Command Fabric/CF_IF 后仍未得到目标拓扑证据 | 可读机制已加深；目标 CF 直接资料缺口未关闭，不用 GRBM/SMN/KIQ 替代 |
+| [L1](SDMA/sources/L1-external-glossary-scope.md)、[L2](SDMA/sources/L2-external-shaobo-scope.md)、[L3](SDMA/sources/L3-external-open-questions.md) | 确认外部 Windows 项目未挂载；三篇各补本地只读接续和回写范围 | 三项均未重读。保留外部项目只读、原件不上云，不编造 shaobo/anshi 细节 |
+| 索引、上下文、方案 | 19 个逐篇索引按主笔记同步导读/范围，19 个 README 更新入口提醒；14 个受影响方案补具体落点，RSMU 名称旧判断已修正；范本升级 v1.4 | 组织与交接已完成；新证据不会增加任何论文完成轮次 |
 
-## 明确未完成的六篇
+## 剩余项：具备条件后从哪里继续
 
-| 来源 | 当前实际状态 | 仍需完成 |
+| 条件/资料 | 下一步要补的实际内容 | 更新位置 |
 | --- | --- | --- |
-| [R13：Dally/Seitz 死锁研究](SWITCH/sources/R13-channel-dependency-scope.md) | 仅摘要与版本信息，正文未成功取得 | 取得原文，保留模型假设、CDG 定理/证明要点、VC 构造及适用限制 |
-| [MEM11：HBM3 JESD238](HBM/sources/MEM11-jedec-scope-gap.md) | 只有标准入口及待补范围 | 在可访问匹配版本原文后，整理相关组织、命令、时序与维护机制；模型不是规范替代品 |
-| [IO4：PCIe Base 5.0](PCIE/sources/IO4-base-spec-gap.md) | 只有规范入口及待补范围 | 补读与项目相关的事务/流控/顺序/完成/恢复章节，保存关键规则及前提 |
-| [L1：外部术语表](SDMA/sources/L1-external-glossary-scope.md) | 本次未访问独立项目，只复用旧登记 | 本地只读核对定义、目标版本和接口关系 |
-| [L2：外部 shaobo 摘要](SDMA/sources/L2-external-shaobo-scope.md) | 本次未取得外部原文 | 本地核对读写路径、CF_IF/DF_IF、翻译及完成契约，只回写 SoC 侧要点 |
-| [L3：外部未决问题](SDMA/sources/L3-external-open-questions.md) | 仅保留旧问题登记 | 本地核对问题最新状态及 anshi TBE 的已有证据，不以公开驱动填补目标未知 |
+| 可访问 PCI-SIG Base 5.0 原文 | 与目标研究有关的 TLP 顺序/credit/completion、Data Link retry、恢复；固定修订号 | IO4，然后更新 PCIe/SWITCH 相关方案 |
+| 可访问官方 DFI 原版，尤其目标 HBM profile | 5.1 选读的波形/比例映射核验；6.0 HBM 的接口与状态规则另按版本整理 | MEM16、MEM4；PHY/UMC |
+| 匹配版本 JESD238A 或目标实际规范、器件 datasheet | 原版图表、命令时序/刷新/训练/错误保护；料号与 speed bin 对齐，不用网页表格拼凑 | MEM11、MEM9/MEM10；HBM/UMC/PHY |
+| PG150 2025 图像可读 | 与已核 2022 Fig.38-5 比较阶段/灰色项/分支；无需重写 gate 搜索说明 | MEM15 |
+| 本地可访问独立 SDMA 项目 | 只读 glossary、shaobo、open-questions，核对原定义、读写/CF_IF/DF_IF 与最新未决项，只回写 SoC 接口结论 | L1–L3；需要时修正 CF/UTCL1/UTCL2/HUBS |
+| 目标芯片顶层、IP 版本及接口资料 | CF 真实结构；RSMU 公开证据的目标映射；其他同名模块的实例归属 | 对应模块现有笔记/方案，不另起重复台账 |
 
-L1–L3 继续遵守外部项目只读、不复制其原文和本地原件不上云的约定；无需为补读改变这些边界。
+这些限制不阻塞使用已经补好的公开参考规划，但阻塞相应的目标实现结论或规范图表验收。本次没有自动联系厂商、注册账号、修改外部项目或上传原始资料；也不把访问失败泛化为该资料永远不可得。
 
-## 六篇之外的局部缺口与深度问题
+## 复核范围和验证记录
 
-以下不是把整篇判成未做，而是说明为什么其余 95 篇也不能直接全部验收。
+技术复核集中在检查报告列明的缺项：本次回读了新增公式/参数/结果的原文，直接核看关键页图，对 CHI、AXI、IOMMU 和代码只标实际所读章节/函数。R2/R7、R9/R12、MEM12 等已有相关范围说明继续保留，不因文件短就判不合格，也不因已有文件就宣称全原文已验收。
 
-| 笔记/主题 | 本次核实的情况 | 下一步落点 |
-| --- | --- | --- |
-| [C01](UTCL2/sources/C01-mm-utcl2-testbench.md) | 已有较具体的结构、失效和验证总结，但第 1、4 页未取得有效图像 | 先核对已提交页图，确认缺页内容及影响；不能先假设缺失的是无关页 |
-| [MEM15](PHY/sources/MEM15-pg150-dqs-gate.md) | DQS gate 算法已整理，训练总阶段页图未成功读取 | 补足可见的阶段及依赖关系，避免用单一校准算法代替完整训练流程 |
-| [VM5](UTCL2/sources/VM5-mask-paper.md) | 三项机制已解释；量化比较仍要求回读原文 §6–7 的配置、工作负载与指标 | 补实验配置、比较基线、指标及主要结果/限制；不需要重新跑仿真才能做资料总结 |
-| [R1](SWITCH/sources/R1-pipelined-router-delay.md) | 解释了延迟模型思想与推测分配，未保存可直接复述原模型的公式/参数表及完整比较设定 | 补关键模型关系、符号/前提和代表性比较结果，避免只留下定性结论 |
-| [R8](SWITCH/sources/R8-axi-ordering-contract.md) | 覆盖 A3/A5/A6 主干，明确把精确 burst 限制等留给回查 | 优先补与当前 NI/bridge 研究有关的规则和例外；ACE/AXI5 等扩展按范围选择，不要求无关章节全部重写 |
-| [VM10](UTCL2/sources/VM10-iommu-spec.md) | 对相关失效与完成已有较具体总结，但属于 303 页规范的选读 | 接续研究时按所需的虚拟化、PRI 等问题补读，不能以“已取得完整 PDF”写成全文精读 |
-| [MEM4](PHY/sources/MEM4-dfi-version-boundary.md) | 已读 DFI 官网介绍/发布消息，完整 DFI 规范未取得 | 若要形成接口技术结论，补正式协议章节；当前网页总结本身不冒充信号/时序规范 |
-| [R9](SWITCH/sources/R9-chi-model-user-guide.md)、[R12](SWITCH/sources/R12-arm-system-architecture.md) | 分别是模型指南和系统架构介绍，均不是 CHI 正式规范 | CHI 事务/一致性规则仍需另找明确版本的原始规范；这是资料覆盖缺口，不是标题改名即可补齐 |
-| [MEM9](HBM/sources/MEM9-micron-hbm3e.md)、[MEM10](HBM/sources/MEM10-samsung-hbm3.md) | 厂商产品页已整理，datasheet 未取得 | 仅支持产品组织和指标口径；器件命令、时序及 ECC 细节不能视为已读 |
-| [CF](CF/sources/README.md)、[RSMU](RSMU/sources/README.md) | 有控制访问/相邻路径参照，但缺少足以确定目标模块整体结构的直接材料 | 继续定向查找，保留名称、实例及接口归属的未知；不要把类比来源数量等同于直接证据充分 |
+提交前检查通过：103 篇主笔记的编号唯一、导读和来源/阅读状态齐全，19 个模块的逐篇索引与主笔记一致，资料入口和方案入口存在；2,613 个仓库内相对路径引用均能定位到文件。工作基线的 168 个 Markdown 文件已逐一核对 GitHub blob 哈希。本次共变更 82 个 Markdown 文件，其中新增 2 篇主笔记，没有上传原始资料或缓存文件。
 
-笔记篇幅不能单独决定是否合格。上表依据的是已经写出的机制与仍要求回查的重要内容；短产品页可以完整总结，长规范也可以按明确研究范围选读。需要修正的是“所有笔记均已足够详细”的统一完成判断。
+验证边界：6 个指向外部本地项目的链接保留为待本地核验；本次未全量验证标题锚点或外部网址实时可达性，也未对其余原有笔记重新逐段核对全部外部原文。上述检查证明索引与文件结构一致，不能替代每份资料的技术正确性验收。
 
-## 后续接续顺序
-
-1. 优先补已经取得正文的关键笔记，例如 R1/VM5 的定量与实验条件、R8 与当前 NI/bridge 直接相关的细节，同时核对 C01/MEM15 的缺图。补到能够带条件复述主要技术内容，不按字数扩写。
-2. 再尝试取得 R13 正文和确有研究需要的正式规范；确实不可得时保留具体缺口，不把入口笔记计成详细总结完成。
-3. L1–L3 留给可访问外部项目的本地 Codex 只读补核；云端继续处理可访问资料。
-4. 补完后同步主笔记、模块索引和受影响方案。完成状态分别记录“笔记/索引已建”“相关范围已读”“深度已复核”，不只用文件数验收。
-
-当前优先处理资料补读与笔记完善；用户另行要求开始论文时，再按路线图进入 GC 第 1 轮或 SWITCH 第 3 轮。SWITCH 第 3–6 轮、其他模块的正式论文和完整跨模块专题不属于本次资料整理的漏项，不能混算进该任务的完成率。
-
-本次没有新增论文轮次，也没有重新验证原有 Router 模型或启动硬件/仿真测试。
+SWITCH 仍仅第 1–2 轮完成，第 3–6 轮、其他模块正式论文与完整跨模块专题不属于本次补齐交付。小写 switch/RESEARCH_PROGRESS.md 仅更新资料接续提示，原模型、测试结果和论文轮次均保持原进度；本次没有新增硬件/仿真实验。

@@ -1,10 +1,10 @@
 # VM10：AMD IOMMU 3.09：翻译、远端 ATC 与失效完成契约
 
-更新日期：2026-09-24。
+更新日期：2026-09-25。
 
 导读：用规范区分 IOMMU 内部缓存、设备 ATC、页表更新与在途 DMA；重点解释失效命令的依赖、Completion Wait、QueueID 流控和安全回收页面的条件。
 来源：[AMD 文档 48882 rev.3.09，2023-10，实际读取的 AMD 原文镜像](https://kib.kiev.ua/x86docs/AMD/IOMMU/48882-3.09.pdf)；[AMD 原入口](https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/specifications/48882_IOMMU.pdf)本次返回 404。镜像只作为原文取得渠道，不作为文档作者。
-阅读状态：已取得完整 303 页 PDF；重点核读 §1.3、§2.1–2.2、§2.4.1–2.4.4、§2.4.11、§2.5；本笔记不是整本规范的逐字段替代品。
+阅读状态：已取得完整 303 页 PDF；重点核读 §1.3、§2.1–2.2、§2.4.1–2.4.4、§2.4.11、§2.5；本次补核 §2.2.6–2.2.7.1、§2.4.7、§2.6 的 guest/nested 与 PRI/PPR 主线；本笔记不是整本规范的逐字段替代品。
 
 ## 微架构位置与术语
 
@@ -32,7 +32,44 @@
 
 ## 可复用研究问题
 
-为每种失效建立矩阵：触发者、身份键、地址范围、PTE/PDE/ATC 对象、在途翻译的处理、读写 drain 条件、确认接收者、超时恢复。与 [VM3](../../UTCL2/sources/VM3-gpuvm-invalidation.md)、[VM4](../../UTCL2/sources/VM4-amd-iommu-commands.md) 的软件实现，[C01](../../UTCL2/sources/C01-mm-utcl2-testbench.md)/[C05](../../HUBS/sources/C05-mmhub-dagb-ea.md) 的 GPU 图示，[IO11](../../PCIE/sources/IO11-ats-pri-pasid.md) 的 ATS/PRI/PASID 能力管理一起使用。精确的虚拟化、PRI、interrupt-remapping 位域仍需回到相应规范章节，不由本笔记推测。
+为每种失效建立矩阵：触发者、身份键、地址范围、PTE/PDE/ATC 对象、在途翻译的处理、读写 drain 条件、确认接收者、超时恢复。与 [VM3](../../UTCL2/sources/VM3-gpuvm-invalidation.md)、[VM4](../../UTCL2/sources/VM4-amd-iommu-commands.md) 的软件实现，[C01](../../UTCL2/sources/C01-mm-utcl2-testbench.md)/[C05](../../HUBS/sources/C05-mmhub-dagb-ea.md) 的 GPU 图示，[IO11](../../PCIE/sources/IO11-ats-pri-pasid.md) 的 ATS/PRI/PASID 能力管理一起使用。虚拟化与 PRI/PPR 的相关细节补在下文；interrupt-remapping 全部位域仍按实际研究范围另查。
+
+## §2.2.6–2.2.7：PASID、GCR3 与嵌套 walk
+
+Guest translation 同时受实现能力 GTSup/GLXSup、全局 GTEn 与 DTE 的 GV/GLX 控制；带 PASID 并不自动开启两级翻译。DeviceID 选 DTE，PASID 查 GCR3 表，GCR3 再给 guest 页表根；guest 表项里的 GPA 还可能需要 nested host 表翻成 SPA。DTE 的 GCR3 root 可按 GCR3TRPMode 解释为 SPA 或 GPA，后者要求相应能力位，不能默认所有表根都在同一种物理空间。
+
+一层 GCR3 表的 4 KB 页按 PASID[8:0] 索引，高位在该模式中被忽略；软件必须使 PASID 分配与支持的表深匹配，不能只按 TLP 的字段宽度推导可独立寻址的进程数。改写 GCR3 表**不会自动清 IOMMU TLB**，仍需执行相应失效。NX、U/S 的检查取决于支持位及控制设置，并且上级 guest 表项的禁止权限不能被叶子放宽。
+
+| 配置方向 | 主要控制关系 | 研究含义 |
+| --- | --- | --- |
+| 关闭翻译 | DTE[V]=0 | upstream 不作翻译/访问检查；ATS/PRI 请求失败，不能把它当正常 ATS 直通模式 |
+| nested only | V=1、GV=0 | GPA→SPA；可按能力启用 ATS/PRI |
+| guest only | V=1、GV=1、Mode=0 | GVA→GPA，nested 为直通，GPA=SPA；仍需 guest 支持及全局使能 |
+| guest+nested | V=1、GV=1，并配置两套表 | GVA→SPA；中间 guest 页表读取也消耗 nested 翻译资源 |
+
+§2.2.6.8 Figure 40 展示了上述“walk 中还有 walk”：图画出五层 guest、四层 nested 的 4 KB 示例，包含取 guest 表项及最终 GPA 转 SPA 共 29 个编号访问步骤；这不是任何请求必定发出 29 次 DRAM 读。cache hit、大页、skip-level 会缩短路径，且 GCR3 查表等资源还要按场景另算。相邻说明文字仍写“四层”，与本版图中 GL5 不一致，保留版本内差异，不能由此编出统一固定层数。UTCL2 研究应按 cache 类别和层级列资源占用，避免把所有 miss 都折成一笔固定延迟。
+
+## §2.6：PRI 如何成为软件可处理的 PPR
+
+ATS 查询已有映射，PRI 请求软件服务页面，二者不是同一个失败重试信号。支持 PPR 的 IOMMU 将 PRI 转成系统内存中的 **128-bit PPR 环记录**，软件通过推进 head 表示取走记录，处理完再发 COMPLETE_PPR_REQUEST；“消费日志槽”与“完成页面服务”是两个事件。
+
+PPR log 基址按 4 KB 对齐，容量为 4 KB 的倍数，最大 32768 项/512 KB；head=tail 表示空，保留一个空槽判满。基础模式溢出设置 PprOverflow、丢弃新请求并停止记录；软件需腾空间或调整缓冲后按规定重启。不能从没看到一条 PPR 推断设备没发请求，也不能把关闭 PPRLogEn 当作完成在途页面请求；停止单个设备发 PRI 还需控制设备自身。
+
+PAGE_SERVICE_REQUEST 记录保存 DeviceID、PASID、GN、页地址、权限和 PPRtag。GN=1 时地址为 GVA 且 PASID 有效；GN=0 时地址为 GPA，软件忽略 PASID。地址低 12 位不记录，按 4 KB 页定位。PPRtag[9] 是 PRI L 位，低 9 位是 Page Request Group index；日志中的每个 page 请求与最终 group 响应不能简单一一等同。
+
+## §2.4.7：完成响应的关联字段
+
+COMPLETE_PPR_REQUEST 要求 PPRSup，否则是非法命令。软件填回原 DeviceID、group index、适用的 PASID/GN 与响应码；CompletionTag[15:12] 为 PRI response code，[11:9] 必须为零，[8:0] 为原 group index。IOMMU **不校验软件填的 CompletionTag 是否正确**，所以这个字段必须与保留的请求身份关联，不能用新分配的任意 tag 代替。
+
+GVA 服务用 GN=1，响应带 PASID prefix；GPA 服务用 GN=0，忽略 PASID、不带该 prefix。操作序列应拆成“身份校验/页面服务→所需页表及缓存维护→group 响应→设备后续访问”，不能把 PPR completion 当旧 DMA 的强 drain，也不能假定硬件已经替软件补页或恢复全部 fault。
+
+## 溢出保护具有能力和组合限制
+
+§2.6.1/2.6.4 的 dual log 支持等级区分无双缓冲、有双缓冲无自动切换、以及支持 autoswap；启用不支持的 autoswap 是错误。auto-response、early-overflow warning 和 always-on 是另外的机制，不能默认与所有模式任意叠加。
+
+启用自动响应且达到限制时，对 L=1 的组结尾请求产生响应，其他 L=0 请求可以被丢弃；默认自动响应码为 successful，可由软件配置。这个 successful **不证明缺失的页面已经被处理**，它是已配置的溢出应对行为。auto-response 与 early warning 在本版都不适用于 autoswap 模式；always-on 还要求先启用 auto-response。软件动态搬迁/调整 log 时规范建议使用 always-on，但这不是无限缓冲或无丢失保证。
+
+后续微架构研究可据此区分四类容量：设备 pending PRI groups、IOMMU PPR log、软件未完成服务队列、命令完成队列。分别记录满时动作和恢复责任，才能连接 [IO11](../../PCIE/sources/IO11-ats-pri-pasid.md) 的设备能力管理与 IH 的通知路径。以上补核不包括 interrupt-remapping/SEV-SNP 全部字段，也不证明目标 GPU 的 ATCL2 与该系统 IOMMU 具有同样内部实现。
 
 ---
 

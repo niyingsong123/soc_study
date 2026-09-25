@@ -1,6 +1,6 @@
 # CF：命令分发、返回与控制事件的研究方案
 
-版本：v1.1；日期：2026-09-24；依据：[研究范本 v1.3](../chip-study-plan.md)。状态：规划完成，三轮详细研究均未开始。下一步先核对 shaobo 的 CF 接口角色及消息语义，再写正常命令闭环。
+版本：v1.1；日期：2026-09-24；依据：[研究范本 v1.4](../chip-study-plan.md)。状态：规划完成，三轮详细研究均未开始。下一步先核对 shaobo 的 CF 接口角色及消息语义，再写正常命令闭环。
 
 资料集：[sources.md](../sources.md)。先读 [模块 README](README.md)、本方案与 L1/L2 的仓库摘要，随后按问题查看 R7/R8、FAB4；这些公开材料提供设计方法，不能替代缺失的独立 CF 规格。
 
@@ -73,3 +73,7 @@ flowchart TD
 优先取得接口消息表，核对 credit 粒度与 EOC 的准确层级，再解决 cancel 的方向、终结点及与数据侧排空的关系。代码和论文只能辅助设计推理，缺少的 CF 事实不得用软件 fence 或 AXI 完成定义替代。
 
 从第 1 轮开始维护同一正文；每轮将新增结论整合回功能图、资料集与本文件状态，并在 README 保留资料集位置和下一步。外部 `sdma_repo` 只读、不复制规格；完成 CF 详细研究后，再把确定的控制/数据接口约定交给后续系统复核。
+
+## 2026-09-25 资料补齐对本方案的影响
+
+第 1–3 轮优先复用 [IO10](sources/IO10-gfx90-register-control.md)、[L1](../SDMA/sources/L1-external-glossary-scope.md)、[L2](../SDMA/sources/L2-external-shaobo-scope.md)。已补 WAIT_REG_MEM 的控制字段与 KIQ 失败清理。仍无目标 Command Fabric 拓扑直接证据；外部资料未挂载，不能把 GRBM/SMN/KIQ 自动等同 CF。 本次仅更新依据和研究落点，不把任何待执行论文轮次改为完成。

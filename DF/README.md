@@ -22,4 +22,6 @@ CS、CAKE 暂合并在本目录，不另建子目录：CS 暂按 Coherent Slave 
 
 后续 Codex 先读本模块上下文和 research-plan.md 的整体架构，再按问题选择笔记。笔记保留版本、机制、重要细节、实际阅读范围及证据边界；精确字段、新版本或未读部分再回原资料。补充资料时同步索引、主笔记与受影响方案，不在上下文复制整份资料集。
 
-本批笔记与索引已建立，详细阅读与笔记完善仍有[待补项](../source-reading-audit.md)；不能以文件数视为深度验收。资料整理不计为新的论文轮次，论文接续在用户明确要求后按上文执行。方法见[研究范本 v1.3](../chip-study-plan.md)。
+资料笔记与索引已建立；2026-09-25 已执行一轮审计补齐，先查[逐项结果与剩余受限项](../source-reading-audit.md)，再读本模块索引。不能以文件数视为深度验收。资料整理不计为新的论文轮次，论文接续在用户明确要求后按上文执行。方法见[研究范本 v1.4](../chip-study-plan.md)。
+
+本次补读入口（2026-09-25）：[R23](../SWITCH/sources/R23-chi-ea-protocol.md)、[R13](../SWITCH/sources/R13-channel-dependency-scope.md)。正式 CHI 选读提供事务身份、观察顺序、重试资源和链路 credit 的行业参照；将 home/coherence 责任与输运分开，不将其直接映射为 AMD DF。

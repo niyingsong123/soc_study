@@ -1,6 +1,6 @@
 # MEM9：Micron HBM3E：组织、容量与带宽口径
 
-更新日期：2026-09-24。
+更新日期：2026-09-25。
 
 导读：提供 HBM3E 器件组织与产品级指标，用于容量/通道/带宽的数量级检查；不包含完整命令时序或端到端性能保证。
 来源：[Micron HBM3E 产品页及 FAQ](https://www.micron.com/products/memory/hbm/hbm3e)，读取日期 2026-09-24。
@@ -21,6 +21,12 @@
 建立 stack/channel/PC/容量/原始带宽对照表后，继续追问：请求如何均匀分布；热点 PC 是否限制整个 stack；刷新和读写切换消耗多少可用周期；容量增加是否改变目标工作集驻留；热约束是否影响可持续速率。上述是需要控制器模型和平台测量补充的分析问题。
 
 [MEM1](../../UMC/sources/MEM1-pg276-hbm-controller.md) 只能作为 HBM2 控制器参照；[MEM13](../../HBM/sources/MEM13-ramulator-hbm3-model.md) 是 HBM3 开源模型；[MEM11](../../HBM/sources/MEM11-jedec-scope-gap.md) 保留正式标准入口。三者不得无说明地拼成一个 HBM3E 实现。
+
+## 2026-09-25 器件资料查找结果
+
+已检查 [Micron HBM3E part catalog](https://in.micron.com/products/memory/hbm/hbm3e/part-catalog) 的可访问页面和文档入口，未取得可阅读的具体料号 datasheet；公开 product brief 的旧地址及 assets 地址在本环境返回访问拒绝。这个结果只说明本次没有取得，不能断言厂商不存在 datasheet 或一律需要 NDA。
+
+不要用目录包装宽度/料号字符串替换产品页的 data I/O 宽度，也不要从宣传带宽反算 timing bin。当前产品级总结保持有效；精确器件命令、refresh/温度限制与 ODECC 行为仍待料号和修订匹配的原文。[MEM11](MEM11-jedec-scope-gap.md) 已增加 JESD238A 的局部正文选读，规范结构也不能替代器件数据表。
 
 ---
 

@@ -1,8 +1,8 @@
 # GC 资料索引与逐篇技术笔记
 
-更新日期：2026-09-24。先读模块整体微架构与当前问题，再用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
+更新日期：2026-09-25。先读模块整体微架构与当前问题，再用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
 
-本模块列出 25 个可复用来源，主笔记归档 8 篇。跨模块来源链接到唯一主笔记，计数不能跨模块直接相加。资料阅读不计为论文轮次完成。
+本模块列出 26 个可复用来源，主笔记归档 8 篇。跨模块来源链接到唯一主笔记，计数不能跨模块直接相加。资料阅读不计为论文轮次完成。
 
 [模块上下文](../README.md) · [研究方案](../research-plan.md) · [全局来源编号](../../sources.md) · [研究范本](../../chip-study-plan.md)
 
@@ -27,7 +27,7 @@
 | [GC3：LLVM AMDGPU 内存模型：等待、缓存维护与一致性域](GC3-llvm-memory-model.md) | 解释 acquire/release 为什么需要组合等待与 cache 操作，以及 gfx90a/gfx942 的 agent、L2 和远端内存条件。研究“写完成”“缓存可见”“TLB 失效”之间的区别时应优先读。 | 固定版本公开代码。精读 Memory Model 总论与 GFX90A、GFX942 的结构/一致性说明；未逐行验证全部编译序列表或后端代码，未编译测试。 | [原文](https://github.com/llvm/llvm-project/blob/llvmorg-18.1.7/llvm/docs/AMDGPUUsage.rst) |
 | [GC4：RLC 公共层：软件状态、保存区与硬件回调](GC4-rlc-common.md) | 补足 GC2 的上层：safe-mode 的软件标志如何维护、保存恢复数据由谁分配。适合判断驱动状态与硬件状态是否被错误等同。 | 固定版本公开代码。精读 `amdgpu_gfx_rlc_enter_safe_mode`、`exit_safe_mode`、`init_sr` 及相邻资源管理；未通读全部固件版本解析。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_rlc.c) |
 | [VM3：GMC v9 的 GPUVM 失效：请求、ACK、hub 与电源状态](../../UTCL2/sources/VM3-gpuvm-invalidation.md) | 详细追踪 GPUVM invalidate 的软件发起与完成观察，包含 VMID/PASID 转换、不同 hub、KIQ 与直接寄存器路径及旧 ACK 风险。适合建立维护事务闭环。 | 固定版本公开代码。精读 `get_invalidate_req`、`use_invalidate_semaphore`、`flush_gpu_tlb`、`flush_gpu_tlb_pasid`、`emit_flush_gpu_tlb`，以及 fault 状态输出定位；其他 GMC 功能未全文研究。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gmc_v9_0.c) |
-| [VM5：MASK：把地址翻译需求传递到共享缓存和 DRAM 调度](../../UTCL2/sources/VM5-mask-paper.md) | 解释一次 TLB miss 为何能阻塞许多 warp，以及共享 TLB、数据 cache、DRAM 三层怎样共同放大翻译开销。适合设计跨模块性能研究问题；不是 AMD 实现证据。 | 原始论文。精读 §3–6 的结构、干扰、三项机制及实验方法，阅读 §7.1 的主要对比；未复现模拟器或重新计算全部结果。 | [原文](https://rausavar.github.io/pubs/mask-asplos18.pdf) |
+| [VM5：MASK：把地址翻译需求传递到共享缓存和 DRAM 调度](../../UTCL2/sources/VM5-mask-paper.md) | 解释 token/fill 与两种 cache 旁路、DRAM 三队列预算；保存公式、容量、工作负载筛选、基线与吞吐/公平性结果，适合 UTCL2–EA–UMC 的翻译干扰研究。 | 原始论文。补核 §5–7 的机制、预算式、Table 1 原图和主结果，记录 warp 配置疑点；未复现模拟器或重算全部实验。 | [原文](https://rausavar.github.io/pubs/mask-asplos18.pdf) |
 | [VM6：GCEA 的接纳、停顿、目标与返回观测](../../EA/sources/VM6-gcea-metrics.md) | 按 read/write、SARB 和 return 三个边界整理 gfx115x 的 GCEA 指标，帮助判断请求缺乏、下游背压和返回受阻的区别。 | 厂商/项目官方资料。页面正文全部已读；未跑硬件计数或核验所有 YAML。2026-09-24 另查 develop 页，只作内容对照，版本不混算。 | [原文](https://rocm.docs.amd.com/projects/rocprofiler-compute/en/docs-7.14.0/conceptual/rdna/gcea.html) |
 | [VM8：gem5 Vega 页表遍历器的依赖状态与端口重试](../../UTCL2/sources/VM8-gem5-page-walker.md) | 具体解释一个 page walk 如何保存上下文、逐级读 PDE/PTE、等待内存、遇到背压重试并回填。适合建立 walker 与缓存/内存服务之间的接口。 | 固定版本公开代码。精读 startTiming/initState、startWalk/stepWalk、walkStateMachine、sendPackets、recvTimingResp/retry、pageFault；未执行模拟。 | [原文](https://github.com/gem5/gem5/blob/v24.1.0.1/src/arch/amdgpu/vega/pagetable_walker.cc) |
 | [VM12：GFXHUB 2.0 与 MMHUB 的编程模型对照](../../HUBS/sources/VM12-gfxhub-v2.md) | 用另一 hub 的公开实现对照页表根、地址 aperture、翻译 cache、context 与失效入口，帮助区分共享编程概念与真实物理归属。 | 固定版本公开代码。精读 setup_vm_pt_regs、init_gart/system_aperture、init_tlb/cache、setup_vmid_config、gart_enable/disable、init 的 hub 寄存器登记；未对全部字段做芯片手册核验。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfxhub_v2_0.c) |
@@ -39,10 +39,12 @@
 | [FAB4：dma-fence：完成对象、时间线与硬件语义的边界](../../DF/sources/FAB4-dma-fence-contract.md) | 解释 fence 的 context/seqno、signal/error、callback 与 lifetime，帮助区分软件完成对象和硬件 flush/fence 操作；跨模块研究完成语义时必读。 | 固定版本公开代码。已读结构、ops 注释、signal/status/wait、seqno 比较和引用生命周期接口；未把头文件视为所有驱动的硬件完成规范。 | [原文](https://github.com/torvalds/linux/blob/v6.12/include/linux/dma-fence.h) |
 | [FAB7：AMDGPU fence：ring 完成写回、序号槽位和异常收敛](../../DF/sources/FAB7-amdgpu-fence-lifecycle.md) | 把抽象 dma-fence 落到 AMDGPU 的 ring 命令、写回内存、序号表、中断/定时器与回收流程，适合研究数据完成怎样变成软件可等待事件。 | 固定版本公开代码。已读 fence contract、emit/polling、process、fallback、wait 和恢复相关入口；具体 ASIC emit_fence 的硬件指令仍需读相应 ring 实现。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_fence.c) |
 | [IO6：HDP 4.0 驱动：flush、invalidate 与 RAS 代际差异](../../HDP/sources/IO6-hdp40-maintenance.md) | 研究 HDP 维护命令怎样由 CPU 或 ring 发起、哪些 IP 跳过 invalidate，以及计数清除为何有读清/写清区别；用于准确写完成与恢复边界。 | 固定版本公开代码。已读 flush/invalidate、RAS query/reset、初始化及相关代际判断；没有目标硬件测试。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/hdp_v4_0.c) |
-| [IO10：GC 9.0 驱动：实例选择、异步寄存器访问与 HDP 完成](../../CF/sources/IO10-gfx90-register-control.md) | 研究 GRBM 共享选择状态、异步读回，以及 ring 按引擎/pipe 发起 HDP request/done 等待；适合控制事务与维护完成联读，不扩展 CU/CP 内部或推定真实 CF 拓扑。 | 固定版本公开代码。已读 select_se_sh、受 grbm_idx_mutex 保护的选择/恢复模式、kiq_read_clock 的提交/fence/超时/复位分支，以及 ring_emit_hdp_flush；未展开 wait_reg_mem 包字段，文件其余大型执行模块不在本研究范围。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_0.c) |
+| [IO10：GC 9.0 驱动：实例选择、异步寄存器访问与 HDP 完成](../../CF/sources/IO10-gfx90-register-control.md) | 研究 GRBM 共享选择状态、异步读回，以及 ring 按引擎/pipe 发起 HDP request/done 等待；适合控制事务与维护完成联读，不扩展 CU/CP 内部或推定真实 CF 拓扑。 | 固定版本公开代码。已读实例选择/恢复、KIQ clock 读回、HDP request/done 及 WAIT_REG_MEM helper 的字段和失败路径；不是目标 CF 拓扑证据。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/gfx_v9_0.c) |
 | [MG8：AMDGPU IRQ：来源分派、引用计数与复位恢复](../../IH/sources/MG8-irq-dispatch-lifecycle.md) | 研究 IH 解码后如何路由给 IP/KFD、如何管理中断使能引用，以及 reset 后如何恢复；适合把事件传输连接到实际处理者。 | 固定版本公开代码。已读 handler、来源登记/dispatch、delegate、enable get/put/update 和 reset resume helper；未通读所有 IRQ domain 平台分支。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_irq.c) |
 | [MG9：AMDGPU 温度/功耗接口：单位、策略与同步快照](../../SMU/sources/MG9-thermal-power-observability.md) | 用于设计性能实验的观测表，区分功率上限、实际功率、档位与平均频率；适合 SMU 的反馈路径，不是固件调频算法说明。 | 厂商/项目官方资料。已读 hwmon、performance level、pp_dpm 与 gpu_metrics 段；未执行任何调频、功耗或风扇写操作。 | [原文](https://docs.kernel.org/6.12/gpu/amdgpu/thermal.html) |
 | [SD2：SDMA 5.2：doorbell、维护命令、fence 与 trap](../../SDMA/sources/SD2-sdma52-completion-maintenance.md) | 把 SDMA 系统接口串成“提交→维护/翻译→完成记录→通知”，重点是不同 flush 的对象、wptr 单位与可选中断；只读公开代码的 SoC 边界。 | 固定版本公开代码。已读 ring get/set_wptr、mem_sync、HDP flush、VM flush、pipeline sync、fence 和 trap handler；未扩写引擎内部 packet 全规格或 FE/BE/TBE 论文。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/sdma_v5_2.c) |
+
+| [R23：CHI E.a 原始规范：事务资源、顺序、重试与链路 credit](../../SWITCH/sources/R23-chi-ea-protocol.md) | 从 CHI 正式规范解释 RN/HN/SN、四类通道、TxnID/DBID 生命周期、完成与可见性、P-Credit/L-Credit 以及链路低功耗收敛；适合 SWITCH/DF/GC 的行业协议对照，不是 AMD fabric 实现说明。 | 正式规范选读。取得完整 PDF，选读 §1.1–1.3、§2.1、§2.3 读写/retry 主干、§2.4–2.5、§2.8、§2.11、§4.1、§14.1–14.2/14.5。未将所有 coherence transition、atomic、DVM、MPAM 或 memory tagging 表标为精读。R9 仍是模型指南，R12 仍是架构介绍，两者不再承担正式协议来源的角色。 | [原文](https://documentation-service.arm.com/static/6087f99b5e70d934bc69f1f0) |
 
 ## 使用与维护
 

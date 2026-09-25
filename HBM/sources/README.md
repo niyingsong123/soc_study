@@ -1,6 +1,6 @@
 # HBM 资料索引与逐篇技术笔记
 
-更新日期：2026-09-24。先读模块整体微架构与当前问题，再用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
+更新日期：2026-09-25。先读模块整体微架构与当前问题，再用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
 
 本模块列出 18 个可复用来源，主笔记归档 4 篇。跨模块来源链接到唯一主笔记，计数不能跨模块直接相加。资料阅读不计为论文轮次完成。
 
@@ -31,7 +31,7 @@
 | [MEM4：DFI 官方资料：控制器与 PHY 的边界及 6.0 变化](../../PHY/sources/MEM4-dfi-version-boundary.md) | 用于确定 controller/PHY 分工、训练所有权与规范版本；尤其修正“DFI 不支持 HBM”的过时概括。公开更新不能代替接口信号规范。 | 规范组织公开介绍。已读公开介绍与发布消息；未取得登录下载的完整 DFI 规范，不填写未核实的信号、时序或 HBM profile。 | [原文](https://ddr-phy.org/) |
 | [MEM9：Micron HBM3E：组织、容量与带宽口径](MEM9-micron-hbm3e.md) | 提供 HBM3E 器件组织与产品级指标，用于容量/通道/带宽的数量级检查；不包含完整命令时序或端到端性能保证。 | 厂商/项目官方资料。已读产品说明及 FAQ；部分时间表仍为历史表述，不据此判定当前供货；未取得 datasheet。 | [原文](https://www.micron.com/products/memory/hbm/hbm3e) |
 | [MEM10：Samsung HBM3：产品指标与 ODECC 表述边界](MEM10-samsung-hbm3.md) | 用于与 HBM3E 对照容量和原始带宽，并识别器件内部 ECC 宣传与系统 RAS 的区别；不提供可实现的 ECC 编码或命令规范。 | 厂商/项目官方资料。已读速度、容量、功耗和可靠性正文；正式 datasheet 需另行取得，当前未读。 | [原文](https://semiconductor.samsung.com/dram/hbm/hbm3/) |
-| [MEM11：JESD238：HBM3 正式标准入口与待补范围](MEM11-jedec-scope-gap.md) | 这是完整规范尚未取得的缺口记录；用于判断哪些 HBM3 细节必须回查正式标准，不能作为时序、编码或合规依据。 | 规范全文未取得。未取得全文；不声明已读标准，不推定最新修订字母或具体字段。当前笔记是范围索引和后续补读任务。 | [原文](https://www.jedec.org/standards-documents/docs/jesd238) |
+| [MEM11：JESD238A：伪通道共享、命令与时钟边界选读](MEM11-jedec-scope-gap.md) | 从 JESD238A 的公开正文转录整理 PC 的独立与共享资源、行列命令接口及 CK/DQS 关系；可用于 HBM/UMC 的架构骨架，精确时序图和编码仍需原版核验。 | 规范正文转录选读·原版图表待核。从“仅标准入口”推进到正文文本选读：§3.1.2–3.1.3、§3.2.1/Table 6、§6.1，并定位 §6.3.2.6 与 §6.9.1。尚未取得并核验官方整本 PDF；转录有表格打散、图像缺失和水印干扰，不据其填写完整位编码/纳秒表。只将明确可读的技术事实记入下文，不宣称完整规范精读或协议合规。 | [原文](https://studylib.net/doc/28550091/jesd238a-hbm3) |
 | [MEM12：Ramulator 当前 HBM 控制器：双命令槽与 FRFCFS](../../UMC/sources/MEM12-ramulator-hbm-controller.md) | 研究请求如何变成可发出的列/行命令，以及优先级、激活缓冲和共享命令总线怎样约束吞吐；提供代码级 UMC 对照实例。 | 固定版本公开代码。已读所列文件的队列选择、时钟推进、slot eligibility、发命令和调度比较函数；未运行仿真，未通读所有插件/完成回调实现。 | [原文](https://github.com/CMU-SAFARI/ramulator2/blob/72427a1bba3771564c4fb0e494ba02242fd1eaa7/src/ramulator/controller/impl/hbm34_controller.cpp) |
 | [MEM13：Ramulator HBM3：层级状态、时序与生成式模型](MEM13-ramulator-hbm3-model.md) | 适合逐项理解 HBM3 模型的共享/独立资源、命令依赖与时序作用范围；可与控制器代码联读，不能替代 JEDEC 标准。 | 固定版本公开代码。已读层级、命令/时序声明、命令总线分类及主要 timing 约束；未运行模型，未与完整 JEDEC 逐条核验。 | [原文](https://github.com/CMU-SAFARI/ramulator2/blob/72427a1bba3771564c4fb0e494ba02242fd1eaa7/src/ramulator/dram/impl/HBM3.cpp) |
 | [MEM14：UMC 8.10 驱动：错误分类与地址候选展开](../../UMC/sources/MEM14-umc810-ras-address.md) | 研究错误地址为何不是现成系统物理地址，以及 UE 计数为何可能没有可隔离页面；提供具体寄存器与转换路径，适合 RAS 联读。 | 固定版本公开代码。已读错误计数、通道索引、地址转换、状态清除及固件 ECC 信息分支；未读取目标芯片寄存器，不能推广到其他 UMC 代际。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/umc_v8_10.c) |

@@ -1,6 +1,6 @@
 # R9：CHI Protocol Bundle 用户指南：模型接口与 credit 回调
 
-更新日期：2026-09-24。
+更新日期：2026-09-25。
 
 导读：这是 Arm SoC Designer 仿真组件指南，展示 CHI 通道、模型转换器和回调如何接线；可用于理解模型边界，不能作为 CHI 一致性事务规范。
 来源：[Arm DUI 0954C，SoC Designer Plus 9.0.0 AMBA CHI Protocol Bundle User Guide，2016](https://documentation-service.arm.com/static/5ed104c1ca06a95ce53f8869)。
@@ -21,6 +21,8 @@ debug/transaction bridge 可提供快速访问或辅助观察，但可能绕过�
 ## 如何引用及何时回原文
 
 本资料适用于方案中的“仿真组件怎样建模和连接”，不用于声称某 opcode 的 completion/snoop/ownership 规则。后续若需要事务状态机，应取得明确版本的 IHI0050 等正式规范；本指南未提供足够证据时保留未知。[R12](../../SWITCH/sources/R12-arm-system-architecture.md) 用于系统层概念，[R10](../../SWITCH/sources/R10-ucie-protocol-adapter.md)/[R11](../../SWITCH/sources/R11-ucie11-streaming.md) 用于 D2D 承载对照，均不可把 CHI 名称直接替换成 AMD DF。
+
+正式事务与链路规则已另建 [R23：CHI E.a 原始规范选读](R23-chi-ea-protocol.md)。本篇保留原资料身份，不能因新增规范而把模型/介绍的阅读记录改成规范精读。
 
 ---
 

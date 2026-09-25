@@ -1,6 +1,6 @@
 # IH 资料索引与逐篇技术笔记
 
-更新日期：2026-09-24。先读模块整体微架构与当前问题，再用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
+更新日期：2026-09-25。先读模块整体微架构与当前问题，再用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
 
 本模块列出 23 个可复用来源，主笔记归档 5 篇。跨模块来源链接到唯一主笔记，计数不能跨模块直接相加。资料阅读不计为论文轮次完成。
 
@@ -20,8 +20,8 @@
 | --- | --- | --- | --- |
 | [P2：AMDGPU 驱动中的 IP 边界与系统入口](../../GC/sources/P2-amdgpu-hardware.md) | 解释 Linux 如何按 IP 组织 GPU，以及 GMC、GC/RLC、SDMA、SMU、IH 的职责。适合首次建立系统边界；查具体队列或硬件协议时应转入对应代码笔记。 | 厂商/项目官方资料。已精读 GPU Hardware Structure、Graphics and Compute Microcontrollers、Driver Structure、Memory Domains、IB 说明；其余 API 参考未逐项研究。 | [原文](https://docs.kernel.org/6.12/gpu/amdgpu/driver-core.html#gpu-hardware-structure) |
 | [VM2：MMHUB 2.x 的地址范围、翻译缓存与 fault 配置](../../HUBS/sources/VM2-mmhub-v2.md) | 按初始化顺序整理 MMHUB 软件可见的服务结构：页表根、aperture、TLB/cache、VM context、失效引擎和 fault。适合构建 hub 控制面；不证明完整内部数据网络。 | 固定版本公开代码。精读 page-table/aperture、TLB/cache、VMID config、invalidation、gart enable/disable 与 fault decode；时钟门控的全部分支未逐项展开。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/mmhub_v2_0.c) |
-| [VM10：AMD IOMMU 3.09：翻译、远端 ATC 与失效完成契约](../../UTCL2/sources/VM10-iommu-spec.md) | 用规范区分 IOMMU 内部缓存、设备 ATC、页表更新与在途 DMA；重点解释失效命令的依赖、Completion Wait、QueueID 流控和安全回收页面的条件。 | 规范选读。已取得完整 303 页 PDF；重点核读 §1.3、§2.1–2.2、§2.4.1–2.4.4、§2.4.11、§2.5；本笔记不是整本规范的逐字段替代品。 | [原文](https://kib.kiev.ua/x86docs/AMD/IOMMU/48882-3.09.pdf) |
-| [C01：MM_UTCL2 图示与验证环境：从翻译事务到可观测检查点](../../UTCL2/sources/C01-mm-utcl2-testbench.md) | 覆盖 MM_UTCL2 的 APT1/2/3、VML2/ATCL2、fault/retry、两类失效以及验证环境，适合建立请求生命周期和验证检查点；所有容量与字段均须保留该资料版本范围。 | 用户页图·参考设计。读取已提交页图的文字并核看关键图；49 页中第 1、4 页未取得有效图像，本笔记主要依据第 3、5、15–31、33–47、49 页。图示版本与目标芯片对应关系仍需本地确认。 | [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/tb_mm_utcl2) |
+| [VM10：AMD IOMMU 3.09：翻译、远端 ATC 与失效完成契约](../../UTCL2/sources/VM10-iommu-spec.md) | 用规范区分 IOMMU 内部缓存、设备 ATC、页表更新与在途 DMA；重点解释失效命令的依赖、Completion Wait、QueueID 流控和安全回收页面的条件。 | 规范选读。已取得完整 303 页 PDF；重点核读 §1.3、§2.1–2.2、§2.4.1–2.4.4、§2.4.11、§2.5；本次补核 §2.2.6–2.2.7.1、§2.4.7、§2.6 的 guest/nested 与 PRI/PPR 主线；本笔记不是整本规范的逐字段替代品。 | [原文](https://kib.kiev.ua/x86docs/AMD/IOMMU/48882-3.09.pdf) |
+| [C01：MM_UTCL2 图示与验证环境：从翻译事务到可观测检查点](../../UTCL2/sources/C01-mm-utcl2-testbench.md) | 覆盖 MM_UTCL2 的 APT1/2/3、VML2/ATCL2、fault/retry、两类失效以及验证环境，适合建立请求生命周期和验证检查点；所有容量与字段均须保留该资料版本范围。 | 用户页图·参考设计。49 页的已提交页图均已取得文字阅读或图像核看记录；2026-09-25 补回并直接核看了此前未读取的第 1、4 页。主要技术范围为第 3–5、15–31、33–47、49 页；并非对所有 OCR 字符逐字校勘。图示版本与目标芯片对应关系仍需本地确认。 | [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/tb_mm_utcl2) |
 | [FAB4：dma-fence：完成对象、时间线与硬件语义的边界](../../DF/sources/FAB4-dma-fence-contract.md) | 解释 fence 的 context/seqno、signal/error、callback 与 lifetime，帮助区分软件完成对象和硬件 flush/fence 操作；跨模块研究完成语义时必读。 | 固定版本公开代码。已读结构、ops 注释、signal/status/wait、seqno 比较和引用生命周期接口；未把头文件视为所有驱动的硬件完成规范。 | [原文](https://github.com/torvalds/linux/blob/v6.12/include/linux/dma-fence.h) |
 | [FAB7：AMDGPU fence：ring 完成写回、序号槽位和异常收敛](../../DF/sources/FAB7-amdgpu-fence-lifecycle.md) | 把抽象 dma-fence 落到 AMDGPU 的 ring 命令、写回内存、序号表、中断/定时器与回收流程，适合研究数据完成怎样变成软件可等待事件。 | 固定版本公开代码。已读 fence contract、emit/polling、process、fallback、wait 和恢复相关入口；具体 ASIC emit_fence 的硬件指令仍需读相应 ring 实现。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/amdgpu_fence.c) |
 | [R22：Garnet NI：终点背压、tail 保留与协议缓冲依赖](../../SWITCH/sources/R22-garnet-network-interface.md) | 说明网络到达终点后仍可能因协议 MessageBuffer 无空间而持有 tail/VC，并解释 credit、回调和消息交付的关系；用于补齐端到端依赖分析。 | 固定版本公开代码。已读 wakeup、stall queue、flitisizeMessage、VC 选择及发送调度相关路径；消息是模型对象，不将其内存表示当硬件缓存实现。 | [原文](https://github.com/gem5/gem5/blob/v24.1.0.1/src/mem/ruby/network/garnet/NetworkInterface.cc) |

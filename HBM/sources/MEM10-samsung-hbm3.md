@@ -1,6 +1,6 @@
 # MEM10：Samsung HBM3：产品指标与 ODECC 表述边界
 
-更新日期：2026-09-24。
+更新日期：2026-09-25。
 
 导读：用于与 HBM3E 对照容量和原始带宽，并识别器件内部 ECC 宣传与系统 RAS 的区别；不提供可实现的 ECC 编码或命令规范。
 来源：[Samsung HBM3 产品页](https://semiconductor.samsung.com/dram/hbm/hbm3/)，读取日期 2026-09-24。
@@ -19,6 +19,10 @@
 ## 后续怎样复用
 
 HBM 章节应把器件 ODECC、链路 parity、控制器 ECC、poison、错误地址和坏页隔离分别列出。用 [MEM1](../../UMC/sources/MEM1-pg276-hbm-controller.md) 对照接口错误如何回传，用 [MEM3](../../UMC/sources/MEM3-amdgpu-ras.md)/[MEM14](../../UMC/sources/MEM14-umc810-ras-address.md) 对照驱动怎样报告和隔离。若要讨论可靠性提升，需要补正式器件说明或实验，不能仅靠产品页推导系统 RAS 等级。
+
+## 2026-09-25 datasheet 可访问性核验
+
+再次核读官方产品页，其参数旁明确注明 datasheet 按请求提供；本次没有拿到正式数据表，未将销售页面当作数据表，也未代用户联系厂商。后续取得时应核实料号、版本和工作条件，尤其查清 ECC 码字/symbol、可纠正模式与对控制器暴露的状态。标准层的 [MEM11](MEM11-jedec-scope-gap.md) 本次只有局部正文选读，不能替这一器件特定缺口。
 
 ---
 
