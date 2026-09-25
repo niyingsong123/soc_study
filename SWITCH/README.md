@@ -10,20 +10,20 @@
 
 用户指定的研究正文保存在小写 `switch/`；本大写目录继续作为 SoC 模块入口。当前不合并、移动或重命名两个目录。
 
-- [完整微架构研究稿](../switch/switch_detailed_guide.md)：系统、包格式、NI、Router、D2D、延迟和 SDMA；第二轮核心为第 38—49 章。
+- [完整微架构研究稿](../switch/switch_detailed_guide.md)：v2.2 按需求→功能→上下游及整体微架构→接口与读写过程→NI/Router/D2D 核心机制展开；旧章节映射见附录 B。
 - [六问简化版](../switch/switch_quick_guide.md)：为什么需要、功能、上下游/流向、关键参数、SDMA 关联及软硬件协同。
 - [研究轮次与执行证据](../switch/RESEARCH_PROGRESS.md)：第一、二轮完成，第三至第六轮待研究。
 - [第二轮有限缓冲模型](../switch/examples/router_round2.py)与[实际测试报告](../switch/examples/round2_results.json)：教学模型，不是 RTL 或协议合规验证。
 
-第一轮完整原稿以[历史快照](../switch/switch_detailed_guide_v2.0.md)保留。当前稿将其主线重整并加入第二轮下钻内容；历史稿不再作为另一套并行设计维护。
+第一轮完整原稿以[历史快照](../switch/switch_detailed_guide_v2.0.md)保留。当前 v2.2 将前两轮合并为 17 节及两份附录，保留资源、容量、提交、失败路径等核心细节；历史稿不再作为另一套并行设计维护。
 
 更新日期：2026-09-25。学习内容覆盖端口、路由、VC/VN、VA/SA、credit、buffer、失败路径、死锁依赖、ordering 与完成点；实际目标模块是否具备这些功能仍由目标资料决定。
 
 ## 当前规划与研究位置
 
-[多轮研究方案](research-plan.md) · [整体研究顺序](../research-roadmap.md)。本次已复核后续方案；实际研究第 1、2 轮已完成，第 3–6 轮待执行。
+[多轮研究方案](research-plan.md) · [整体研究顺序](../research-roadmap.md)。后续方案曾于 2026-09-24 复核，本次未再次复查六轮安排；实际研究第 1、2 轮已完成，第 3–6 轮待执行。
 
-上下游场景：从客户端/DF 事务需求研究 NI、Router、D2D 的输运责任，协议与目标拓扑待核实。当前先按[详细文档写作方法](../chip-study-plan.md#详细文档写作方法)重整并审核既有中文详细稿，从需求、功能到微架构、接口与完整过程建立理解顺序；过深且不影响理解的细节留作就近可选问题。本次仅保存方案，正文重整待执行，不计新轮次；之后再接续修订第 3 轮：NI 事务契约、排序与协议映射。
+上下游场景：从客户端/DF 事务需求研究 NI、Router、D2D 的输运责任，协议与目标拓扑待核实。既有中文详细稿已按[详细文档写作方法](../chip-study-plan.md#详细文档写作方法)重整并审核为 v2.2，明确上下游端点、接口责任及其对内部结构的影响；过深且不影响核心理解的细节留作就近可选问题。已同步章节定位、资料入口和[接续记录](../switch/RESEARCH_PROGRESS.md#当前重写任务的接续点2026-09-25)，不计新轮次。后续从第 3 轮的 NI 事务契约、排序与协议映射接续。
 
 ## 资料集与接续
 
@@ -31,7 +31,7 @@
 
 优先阅读：[R1](sources/R1-pipelined-router-delay.md) → [R2](sources/R2-low-latency-vc-router.md) → [R3](sources/R3-booksim-method.md) → [R4](sources/R4-garnet-overview.md) → [R5](sources/R5-garnet-switch-allocator.md) → [R6](sources/R6-garnet-input-output-credit.md) → [R18](sources/R18-islip-matching.md) → [R19](sources/R19-booksim-buffer-state.md) → [R20](sources/R20-damq-buffer.md) → [R21](sources/R21-elastistore.md)。覆盖：既有 Router 两轮的证据复查；NI、排序和协议映射；D2D 交接、进展与评估。
 
-后续 Codex 先读本模块上下文和 research-plan.md 的整体架构，再按问题选择笔记。笔记保留版本、机制、重要细节、实际阅读范围及证据边界；精确字段、新版本或未读部分再回原资料。补充资料时同步索引、主笔记与受影响方案，不在上下文复制整份资料集。
+后续 Codex 先读本模块上下文、详细稿第 3–6 节及 research-plan.md，建立上下游接口与完整事务图景，再按问题选择笔记；不要求先通读下列全部来源。笔记保留版本、机制、重要细节、实际阅读范围及证据边界；精确字段、新版本或未读部分再回原资料。补充资料时同步索引、主笔记与受影响方案，不在上下文复制整份资料集。
 
 资料笔记与索引已建立；2026-09-25 已执行一轮审计补齐，先查[逐项结果与剩余受限项](../source-reading-audit.md)，再读本模块索引。不能以文件数视为深度验收。资料整理不计为新的论文轮次，论文接续在用户明确要求后按上文执行。方法见[研究范本 v1.5](../chip-study-plan.md)。
 

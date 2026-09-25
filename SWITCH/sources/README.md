@@ -1,6 +1,6 @@
 # SWITCH 资料索引与逐篇技术笔记
 
-更新日期：2026-09-25。先读模块整体微架构与当前问题，再用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
+更新日期：2026-09-25。先读[详细稿 v2.2](../../switch/switch_detailed_guide.md)第 3–6 节的上下游、微架构、接口与完整事务，再根据当前问题用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
 
 本模块列出 34 个可复用来源，主笔记归档 21 篇。跨模块来源链接到唯一主笔记，计数不能跨模块直接相加。资料阅读不计为论文轮次完成。
 
@@ -51,7 +51,6 @@
 | [IO1：PG213：TLP 接收、选择性流控与跨接口保序](../../PCIE/sources/IO1-pg213-transactions.md) | 围绕 TLP 到用户逻辑的转换，解释 descriptor、有效字节、NP credit、Split Completion 及 Posted 顺序检查点；适合 PCIe 请求/完成微架构研究。 | 厂商/项目官方资料。已读所列正文；FPGA PCIe4 IP 的接口实例，不是完整 PCIe Base 规范或 AMD GPU PCIe RTL。 | [原文](https://docs.amd.com/r/en-US/pg213-pcie4-ultrascale-plus/Completer-Request-Interface-Operation) |
 | [IO3：Linux DMA API：地址、所有权、同步和 scatter-gather](../../PCIE/sources/IO3-linux-dma-api.md) | 用于判断设备应使用哪种地址、何时 CPU/设备可以碰缓冲区、为何 coherent 仍需排序。原 SWITCH R17 与本条是同一资料，复用此笔记。 | 厂商/项目官方资料。已读地址关系、DMA mask、coherent/streaming、方向、map/sync/unmap、scatter-gather 与错误处理段；未验证某硬件平台。 | [原文](https://docs.kernel.org/6.12/core-api/dma-api-howto.html) |
 | [IO4：PCIe Base 5.0：规范入口与待补读范围](../../PCIE/sources/IO4-base-spec-gap.md) | 正式规范全文未取得的缺口记录，指明链路层/事务层哪些细节不能只靠 FPGA 指南推定；无需把它当成已完成的技术精读。 | 规范全文未取得。未取得全文；未声明规范合规阅读，版本以原有 5.0 登记为限，不推定当前最新标准。 | [原文](https://pcisig.com/PCIExpress/Specs/Base/_5.0_1.0) |
-
 | [R23：CHI E.a 原始规范：事务资源、顺序、重试与链路 credit](R23-chi-ea-protocol.md) | 从 CHI 正式规范解释 RN/HN/SN、四类通道、TxnID/DBID 生命周期、完成与可见性、P-Credit/L-Credit 以及链路低功耗收敛；适合 SWITCH/DF/GC 的行业协议对照，不是 AMD fabric 实现说明。 | 正式规范选读。取得完整 PDF，选读 §1.1–1.3、§2.1、§2.3 读写/retry 主干、§2.4–2.5、§2.8、§2.11、§4.1、§14.1–14.2/14.5。未将所有 coherence transition、atomic、DVM、MPAM 或 memory tagging 表标为精读。R9 仍是模型指南，R12 仍是架构介绍，两者不再承担正式协议来源的角色。 | [原文](https://documentation-service.arm.com/static/6087f99b5e70d934bc69f1f0) |
 
 ## 使用与维护

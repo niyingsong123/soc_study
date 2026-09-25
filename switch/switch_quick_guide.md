@@ -175,4 +175,4 @@ stop new injection -> drain or coordinated abort
 
 **NI 管事务；Router 管单跳路径、buffer、VC 与周期带宽；网关管理跨 die 的封装和资源边界；链路/PHY 管相应模式下的可靠运输与物理传输；目标模块定义操作的实际完成。**
 
-详细依据、17 项一手参考资料和边界说明见 [详细版第 37 章](switch_detailed_guide.md)。可执行的教学检查见 [reference_checks.py](examples/reference_checks.py)：它检查部分算法、不变量与计算，不是完整 RTL 或 UCIe/CHI 合规验证。
+详细依据及证据边界见 [详细版 v2.2 第 17 节](switch_detailed_guide.md#17-证据模型与后续阅读)，逐篇导读和原文位置见 [SWITCH 资料索引](../SWITCH/sources/README.md)。可执行的教学检查见 [reference_checks.py](examples/reference_checks.py)：它检查部分算法、不变量与计算，不是完整 RTL 或 UCIe/CHI 合规验证。

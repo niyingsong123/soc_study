@@ -137,7 +137,7 @@
 
 ## P6：Switch 公开研究资料组
 
-R1–R22 保留 SWITCH 原有编号体系并补 R22。第 1、2 轮事实与模型执行结果见[真实研究进度](switch/RESEARCH_PROGRESS.md)；旧引用关系可在[详细稿](switch/switch_detailed_guide.md)及 Git 历史复查。本次扩充来源笔记，不执行第 3–6 轮。R9 是 CHI 模型用户指南，R12 是 Arm 架构介绍，均不能替代正式 CHI 规范。
+R1–R23 保留 SWITCH 原有编号体系，包含终点 NI 的 R22 与正式 CHI E.a 的 R23。第 1、2 轮事实与模型执行结果见[真实研究进度](switch/RESEARCH_PROGRESS.md)；[详细稿 v2.2](switch/switch_detailed_guide.md)已按理解顺序重写，主题旁引用对应主笔记，旧章节映射见附录 B。逐篇导读仍以[模块资料索引](SWITCH/sources/README.md)为入口。本次重写不增加来源篇数、不执行第 3–6 轮；R9 是 CHI 模型用户指南，R12 是 Arm 架构介绍，正式协议依据使用 R23。
 
 ### R1
 
@@ -752,4 +752,3 @@ HDP 全称和 host framebuffer 地址转换的 AMD 原厂历史依据；适合�
 [MMHUB：翻译、TAP/DAGB、EA 队列与 DF 边界](HUBS/sources/C05-mmhub-dagb-ea.md) · 原图已移出仓库 · 用户页图·参考设计
 
 连接客户端 AXI、按需翻译、TAP/DAGB 预约、EA 分组排队和 SDP 返回，是 HUBS/EA 整体微架构的重要参考；保留共享存储、独立 credit、失效路径及与 C01 的差异。
-
