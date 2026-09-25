@@ -74,6 +74,8 @@
 - **U23（2026-09-25）：** 用户明确 HBM 器件数据表不是重点；以理解并运用 HBM 典型接口行为为目标，重点研究 PHY、CS、UMC 等芯片侧微架构。厂商料号级数据表降为按需参考，不列为必须补齐或阻塞主线的任务；相关机制笔记仍应详细、保留版本与实际阅读范围。执行口径见 [项目上下文](project-context.md#hbm-接口研究范围)。
 - **U24（2026-09-25）：** 用户明确 HBM 还必须深入理解 bank 等资源划分，以及请求地址如何通过 interleave 分配到不同 HBM；仔细研究整条数据通路的参与模块并建立联系。执行 [跨模块研究方案](HBM/address-interleaving-plan.md)，逐层追踪地址/配置、目标、请求拆分与返回；这属于核心主线，不能因器件数据表降为可选而弱化。
 
+- **U25：** 2026-09-25，用户要求删除 GitHub 上的 `HUBS/assets/` 与 `UTCL2/assets/`，并清理它们的 Git 历史；两条路径保持 Git 忽略。C01–C05 的既有阅读记录不等于当前可在线访问原图。
+
 ## 本地只读参考
 
 外部目录为 `D:\project\no_preject\sdma_repo`，仅引用，不复制或修改。L1–L3 是本项目编号，外部 S1–S9 编号保持原义。本次没有访问外部全文，详情见以下范围笔记。
@@ -701,13 +703,13 @@ HDP 全称和 host framebuffer 地址转换的 AMD 原厂历史依据；适合�
 
 原件统一平铺保存在本地 `original_file/`，保留原文件名与字节内容，禁止上传。表中的 Markdown 路径只用于标识缺失正文，不作为可点击入口。页数来自历史登记；版本以原文为准，不凭文件名推定适用产品。
 
-| 编号 | 原件名称（仅本地） | 原 Markdown 路径与当前状态 | 页数 | GitHub 与本地可读资源 |
+| 编号 | 原件名称（仅本地） | 原 Markdown 路径与当前状态 | 页数 | 图像当前状态 |
 | --- | --- | --- | --- | --- |
-| C01 | `tb_mm_utcl2.pptx` | `UTCL2/tb_mm_utcl2.md`（缺失） | 49 | [现有图像](UTCL2/assets/tb_mm_utcl2/) |
-| C02 | `UTCL2 结构和使用简介 by Wang Junmin.pptx` | `UTCL2/UTCL2 结构和使用简介 by Wang Junmin.md`（缺失） | 38 | [现有图像](UTCL2/assets/UTCL2%20%E7%BB%93%E6%9E%84%E5%92%8C%E4%BD%BF%E7%94%A8%E7%AE%80%E4%BB%8B%20by%20Wang%20Junmin/) |
-| C03 | `utcl2_top.pdf` | `UTCL2/utcl2_top.md`（缺失） | 1 | [现有图像](UTCL2/assets/utcl2_top/) |
-| C04 | `UTCL2地址翻译及预取技术介绍.pdf` | `UTCL2/UTCL2地址翻译及预取技术介绍.md`（缺失） | 26 | [现有图像](UTCL2/assets/UTCL2%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91%E5%8F%8A%E9%A2%84%E5%8F%96%E6%8A%80%E6%9C%AF%E4%BB%8B%E7%BB%8D/) |
-| C05 | `MMHUB_introduction.pptx` | `HUBS/MMHUB_introduction.md`（缺失） | 41 | [现有图像](HUBS/assets/MMHUB_introduction/) |
+| C01 | `tb_mm_utcl2.pptx` | `UTCL2/tb_mm_utcl2.md`（缺失） | 49 | 原图已移出仓库 |
+| C02 | `UTCL2 结构和使用简介 by Wang Junmin.pptx` | `UTCL2/UTCL2 结构和使用简介 by Wang Junmin.md`（缺失） | 38 | 原图已移出仓库 |
+| C03 | `utcl2_top.pdf` | `UTCL2/utcl2_top.md`（缺失） | 1 | 原图已移出仓库 |
+| C04 | `UTCL2地址翻译及预取技术介绍.pdf` | `UTCL2/UTCL2地址翻译及预取技术介绍.md`（缺失） | 26 | 原图已移出仓库 |
+| C05 | `MMHUB_introduction.pptx` | `HUBS/MMHUB_introduction.md`（缺失） | 41 | 原图已移出仓库 |
 
 [历史转换报告](conversion-report.md) · [历史 SHA-256 清单](source-manifest.json)。这些记录保留当时的结果，不能作为五份正文当前存在的证明。C01 第 6 页引用的 `code_coverage_improve.xlsx` 未提供；当前仅保留该附件缺失的记录。
 
@@ -717,31 +719,31 @@ HDP 全称和 host framebuffer 地址转换的 AMD 原厂历史依据；适合�
 
 ### C01
 
-[MM_UTCL2 图示与验证环境：从翻译事务到可观测检查点](UTCL2/sources/C01-mm-utcl2-testbench.md) · [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/tb_mm_utcl2) · 用户页图·参考设计
+[MM_UTCL2 图示与验证环境：从翻译事务到可观测检查点](UTCL2/sources/C01-mm-utcl2-testbench.md) · 原图已移出仓库 · 用户页图·参考设计
 
 覆盖 MM_UTCL2 的 APT1/2/3、VML2/ATCL2、fault/retry、两类失效以及验证环境，适合建立请求生命周期和验证检查点；所有容量与字段均须保留该资料版本范围。
 
 ### C02
 
-[UTCL2 结构与使用：页表格式、cache 映射和 BigK 性能反例](UTCL2/sources/C02-utcl2-cache-organization.md) · [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/UTCL2%20%E7%BB%93%E6%9E%84%E5%92%8C%E4%BD%BF%E7%94%A8%E7%AE%80%E4%BB%8B%20by%20Wang%20Junmin) · 用户页图·参考设计
+[UTCL2 结构与使用：页表格式、cache 映射和 BigK 性能反例](UTCL2/sources/C02-utcl2-cache-organization.md) · 原图已移出仓库 · 用户页图·参考设计
 
 解释 Group/VML2/Walker/ATC 的分工、PTE cache 的 bank/set/way/tag、表布局粒度与映射粒度的区别，并保存 BigK 增大反而禁止填充的具体案例。
 
 ### C03
 
-[UTCL2 总图：GPUVM、ATC 与 walker 的资源边界](UTCL2/sources/C03-utcl2-topology.md) · [原文](https://github.com/niyingsong123/soc_study/blob/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/utcl2_top/page-001.png) · 用户页图·参考设计
+[UTCL2 总图：GPUVM、ATC 与 walker 的资源边界](UTCL2/sources/C03-utcl2-topology.md) · 原图已移出仓库 · 用户页图·参考设计
 
 从一张总图建立请求入口、VML2 bank、walker、ATCL2 与返回网络的关系，适合快速判断一个 feature 应放在哪个子模块；图中的实例数只属于该图配置。
 
 ### C04
 
-[地址翻译与预取：rdif 扩展、资源竞争和已核算勘误](UTCL2/sources/C04-translation-prefetch.md) · [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/UTCL2%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91%E5%8F%8A%E9%A2%84%E5%8F%96%E6%8A%80%E6%9C%AF%E4%BB%8B%E7%BB%8D) · 用户页图·参考设计
+[地址翻译与预取：rdif 扩展、资源竞争和已核算勘误](UTCL2/sources/C04-translation-prefetch.md) · 原图已移出仓库 · 用户页图·参考设计
 
 把常见翻译预取思想与资料中 shaobo 的 rdif 方案分开，说明 history table、独立预取缓存、需求请求优先和返回分类；同时记录地址例题和阈值描述中的问题。
 
 ### C05
 
-[MMHUB：翻译、TAP/DAGB、EA 队列与 DF 边界](HUBS/sources/C05-mmhub-dagb-ea.md) · [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/HUBS/assets/MMHUB_introduction) · 用户页图·参考设计
+[MMHUB：翻译、TAP/DAGB、EA 队列与 DF 边界](HUBS/sources/C05-mmhub-dagb-ea.md) · 原图已移出仓库 · 用户页图·参考设计
 
 连接客户端 AXI、按需翻译、TAP/DAGB 预约、EA 分组排队和 SDP 返回，是 HUBS/EA 整体微架构的重要参考；保留共享存储、独立 credit、失效路径及与 C01 的差异。
 

@@ -18,7 +18,7 @@
 
 | 编号与技术笔记 | 核心内容与何时值得读 | 资料性质及实际阅读范围 | 原文入口 |
 | --- | --- | --- | --- |
-| [C05：MMHUB：翻译、TAP/DAGB、EA 队列与 DF 边界](../../HUBS/sources/C05-mmhub-dagb-ea.md) | 连接客户端 AXI、按需翻译、TAP/DAGB 预约、EA 分组排队和 SDP 返回，是 HUBS/EA 整体微架构的重要参考；保留共享存储、独立 credit、失效路径及与 C01 的差异。 | 用户页图·参考设计。读取 41 页可提取文字，直接核看第 7、18、27、32、33、34、40 页关键图表；图中缺乏的 RTL 时序、RAM 端口数和严格完成定义保持未知。 | [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/HUBS/assets/MMHUB_introduction) |
+| [C05：MMHUB：翻译、TAP/DAGB、EA 队列与 DF 边界](../../HUBS/sources/C05-mmhub-dagb-ea.md) | 连接客户端 AXI、按需翻译、TAP/DAGB 预约、EA 分组排队和 SDP 返回，是 HUBS/EA 整体微架构的重要参考；保留共享存储、独立 credit、失效路径及与 C01 的差异。 | 用户页图·参考设计。读取 41 页可提取文字，直接核看第 7、18、27、32、33、34、40 页关键图表；图中缺乏的 RTL 时序、RAM 端口数和严格完成定义保持未知。 | 原图已移出仓库 |
 | [FAB3：AMD ATL：从 UMC 归一化地址恢复系统物理地址](../../DF/sources/FAB3-atl-address-core.md) | 展示 RAS 地址解码必须结合 socket/die/CS、DRAM map、interleave/hash、base 与 MMIO hole；用于避免把 UMC 错误地址直接解释成系统 PA。 | 固定版本公开代码。已读完整文件，重点 norm_to_sys_addr、base/hole 处理及初始化/decoder 注册。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/ras/amd/atl/core.c) |
 | [MEM3：AMDGPU RAS：错误计数、坏页与恢复策略](../../UMC/sources/MEM3-amdgpu-ras.md) | 从软件侧梳理 CE/UE、坏页状态和恢复动作，适合连接 UMC 检测、IH 通知及页面隔离；不能用软件状态替代硬件错误定位。 | 厂商/项目官方资料。已读文档正文的支持、控制、计数和坏页接口；未执行注错、复位或 EEPROM 操作。 | [原文](https://docs.kernel.org/6.12/gpu/amdgpu/ras.html) |
 | [MEM14：UMC 8.10 驱动：错误分类与地址候选展开](../../UMC/sources/MEM14-umc810-ras-address.md) | 研究错误地址为何不是现成系统物理地址，以及 UE 计数为何可能没有可隔离页面；提供具体寄存器与转换路径，适合 RAS 联读。 | 固定版本公开代码。已读错误计数、通道索引、地址转换、状态清除及固件 ECC 信息分支；未读取目标芯片寄存器，不能推广到其他 UMC 代际。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/umc_v8_10.c) |
@@ -29,7 +29,7 @@
 | [MG10：AMD ATL system.c：Fabric 身份字段与版本发现](../../SMN/sources/MG10-atl-system-identity.md) | 解释 socket/die/node/component ID 的代际解码和未知版本处理；适合控制寻址与错误地址定位的前置研究，不能用固定移位套所有芯片。 | 固定版本公开代码。已读 node ID 构造、DF2/3/3.5/4 mask/shift、版本发现及系统配置采集；这是 CPU DF/ATL 软件上下文，不是 GPU SMN 路由表。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/ras/amd/atl/system.c) |
 | [MG11：UMC 6.7：错误地址展开与 poison 模式的代际对照](MG11-umc67-ras-comparison.md) | 补充 RSMU 相邻的 UMC RAS 路径，解释 hash/列位模糊如何扩大隔离候选，及 poison 查询如何依赖寄存器；用于对照 UMC 8.10。 | 固定版本公开代码。已读地址转换、直接/固件错误地址路径及 poison 查询；这不是 RSMU 内部实现证据。 | [原文](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/umc_v6_7.c) |
 
-| [C01：MM_UTCL2 图示与验证环境：从翻译事务到可观测检查点](../../UTCL2/sources/C01-mm-utcl2-testbench.md) | 覆盖 MM_UTCL2 的 APT1/2/3、VML2/ATCL2、fault/retry、两类失效以及验证环境，适合建立请求生命周期和验证检查点；所有容量与字段均须保留该资料版本范围。 | 用户页图·参考设计。49 页的已提交页图均已取得文字阅读或图像核看记录；2026-09-25 补回并直接核看了此前未读取的第 1、4 页。主要技术范围为第 3–5、15–31、33–47、49 页；并非对所有 OCR 字符逐字校勘。图示版本与目标芯片对应关系仍需本地确认。 | [原文](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/tb_mm_utcl2) |
+| [C01：MM_UTCL2 图示与验证环境：从翻译事务到可观测检查点](../../UTCL2/sources/C01-mm-utcl2-testbench.md) | 覆盖 MM_UTCL2 的 APT1/2/3、VML2/ATCL2、fault/retry、两类失效以及验证环境，适合建立请求生命周期和验证检查点；所有容量与字段均须保留该资料版本范围。 | 用户页图·参考设计。49 页的已提交页图均已取得文字阅读或图像核看记录；2026-09-25 补回并直接核看了此前未读取的第 1、4 页。主要技术范围为第 3–5、15–31、33–47、49 页；并非对所有 OCR 字符逐字校勘。图示版本与目标芯片对应关系仍需本地确认。 | 原图已移出仓库 |
 
 ## 使用与维护
 

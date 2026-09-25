@@ -55,7 +55,7 @@
 
 ## 原始文件与 Markdown
 
-UTCL2、HUBS 保留了五份资料的 223 个图像资源（含 155 页完整页面预览），但五份转换后的 Markdown 正文目前在本地和 GitHub 均缺失。用户已选择只同步当前已有文件，不补回正文。可从 [UTCL2](UTCL2/README.md) 与 [HUBS](HUBS/README.md) 入口查看现有页面图片；本次已依据这些已提交页图整理 C01–C05 技术笔记，未恢复转换正文；`assets/` 和 `sources/` 分别是图像与笔记目录，不是芯片子模块目录。
+2026-09-25，用户要求从 GitHub 及其 Git 历史中移除 `HUBS/assets/`、`UTCL2/assets/` 共 223 个图像资源（历史登记含 155 页完整页面预览）。当前版本不再提供这些图像，两条路径已加入 `.gitignore`，不得重新上传。五份转换后的 Markdown 正文仍保持缺失，不自行补回；此前形成的 C01–C05 技术笔记保留历史阅读记录，不能据此声称原图仍可在线复核。资料入口见 [UTCL2](UTCL2/README.md) 与 [HUBS](HUBS/README.md)。
 
 `original_file/` 中的文件仅供本地查看，不得上传 GitHub（包括私有仓库）或其他云端服务；已通过 `.gitignore` 排除。云端环境中无法打开指向这些本地原件的链接。
 

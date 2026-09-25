@@ -14,6 +14,7 @@
 
 - SOC 项目只关联 `D:\project\no_preject\soc_repo`；独立 `sdma_repo` 已取消附加关联。保留本仓库 `SDMA/` 的只读入口，不将外部项目文件纳入同步。
 - C01–C05 的五份 Markdown 正文目前缺失；用户已明确选择只同步现有文件，不自行补回。`conversion-report.md` 与 `source-manifest.json` 是历史记录，不证明当前正文存在或当前全文校验通过。
+- 用户于 2026-09-25 要求删除 GitHub 上的 `HUBS/assets/`、`UTCL2/assets/` 并清理其 Git 历史；这两个路径必须保持 Git 忽略，不得重新提交或用旧历史合并恢复。既有阅读记录不表示原图仍可从 GitHub 获取。
 - 项目目标、约定、资料可用性或待确认事项变化时，同步更新 `project-context.md` 及相关入口；缺失文件使用状态说明，避免保留指向缺失正文的可点击链接。
 
 ## 多轮论文研究的接续规则

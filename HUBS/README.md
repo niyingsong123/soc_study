@@ -10,13 +10,13 @@ UTCL1/UTCL2 公共主题独立管理，各实例是否属于某 hub 需框图。
 
 ## 资料现状
 
-历史转换记录对应的 Markdown 正文目前缺失，用户已选择只同步现有文件，不补回正文。页面预览和嵌入图像仍保留在 `assets/`；下表提供当前可读入口。原始 PPTX/PDF 仅保存在本地 `original_file/`，不得上传 GitHub。
+历史转换记录对应的 Markdown 正文仍缺失，不自行补回。2026-09-25 按用户要求将本模块 `assets/` 的页面预览和嵌入图像移出版本管理，并要求清理其 Git 历史；该目录已加入 Git 忽略，后续不得重新上传。下表记录历史页数与当前可用性。原始 PPTX/PDF 仅限本地 `original_file/`，不得上传 GitHub。
 
-| 来源 | 原 Markdown 文件与当前状态 | 页数 | 现有图像 |
+| 来源 | 原 Markdown 文件与当前状态 | 页数 | 图像状态 |
 | --- | --- | --- | --- |
-| C05 | `MMHUB_introduction.md`（缺失） | 41 | [全部图像](assets/MMHUB_introduction/) · [第一页](assets/MMHUB_introduction/slide-001.png) |
+| C05 | `MMHUB_introduction.md`（缺失） | 41 | 原图已移出仓库 |
 
-页面图像已用于本次技术阅读，逐篇机制和阅读范围见 [sources/README.md](sources/README.md)。本次未访问原件、未恢复缺失转换正文；用户参考设计不等于 AMD 官方或目标芯片已确认实现，版本冲突及算例纠错保留在笔记中。
+页面图像曾用于此前技术阅读，当前不再由仓库提供；逐篇机制和阅读范围见 [sources/README.md](sources/README.md)。本次未访问原件、未恢复缺失转换正文；用户参考设计不等于 AMD 官方或目标芯片已确认实现，版本冲突及算例纠错保留在笔记中。
 
 [项目上下文](../project-context.md) · [历史转换报告](../conversion-report.md) · [历史来源与哈希清单](../source-manifest.json)
 

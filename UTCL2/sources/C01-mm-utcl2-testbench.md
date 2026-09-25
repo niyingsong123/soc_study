@@ -1,9 +1,11 @@
 # C01：MM_UTCL2 图示与验证环境：从翻译事务到可观测检查点
 
+> 2026-09-25：所引用页图已按用户要求移出仓库；下文保留此前阅读记录，无法通过 GitHub 复核原图。
+
 更新日期：2026-09-25。
 
 导读：覆盖 MM_UTCL2 的 APT1/2/3、VML2/ATCL2、fault/retry、两类失效以及验证环境，适合建立请求生命周期和验证检查点；所有容量与字段均须保留该资料版本范围。
-来源：[仓库既有 tb_mm_utcl2 页图](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/tb_mm_utcl2)。这是用户提供且已入库的 HYGON 标识资料，不是 AMD 官方公开规范。缺失的转换正文未恢复，未读取或上传 original_file。
+来源：原图已移出仓库。这是用户提供且已入库的 HYGON 标识资料，不是 AMD 官方公开规范。缺失的转换正文未恢复，未读取或上传 original_file。
 阅读状态：49 页的已提交页图均已取得文字阅读或图像核看记录；2026-09-25 补回并直接核看了此前未读取的第 1、4 页。主要技术范围为第 3–5、15–31、33–47、49 页；并非对所有 OCR 字符逐字校勘。图示版本与目标芯片对应关系仍需本地确认。
 
 ## 页码导览
@@ -19,7 +21,7 @@
 
 ## 第 4 页补读：BOWEN MMHUB 与 UTCL2 客户端增长
 
-[第 1 页](../assets/tb_mm_utcl2/slide-001.png) 是 HYGON 的 MM_UTCL2 introduction 封面；[第 4 页](../assets/tb_mm_utcl2/slide-004.png) 则是有实质架构信息的 BOWEN MMHUB 总图，不能再将此前的缺图视为无影响。
+原图已移出仓库 是 HYGON 的 MM_UTCL2 introduction 封面；原图已移出仓库 则是有实质架构信息的 BOWEN MMHUB 总图，不能再将此前的缺图视为无影响。
 
 图中有 mmhub_ip 与 mmhub_ip1 两组；每组包含共享 UTCL2、PCTL、rsmu、rdft，SMN 接至 rsmu、DFT 接至 rdft。lane 内画出 Tap Chain、VML1、DAGB、EA 以及到 DfSdpX 的连接。它是结构图，不能仅按方框纵向位置断言所有请求无条件串行经过每一块；具体翻译开关/sideband 仍需结合其他页。
 

@@ -1,5 +1,7 @@
 # 资料任务检查与补齐记录
 
+> 资料可用性更新（2026-09-25）：C01–C05 的页图所在 `HUBS/assets/`、`UTCL2/assets/` 已按用户要求移出当前版本，并要求清理其 Git 历史。下文的页图阅读和缺图统计保留历史语境，后续不能再通过仓库复核原图，也不得重新上传。
+
 更新日期：2026-09-25。按用户“按检查报告补齐”的要求执行；基线为 [1f09693](https://github.com/niyingsong123/soc_study/commit/1f096936670b0f3ade91493265939c87985aa469)，[2026-09-24 历史检查原文](https://github.com/niyingsong123/soc_study/blob/1f096936670b0f3ade91493265939c87985aa469/source-reading-audit.md)保留在 Git 历史中。
 
 ## 用户后续调整的验收范围（U23）

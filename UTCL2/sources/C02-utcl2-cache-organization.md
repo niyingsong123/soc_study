@@ -1,9 +1,11 @@
 # C02：UTCL2 结构与使用：页表格式、cache 映射和 BigK 性能反例
 
+> 2026-09-25：所引用页图已按用户要求移出仓库；下文保留此前阅读记录，无法通过 GitHub 复核原图。
+
 更新日期：2026-09-24。
 
 导读：解释 Group/VML2/Walker/ATC 的分工、PTE cache 的 bank/set/way/tag、表布局粒度与映射粒度的区别，并保存 BigK 增大反而禁止填充的具体案例。
-来源：[仓库既有“UTCL2 结构和使用简介 by Wang Junmin”页图](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/UTCL2/assets/UTCL2%20%E7%BB%93%E6%9E%84%E5%92%8C%E4%BD%BF%E7%94%A8%E7%AE%80%E4%BB%8B%20by%20Wang%20Junmin)。HYGON 标识的用户资料；不是所有 AMD 产品通用参数。
+来源：原图已移出仓库。HYGON 标识的用户资料；不是所有 AMD 产品通用参数。
 阅读状态：读取 38 页文字并核看结构及第 34–35 页关键条件；本笔记保留原资料案例的配置前提，不把建议寄存器值写成可直接应用的优化命令。
 
 ## 先把三个“粒度”分开

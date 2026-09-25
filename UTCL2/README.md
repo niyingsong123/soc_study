@@ -10,16 +10,16 @@
 
 ## 资料现状
 
-历史转换记录对应的 Markdown 正文目前缺失，用户已选择只同步现有文件，不补回正文。页面预览和嵌入图像仍保留在 `assets/`；下表提供当前可读入口。原始 PPTX/PDF 仅保存在本地 `original_file/`，不得上传 GitHub。
+历史转换记录对应的 Markdown 正文仍缺失，不自行补回。2026-09-25 按用户要求将本模块 `assets/` 的页面预览和嵌入图像移出版本管理，并要求清理其 Git 历史；该目录已加入 Git 忽略，后续不得重新上传。下表记录历史页数与当前可用性。原始 PPTX/PDF 仅限本地 `original_file/`，不得上传 GitHub。
 
-| 来源 | 原 Markdown 文件与当前状态 | 页数 | 现有图像 |
+| 来源 | 原 Markdown 文件与当前状态 | 页数 | 图像状态 |
 | --- | --- | --- | --- |
-| C01 | `tb_mm_utcl2.md`（缺失） | 49 | [全部图像](assets/tb_mm_utcl2/) · [第一页](assets/tb_mm_utcl2/slide-001.png) |
-| C02 | `UTCL2 结构和使用简介 by Wang Junmin.md`（缺失） | 38 | [全部图像](assets/UTCL2%20%E7%BB%93%E6%9E%84%E5%92%8C%E4%BD%BF%E7%94%A8%E7%AE%80%E4%BB%8B%20by%20Wang%20Junmin/) · [第一页](assets/UTCL2%20%E7%BB%93%E6%9E%84%E5%92%8C%E4%BD%BF%E7%94%A8%E7%AE%80%E4%BB%8B%20by%20Wang%20Junmin/slide-001.png) |
-| C03 | `utcl2_top.md`（缺失） | 1 | [全部图像](assets/utcl2_top/) · [第一页](assets/utcl2_top/page-001.png) |
-| C04 | `UTCL2地址翻译及预取技术介绍.md`（缺失） | 26 | [全部图像](assets/UTCL2%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91%E5%8F%8A%E9%A2%84%E5%8F%96%E6%8A%80%E6%9C%AF%E4%BB%8B%E7%BB%8D/) · [第一页](assets/UTCL2%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91%E5%8F%8A%E9%A2%84%E5%8F%96%E6%8A%80%E6%9C%AF%E4%BB%8B%E7%BB%8D/page-001.png) |
+| C01 | `tb_mm_utcl2.md`（缺失） | 49 | 原图已移出仓库 |
+| C02 | `UTCL2 结构和使用简介 by Wang Junmin.md`（缺失） | 38 | 原图已移出仓库 |
+| C03 | `utcl2_top.md`（缺失） | 1 | 原图已移出仓库 |
+| C04 | `UTCL2地址翻译及预取技术介绍.md`（缺失） | 26 | 原图已移出仓库 |
 
-页面图像已用于本次技术阅读，逐篇机制和阅读范围见 [sources/README.md](sources/README.md)。本次未访问原件、未恢复缺失转换正文；用户参考设计不等于 AMD 官方或目标芯片已确认实现，版本冲突及算例纠错保留在笔记中。
+页面图像曾用于此前技术阅读，当前不再由仓库提供；逐篇机制和阅读范围见 [sources/README.md](sources/README.md)。本次未访问原件、未恢复缺失转换正文；用户参考设计不等于 AMD 官方或目标芯片已确认实现，版本冲突及算例纠错保留在笔记中。
 
 [项目上下文](../project-context.md) · [历史转换报告](../conversion-report.md) · [历史来源与哈希清单](../source-manifest.json)
 

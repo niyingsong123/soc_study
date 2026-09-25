@@ -1,9 +1,11 @@
 # C05：MMHUB：翻译、TAP/DAGB、EA 队列与 DF 边界
 
+> 2026-09-25：所引用页图已按用户要求移出仓库；下文保留此前阅读记录，无法通过 GitHub 复核原图。
+
 更新日期：2026-09-24。
 
 导读：连接客户端 AXI、按需翻译、TAP/DAGB 预约、EA 分组排队和 SDP 返回，是 HUBS/EA 整体微架构的重要参考；保留共享存储、独立 credit、失效路径及与 C01 的差异。
-来源：[仓库既有 MMHUB_introduction 页图](https://github.com/niyingsong123/soc_study/tree/585661dfa3d90f3d0488cd3f6c5d50f6be8103a6/HUBS/assets/MMHUB_introduction)。用户提供的 HYGON 标识资料，未确认等同于研究目标芯片的某一 AMD 实现版本。
+来源：原图已移出仓库。用户提供的 HYGON 标识资料，未确认等同于研究目标芯片的某一 AMD 实现版本。
 阅读状态：读取 41 页可提取文字，直接核看第 7、18、27、32、33、34、40 页关键图表；图中缺乏的 RTL 时序、RAM 端口数和严格完成定义保持未知。
 
 ## 页码与子模块索引
