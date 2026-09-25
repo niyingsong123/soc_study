@@ -1,6 +1,8 @@
 # SWITCH 微架构详解：从系统需求、上下游接口到 NI、Router 与跨 die 传输
 
-版本：v2.2；重写日期：2026-09-25。本文整合已完成的前两轮研究，按理解顺序重新组织。研究轮次及模型执行记录见[进度页](RESEARCH_PROGRESS.md)，本次重写不代表第 3–6 轮完成。
+版本：v2.3（第三轮已完成，证据见[进度页](RESEARCH_PROGRESS.md)）；更新日期：2026-09-25。本文在 v2.2 的整体结构中深化 NI transaction contract、有限并发、response 与 retire，并联动架构、接口和读写例子；Router 既有研究与模型结果继续保留。
+
+常用英文名词与术语保留原文，必要时首次作简短中文解释，后文保持一致；具体规则见[写作范本](../chip-study-plan.md#常用英文术语保留原文)。正文按主题持续演进，轮次和执行证据单独记录；本轮正常 NI 契约不替代第 4 轮的全局 progress/reset 分析或第 5 轮的 D2D 深化。
 
 本文要建立的是一套能讲清资源、接口和完整行为的参考微架构。研究对象以本项目的 AMD SWITCH 命名组织；由于目标芯片的真实拓扑和内部协议尚未公开确认，下面把**公开资料中的机制、本文选定的教学设计、目标实现待核实项**分开说明。片内基线沿用 R0，跨 die 扩展沿用 R1；它们是本文设计编号。
 
@@ -72,18 +74,30 @@
 
 ```mermaid
 flowchart TD
-    S["源端：SDMA 或其他客户端"] -->|"请求、地址、写数据"| SN["源 NI"]
-    SN -->|"请求包"| N["片内 Router 网络"]
-    N -->|"响应包"| SN
-    SN -->|"读数据、状态"| S
-    N -->|"本地请求"| TN["本地目标 NI"]
-    TN -->|"目标接口"| T["存储侧或其他服务端点"]
-    T -->|"数据、完成、错误"| TN
-    TN -->|"响应包"| N
-    N -->|"跨 die 请求/响应"| G["D2D 网关"]
-    G -->|"远端流量"| N
-    G -->|"适配与物理传输"| R["远端网络及目标端点"]
-    R -->|"返回"| G
+    S["上游：SDMA 或其他客户端"]
+    T["下游：存储侧或其他服务端点"]
+    R["adapter / PHY、远端网络及目标"]
+    C["映射、启停与恢复控制来源"]
+    subgraph SW["SWITCH 参考逻辑边界"]
+        SN["源 NI：admission、transaction table、response / retire"]
+        N["片内 Router 网络"]
+        TN["目标 NI：reassembly、target issue、response"]
+        G["D2D gateway"]
+        SN -->|"request / write payload"| N
+        N -->|"response / read payload"| SN
+        N -->|"本地 request"| TN
+        TN -->|"response"| N
+        N <-->|"跨 die packet 与 flow control"| G
+    end
+    S -->|"地址、ID、属性；独立写数据"| SN
+    SN -->|"读数据 / status；按接收能力交付"| S
+    TN -->|"目标命令与写数据"| T
+    T -->|"读数据、completion / error"| TN
+    G <-->|"payload、容量、link state"| R
+    C -.-> SN
+    C -.-> TN
+    C -.-> N
+    C -.-> G
 ```
 
 这张图先回答“本模块接谁”。源 NI 面对业务接口，Router 面对网络传输接口；目标 NI 把消息重新转换为目标可处理的事务。只有目标在远端时才经过 D2D 分支。
@@ -112,6 +126,8 @@ flowchart TD
 | --- | --- | --- |
 | 接纳与入口检查 | 在承诺服务前确认请求合法且有资源 | 端点请求→合法内部事务；保存请求属性和资源预约 |
 | 事务表与目标映射 | 网络传输时间不固定，源身份需跨多个阶段保留 | 地址/原 ID→目的节点/内部 ID；保存返回关联、排序域、完成状态 |
+| AW association 与 write-payload buffer | AW/W 可独立出现，W 又不能自行携带 AXI4 事务 ID 选择目标 | AW 接纳顺序→entry/slot；按 beat 填充，整包就绪后注入 |
+| Response buffer 与 retire 控制 | 目标返回和上游接收可能相隔很久 | 预留 slot→完整结果→R/B 交付；维护输出稳定性和最后一次 handshake |
 | Packetizer / depacketizer | 事务长度与链路粒度不同 | 事务↔packet/flit；保存包边界、长度和重组进度 |
 | 输入队列与 VC 描述符 | 下游未就绪时保留数据及包的上下文 | flit→队头；保存占用、路由、VC 映射及包状态 |
 | 路由计算 RC | 决定当前节点从哪个方向继续 | 目的节点+当前位置→输出方向 |
@@ -124,16 +140,63 @@ flowchart TD
 
 各功能可以在实现中合并，但合并以后责任仍然存在。例如把 VA 合入 SA，不代表下游 VC 可以不分配；把事务表和返回缓冲合并，也不代表两者释放时间相同。
 
+### 3.4 NI 的内部接入位置
+
+下面把同一条访问路径打开到 NI 内部。实线表示请求/数据/结果交接，虚线表示身份、资源预约和调度控制。源 NI 和目标 NI 是职责角色；一个物理端点也可以同时具备两种角色。
+
+```mermaid
+flowchart LR
+    U["上游 AXI4 参考接口"]
+    NET["Router 网络"]
+    MEM["受控目标服务端"]
+    subgraph SRC["源 NI"]
+        ADM["admission / 地址与属性检查"]
+        TT["transaction table / domain busy"]
+        WP["AW association FIFO / write-payload slot"]
+        PK["request scheduler / packetizer"]
+        RB["response 关联 / read slot 或 B status"]
+        OUT["R/B 输出 / retire"]
+        ADM --> TT
+        ADM -->|"合法映射 AR 描述符"| PK
+        ADM -->|"AW 描述符与预约"| WP
+        WP -->|"可路由的完整写 payload"| PK
+        ADM -->|"读 decode error"| RB
+        WP -->|"写 decode error 且 W 收齐"| RB
+        TT -.-> PK
+        TT -.-> RB
+        RB --> OUT
+        OUT -.->|"最后 handshake 释放"| TT
+    end
+    subgraph DST["目标 NI"]
+        REC["Local 接收 / reassembly record"]
+        ISS["合法性检查 / target issue"]
+        RES["结果存储 / response packetizer"]
+        REC --> ISS
+        ISS -.->|"local service tag"| RES
+    end
+    U -->|"AR / AW"| ADM
+    U -->|"W"| WP
+    OUT -->|"R / B"| U
+    PK -->|"request VN"| NET
+    NET -->|"request VN"| REC
+    ISS -->|"命令 / 写数据"| MEM
+    MEM -->|"读数据 / status"| RES
+    RES -->|"response VN"| NET
+    NET -->|"response VN"| RB
+```
+
+R/B 输出到上游、目标命令/数据到服务端、flit 到 Local 接收侧，都有独立的接纳条件。反向 READY/credit 和具体资源释放见第 4、6 节；图中的一条箭头不是无限容量，也不表示所有交接能在同一拍完成。
+
 ## 4. 接口先讲清，再讨论内部如何执行
 
 ### 4.1 六类关键交接
 
 | 接口边界 | 传递什么 | 接纳及流控 | 返回/完成的含义 |
 | --- | --- | --- | --- |
-| 请求源↔源 NI | 操作、地址、长度、数据、原身份及属性 | NI 有表项和必要缓冲才不可撤销地接纳；写数据分阶段接收时保存关联 | 仅表示该接口责任交接；整笔完成还要等待规定响应 |
+| 请求源↔源 NI | AR/AW 地址、ID、长度及属性；独立 W；反向 R/B | AR 预约 entry/read slot；AW 预约 entry、AW 关联和 write slot；W 按队首关联接收 | AR/AW handshake 是 admission；最后 R handshake 或 B handshake 才是本 NI 的 retire |
 | NI↔本地 Router | flit、包边界、网络类别和所用 VC | 使用明确的注入/弹出协议；本项目模型的源注入是理想 ready/valid，不能冒称已实现完整 NI | 注入完成只说明包已离开 NI；弹出后还需重组和业务交付 |
 | Router↔Router | 正向 flit、逐跳 VC；反向槽 credit 与 VC 释放信息 | 发送前已有接收许可，许可包含在途承诺 | credit 归还只释放相邻队列资源 |
-| 目标 NI↔目标服务端 | 解包后的地址、操作、写数据与属性 | 目标接纳能力、命令/数据配对和响应能力共同约束 | 目标必须定义何时完成及何种可见性成立 |
+| 目标 NI↔目标服务端 | 操作、地址、长度、local service tag；写数据与返回数据/status | record 已保存完整写 payload 或预留读返回空间；命令、数据和结果各自交接 | 本文受控 SRAM 写更新并对其后续读可见后返回；target issue 本身不是 completion |
 | NoC↔D2D 网关↔adapter/PHY | 包、跨链路传输单元、状态和流控 | 本地槽、远端整包容量和重放空间分别管理 | 链路确认与业务完成分开 |
 | 控制面↔上述子模块 | 映射、启停、配额、错误与恢复命令 | 配置生效需兼容在途状态和已承诺容量 | 停止接纳、排空、复位完成是不同状态 |
 
@@ -158,6 +221,22 @@ flowchart TD
 
 对 HBM 而言，Router 选一条可达目标的路径，不等于重新决定数据存在哪个 stack、channel 或 bank。系统目标交织、UMC 地址解码与 NoC 路由应分别定位；分包是否同时拆成多个内存事务也需明确责任。
 
+### 4.4 本轮固定的 AXI4 参考子集
+
+本项目目标协议尚未确认。以下是用于 R0 的公开协议参考约束，定义本文究竟支持哪类输入，不能称为 AMD 的真实接口或完整 AXI4 bridge。
+
+| 项目 | 本文采用的约定 | 对内部结构的影响 |
+| --- | --- | --- |
+| 地址与范围 | 已完成所需翻译；地址按 16 B 对齐；整个访问归一个目标，不能跨 4 KB | admission 核对完整范围；Router 只处理选定目标 |
+| 数据与 burst | AXI data width=128 bit；INCR；AxSIZE=4；AxLEN=0–15，即 1–16 个 full-width beat、16–256 B | 一个 payload beat 对应一个 16 B data flit；最长 payload slot 为 256 B |
+| 写 byte lanes | 正常数据访问 WSTRB 全有效；W 的先后与 AW 接纳顺序关联 | 无需把所有 byte-enable/宽度转换组合混入基线；边界仍按计数和 WLAST 核对 |
+| Memory attributes | Normal Non-cacheable Non-bufferable，AxCACHE=0b0010；AxLOCK=0；固定已授权的 data context | 源 NI 不提前产生成功 B，不做 cache/coherence；属性与保护边界不能静默降级 |
+| 并发和 ordering | 每个源/端口、AXI ID、读写方向构成一个 domain；每 domain 一笔到 retire，不同 domain 有限并发 | table 保存 domain busy；读写分别控制，不假设跨通道顺序 |
+| Response | 读仍返回 AxLEN+1 个 beat，最后一个带 RLAST；写每笔只返回一次 B | 最后 handshake 才释放相应责任；错误也不得提前截断 |
+| 目标完成 | 受控 SRAM 读出规定数据；写更新并对该目标后续读可见后响应 | target NI 保存 service tag 和返回容量；替换为 UMC/cache 时重新核 completion contract |
+
+AXI 的握手、属性编码、burst 和顺序依据见 [R8](../SWITCH/sources/R8-axi-ordering-contract.md) A3–A6。这里的容量、整包存储和单 domain 串行是本文选择，不是协议强制的唯一实现。普通读写以外的 exclusive、atomic、snoop、WRAP、窄传输等是显式范围限制，集成时须约束输入或提供另行验证的适配；不能把“未研究”当作可随意丢弃已接纳数据的理由。
+
 ## 5. 先走完一次普通读写
 
 ### 5.1 为贯穿例子固定最少假设
@@ -166,11 +245,11 @@ flowchart TD
 
 VN 是按协议用途划分的资源类别，VC 是类别内可分别保存包状态的队列。本例中请求和响应使用独立槽与状态，而不只是一个分类标签。目标先用行为明确的受控 SRAM：读出数据后返回；写完成并对该控制器后续读取可见后返回。将它替换为真实 UMC 或缓存端点时，必须重定完成语义。
 
-合法事务为 16 B 对齐、16 B 倍数、最多 256 B 的普通读写，使用已翻译地址。不支持的属性不应静默丢弃；真实协议入口应限制协商子集、完成合法转换或按协议报错。
+合法事务使用第 4.4 节的完整子集。贯穿场景有 S0/S1 两个源及 Tslow/Tfast 两个受控 SRAM 目标；下面先跟随 S0 的一笔访问，第 6.10 节再加入同时在途的其他请求。源 NI 演算配置为 4 个 entry、2 个 read-response slot、2 个 write-payload slot，后两者每个 256 B；目标 NI 各有 2 个有限 record。这些 NI 参数不改变既有 Router 模型，也不表示已经把完整 NI 接入该模型。
 
 ### 5.2 读 256 B：请求很短，返回很长
 
-假设源要读取地址 0x1000 起的 256 B，源 NI 分配内部 TxnID=7，并记录它与源端原请求身份的关系。R0 包头独占一个 16 B flit：
+假设 S0 读取 Tslow 地址 0x1000 起的 256 B，ARID=7、ARLEN=15、ARSIZE=4。只有 table、read domain 和完整返回 slot 都可接纳时，AR 才 handshake；源 NI 分配内部 TxnID=7，并保存它与原端口/ARID 的关系。两个 ID 此处数值相同只是例子，不能依此省掉映射。R0 包头独占一个 16 B flit：
 
 - 读请求只有一个同时标记 head/tail 的 flit，长度字段描述要读多少数据。
 - 读响应是一个 head 加十六个数据 flit，共十七个；最后一个带 tail。
@@ -178,30 +257,46 @@ VN 是按协议用途划分的资源类别，VC 是类别内可分别保存包�
 
 ```mermaid
 sequenceDiagram
-    participant S as 请求源
+    participant S as S0
     participant N as 源 NI
     participant F as Router 网络
-    participant T as 目标 NI 与服务端
-    S->>N: 提交地址、长度及原请求 ID
-    N->>N: 分配 TxnID 与返回空间
+    participant T as 目标 NI
+    participant M as Tslow SRAM
+    S->>N: AR handshake：ID 7、0x1000、16 beats
+    N->>N: entry / domain busy / 256 B read slot
     N->>F: 注入 ReadReq
-    F->>T: 按逐跳许可交付请求
-    T->>T: 接纳访问并读取数据
-    T->>F: 发回 ReadRsp 与 TxnID
+    F->>T: 按 Local 接收许可交付请求
+    T->>T: record 接管；保留返回落点
+    T->>M: target request handshake 与 local tag
+    M->>T: 16 个数据 beat 与结果
+    T->>F: ReadRsp：source identity 与 TxnID
+    T->>T: response tail 注入后释放 record
     F->>N: 逐 flit 交付响应
-    N->>N: 校验身份并重组完整数据
-    N->>S: 交付数据及状态
-    S-->>N: 按接口接收完成
-    N->>N: 释放表项与相关预约
+    N->>N: 在已预约 slot 中校验并重组完整结果
+    N->>S: RVALID、RID、data / status
+    S-->>N: 各 beat 的 R handshake；末拍 RLAST
+    N->>N: 最后 handshake：retire / 释放 entry、domain、slot
 ```
 
 图中网络不是一次无条件转发。每跳都可能等待 VC、输出带宽或 credit；但源 NI 的表项在这段等待中持续存在。请求包离开源 NI，并不让 TxnID=7 立刻可复用。
 
 响应到达时，NI 根据完整关联键找到表项，核对类型、长度和预期字节范围。收到 head 只说明返回开始，收到 tail 并通过检查后才能判断整包是否齐全；向源端交付还要遵守该接口的接收和顺序约定。
 
+因此 RREADY 暂时为零时，返回数据可以已存入预约 slot，entry 仍不能释放。只有 16 个 R beat 全部被上游接收才 retire；只交付前 15 个 beat 不等于整笔读完成，错误 RRESP 也不减少要求的拍数。
+
 ### 5.3 写 256 B：数据齐全与写完成之间还有一段路
 
-R0 的保守方案在源 NI 收齐写 payload 后才向网络注入，因此写请求也是十七 flit。目标 NI 重组后交给目标服务端；达到约定完成点后，产生一个单 flit 的写响应。
+S0 写 Tfast 地址 0x8000 起的 256 B，AWID=9、AWLEN=15、AWSIZE=4。AW 与 W 可以独立出现；R0 的保守方案先为 AW 分配 entry、AW association 和完整 payload slot，按关联接收 16 个 W beat，收齐后才向网络注入，因此 WriteReq 仍是十七 flit。
+
+| 过程 | 接管者及发生的事件 | 哪些状态可以释放 |
+| --- | --- | --- |
+| W 先出现 | 尚无对应 AW 时不发生 W handshake，数据由源端保持 | 无；NI 尚未接下这拍数据 |
+| AW admission | 源 NI 保存地址/ID，预约 payload 和 B status | 无；后续 W 接收责任已经成立 |
+| W 全部收齐 | 16 个 beat 均握手且 WLAST 正确 | AW association FIFO 元素释放；payload 和 transaction entry 保留 |
+| WriteReq tail 注入 | 本地 Router 已接管最后 flit | 源 write-payload slot 释放；entry 和 write domain 继续等待 |
+| 目标重组与执行 | 目标 record 收齐后下发命令/数据；SRAM 更新并达到规定可见性 | 不产生源端提前 retire；目标 record 仍要保存 WriteRsp |
+| WriteRsp tail 注入 | 目标的响应由本地 Router 接管 | 目标 record 释放 |
+| 源 NI 收到响应 | 核对 source/TxnID 后提供 BVALID/BID/BRESP | BREADY=0 时继续保持；只有 B handshake 才 retire |
 
 这样选择的原因是：一旦 head 占住网络路径，若后续数据还依赖一个无法前进的本地生产者，网络资源可能被长时间扣留。先收齐再注入，把这类等待放在可控的入口缓冲中。代价是更大的 NI 存储与额外首包延迟。
 
@@ -211,58 +306,194 @@ R0 的保守方案在源 NI 收齐写 payload 后才向网络注入，因此写�
 
 | 停顿位置 | 仍须保存的内容 | 允许恢复的条件 |
 | --- | --- | --- |
-| NI 没有事务表项或返回空间 | 尚未接纳的请求仍由源端持有；已接纳内容按接口保留 | 表项/空间可用 |
+| NI 没有 entry/slot 或同 domain 仍忙 | 尚未接纳的地址由源端保持；已有事务的资源不能撤销 | 对应资源释放，且 domain 已 retire |
+| W 已出现但尚无对应 AW | W beat 仍由源端保持，尚未发生数据交接 | AW admission 和已预约 payload slot 就绪 |
 | Router 没有下游 VC | 输入包、路由结果及已收到 flit | 合法下游 VC 可分配 |
 | VC 已分配但没有 credit | 当前 packet ownership、队列及后续路径 | 下游归还接收许可 |
 | 本拍输掉输出仲裁 | 完整队头与状态 | 后续真正获得匹配 |
-| 目标尚未完成 | 执行上下文和返回关联 | 达到目标完成条件或产生可收尾错误 |
-| 源端暂不取返回数据 | NI 已接收数据及其事务状态 | 源端接收；不能撤销此前承诺的返回容量 |
+| 目标尚未接纳或完成 | 目标 record、local service tag、payload/返回容量 | 目标取得服务并返回数据或可收尾错误 |
+| 源端暂不取 R/B | NI 已接收结果、entry/domain 和稳定的输出 beat/status | 最后 R handshake 或 B handshake；不能仅因 response 到达就回收 |
 
 这个表把等待落到资源上。后续各节要解释的，就是这些资源如何取得、保持与释放。
 
 ## 6. NI：把业务事务与网络传输接起来
 
-### 6.1 接纳是一份资源承诺
+NI 需要跨越两个不同的时间尺度：上游在某个 edge 交付一拍地址或数据，网络和目标却可能很久以后才送回结果。因此 NI 的核心不是把字段换个名字，而是**从 admission 到 retire 持续保存一笔 transaction 的责任**。下面沿第 5 节的同一 R0 基线展开；协议事实来自 [R8](../SWITCH/sources/R8-axi-ordering-contract.md)，具体队列、容量及调度选择是本文参考设计。
 
-源 NI 的事务表至少需要保存：原来源和 ID、内部 TxnID、上下文/世代、操作和目标、预期/已收到的字节、返回槽位置、排序域及完成状态。字段是否合并、具体位宽多少，可以后续决定；这些信息承担的责任不能丢失。
+### 6.1 Admission：一次握手承诺了什么
 
-在不可撤销地接受新事务之前，就应落实所需资源。对于读，R0 预留完整返回数据空间及状态；对于写，除了写 payload，还要保证写响应/错误能被接收和交付。不能只防长读响应溢出，却让短完成消息永久无处落脚。
+对于上游，AR handshake 表示 NI 已接下整个读请求；AW handshake 表示已接下写地址及随后接收对应 W burst 的责任。W 的每次 handshake 只转移一个 beat。三者都不能用“以后网络也许有空”作为接纳依据。
 
-返回空间可以物理上位于 NI，也可以由有明确预约协议的源端缓冲承担。关键是容量在请求发出后不能被其他流占走，响应的接收也不能依赖先发出另一笔请求。
+本轮用一组有限容量演算行为：每个源 NI 有 **4 个 transaction table entry、2 个 256 B read-response slot、2 个 256 B write-payload slot**，AW association FIFO 最多记录 4 个 entry 索引。每个 entry 内有独立的 completion status，因而写响应不再临时申请一个可能被长读占满的公共 buffer。R/B 各有一个保持当前输出的寄存器位置；它们不是额外的事务额度。这些数值用于解释接纳和等待，不是目标芯片参数或吞吐最优配置。
 
-### 6.2 ID 为什么不能过早复用
+| Admission 事件 | 必须同时可用的资源与条件 | 接纳后必须持续承担的责任 |
+| --- | --- | --- |
+| AR handshake | 空闲 table entry；该 read domain 空闲；一个完整 read-response slot；已完成入口检查 | 保存地址、原 ID、内部 TxnID 和目标；保留返回容量直至最后一个 R beat 被上游接收 |
+| AW handshake | 空闲 entry；该 write domain 空闲；一个完整 write-payload slot；AW FIFO 位置；entry 内 B status 可用 | 保存写地址和顺序位置；接收全部 W beats；等待目标或本地错误结果；交付一次 B |
+| W handshake | AW FIFO 队首已有已接纳地址；其 payload slot 已预约；当前 beat 有写入机会 | 只写入队首事务的下一个 beat；更新计数，不为 W 另建一笔 transaction |
 
-假设请求 A 使用 TxnID=7，head 离开后立刻把 7 分给请求 B。若 A 的响应稍晚到达，只凭数值 7 就可能误写 B 的返回区。
+read/write domain 在第 6.5 节定义。短读即使只有 16 B，也占用一个 256 B slot；未写入的余量仍已承诺给该 entry，不能再次分配。改为可变长度池能减少这种浪费，但还要说明碎片、分配元数据和端口约束，本基线先不引入。
 
-因此 ID 生命周期覆盖所需的全部响应、交付和错误收尾。内部 ID 转换还要保留原端口/原 ID；多个源恰好都使用 ID=7，并不意味着它们是同一事务。
+表中的条件是资源判定，不是把输入信号直接组合连接到 READY 的代码。AXI 边界采用寄存后的 READY/VALID；向下一拍发出 READY 许可时，相关额度已为该候选保留，不能再授给另一个 AR/AW。真正的 transaction 接纳记录在 handshake edge。并发候选由 admission 仲裁统一扣除可用额度，返回释放在下一拍成为可申请资源；下面的事件表省略这些准备拍，不声称零气泡接纳。握手稳定性和无输入到输出组合路径的规范依据见 R8 的 A3.1–A3.3。
 
-复位或 context 切换会进一步增加风险：旧响应可能在新 context 建立后到达。世代标签可以帮助区分，但有限位宽会回绕；必须配合排空、隔离或明确恢复协议，不能声称加一个 epoch 字段便自动解决所有旧包问题。
+### 6.2 AW/W 独立到达，怎样仍然配对正确
 
-### 6.3 排序应该放在哪个边界
+AXI4 的 W 通道没有用于选择事务的 WID。本文按**同一源端口的 AW 接纳顺序**维护 association FIFO：每个元素指向一个已分配的 transaction entry 和 payload slot；W 只能填队首，直到规定的最后一个 beat 握手后才弹出这个关联元素。这条 FIFO 管写数据配对，不承担全网 transaction ordering。
 
-本文允许互不依赖的普通事务独立进行。对需要保持完成顺序的同一流，R0 采用容易解释的办法：同一时刻只允许一个相关事务在途，达到定义的完成点后再放行下一个。
+| 到达情况 | 本基线怎样接收 | 为什么不会把数据配给别的事务 |
+| --- | --- | --- |
+| AW 先到 | 接纳 AW、预约 slot；W 以后逐拍写入 | 地址、长度和 slot 已在队首 entry 中固定 |
+| W 先出现 | 尚无对应 AW 时 WREADY 保持低；源端保持 WVALID、WDATA、WSTRB、WLAST，继续独立提供 AW | 未握手的数据仍归源端；NI 不猜它的 ID 或目标 |
+| AW/W 同时出现且 FIFO 原先为空 | 先完成 AW admission；随后才给对应 W 接纳机会 | 基线不使用同 edge 穿透，避免地址与资源尚未提交就接下数据 |
+| 前一写的 W 尚未收齐，后一 AW 已接纳 | 后一 entry 和 slot 可以先占位，W 仍属于队首 | 最后一次 W handshake 才切换关联，不能因后一目标更快而跳过前一 burst |
 
-这牺牲并发换取简单性。若要维持多个 outstanding，就可能需要源端顺序记录、目标限制或返回重排缓冲。必须指出维护的是哪类顺序：同源同 ID、某地址范围、某接口可见性，还是软件定义的同步域。
+源端的 AWVALID/WVALID 必须遵守协议依赖，不能等 NI 拉高 READY 才产生 VALID。因而“NI 等 AW 后再接 W”是本设计选择，“源端必须先等 W 被接收才肯给 AW”则不能作为兼容的输入前提。[R8](../SWITCH/sources/R8-axi-ordering-contract.md) A3.3.2、A5.2 保存相应规则。
 
-仅让一个 VC 内 flit 不乱序，不能保证不同 VC、不同目标的事务按要求完成。[FlooNoC R7](../SWITCH/sources/R7-floonoc-paper.md)可用于比较端点重排和限制同 ID 目标等思路；不要将它们混成一套无成本策略。
+以 256 B 写为例，AWLEN=15，接收第 0–15 个 W beat；只有 beat 15 的 handshake 同时携带 WLAST，payload 才完整。WLAST 是核对边界，不能替代按 AWLEN 保存的计数。过早/过晚 WLAST 属于协议违约，不能当作普通 SLVERR 后擅自把余下 W 配给下一项；本轮针对合法发送者，不声称已实现任意畸形输入的恢复。
 
-### 6.4 目标 NI 同样需要状态
+收齐 W 后，AW FIFO 位置可以复用，write-payload slot 仍须保留，直到整个 WriteReq 被本地 Router 接管。这解释了为什么 AW FIFO pop、payload free 和 B retire 是三个不同事件。
 
-目标 NI 负责接收/重组、合法性检查、目标接口适配、请求与写数据配对、返回关联和响应生成。接收长包时必须明确缓冲或流式接纳能力；不能接下 head 后又没有任何办法接住合法后续数据。
+### 6.3 从 entry 的状态看完整生命周期
 
-响应资源的责任也要在接纳请求时考虑。对于本文简单目标，可以为被接受的事务分配必要响应状态，保证响应路径最终可推进；真实控制器的执行队列和数据返回约定应单独核实。
+每个 entry 保存原端口/AXI ID、读写方向、内部 TxnID、上下文、目标、地址和长度、slot 索引、收发计数、结果状态及是否已交付。entry 的核心阶段如下；等待状态不代表占用专用物理流水级。
 
-Garnet 的目的 NI 提供了一个有用对照：网络 tail 到达后，若协议消费者无空间，仍可能保持 tail/VC，直到允许交付才归还释放信息。这说明“到达终点 Router”和“被端点接管”是不同事件。详见[R22 笔记及固定版本源码](../SWITCH/sources/R22-garnet-network-interface.md)。
+| 阶段 | 进入条件与正在做的事 | 保留的资源 | 前进或释放事件 |
+| --- | --- | --- | --- |
+| GATHER_W | AW 已接纳，逐拍收 W | entry、write domain、AW FIFO 位置、payload slot、B status | 合法最后 W beat 后弹出 AW 关联，转 READY_REQ；本地 decode error 则转 READY_RSP |
+| READY_REQ | AR 已接纳，或完整写 payload 已就绪 | entry/domain；读的返回 slot 或写 payload | request scheduler 选中且注入接口接受首 flit，转 ISSUING |
+| ISSUING | 沿同一 packet 发送剩余 flit | entry/domain、发送进度；写 payload 不提前覆盖 | 请求 tail 被本地 Router 接管，转 WAIT_RSP；此时写 payload slot 可释放 |
+| WAIT_RSP | 请求已交给网络，等待目标处理与返回 | entry/domain；读的 response slot；写的 B status | 匹配 response 全部接收并核对后转 READY_RSP |
+| READY_RSP / DELIVER | 已有完整读结果或一个写 status，等待/执行上游交付 | entry/domain；读 slot；当前输出的 ID、data/status、beat 位置 | 最后 R handshake 或唯一 B handshake 才 retire |
+| FREE | 前一 transaction 已 retire | 无旧事务责任 | 后续 admission 才能重新分配 |
 
-### 6.5 接真实协议时，哪些知识不可省略
+单 flit ReadReq 可以在一次注入 handshake 同时完成首、尾交接，但不能据此释放 entry。源 NI 采用完整接收 ReadRsp 后再对上游发送 R 的保守策略，因此 response head 到达、response tail 到达和最后 R handshake 又是不同事件。
 
-AXI4 桥接需处理 AW/W 的独立到达及其关联，AR 的读请求，以及 R/B 的返回与顺序。NI 不能假设地址永远先到，也不能把内部有限读写子集冒充所有 AXI 功能。一个已经接受的 burst 出错，仍须按协议完成相应收尾；不能简单丢掉余下传输。
+本地生成的 decode error 沿同样的 READY_RSP/DELIVER 出口完成，不向 NoC 发请求。只有正常字段和完整 packet 可按上述状态推进；身份、长度或 packet 边界损坏须进入故障处理，不得把“等待太久”写成成功 retire。reset、epoch 切换和故障隔离的闭环由第 4 轮接续，第 13 节保留当前边界。
 
-AXI 的响应只在其规定的属性和边界下表达完成，不自动意味着写已到 HBM 存储单元。细节与原文位置见[R8](../SWITCH/sources/R8-axi-ordering-contract.md)，特别是 IHI 0022H 的 A3、A5、A6。本次重整已回查握手、写响应依赖及允许缓冲响应的条件；更深 burst/独占规则继续复用笔记。
+### 6.4 容量和身份分别在何时回收
 
-CHI 的 REQ/RSP/SNP/DAT、端点角色、TxnID/DBID、协议级重试和链路容量有不同职责。本文两类 VN 的普通读写模型不足以覆盖这些依赖。正式协议依据改用[R23：CHI E.a](../SWITCH/sources/R23-chi-ea-protocol.md)；R9 是模型用户指南，不承担协议规范依据。
+| 对象 | Allocate / reserve | 保持到何时 | 不能用什么事件提前释放 |
+| --- | --- | --- | --- |
+| transaction entry、内部 TxnID、domain busy | AR/AW admission | 上游最后 R handshake 或 B handshake；异常中按恢复契约处理 | 请求注入、目标接纳、response head 或 tail 到达 |
+| 源 read-response slot | AR admission | 该读 retire，整 slot 归还 | 数据已经写进 slot，或仅前几个 R beat 已交付 |
+| 源 write-payload slot | AW admission | 正常请求 tail 被本地 Router 接管；本地 decode error 则在全部 W 收齐后释放 | AW FIFO pop、首 flit 注入 |
+| AW association FIFO 元素 | AW admission | 规定的最后一个 W beat 握手 | WVALID 仅出现、目标已可用 |
+| entry 内的 B status | 随写 entry 预留 | B handshake | 目标发出 B 或 NI 收到 WriteRsp |
+| 目标 NI record | 接下新 request head 前 | 对应 response tail 被本地 Router 接管 | request tail 已接收、target issue 或目标刚执行完 |
+| Local 接收 VC/槽许可 | 网络接口分配/接收规则 | flit 确实转入已预约的 NI 存储后归还槽许可；完整 tail 接管后归还 ownership | 业务尚未接管时仅看“已经到终点” |
 
-> 可选深入问题：在保持本节事务与完成语义不变时，事务表采用 CAM 还是索引 RAM，字段怎样压缩？只有这些选择改变接纳带宽或接口行为时，才需要回到正文展开。
+对于本轮正常 R0，返回关联键至少包含 source NI identity 与内部 TxnID；每个源 NI 的 table 再恢复原端口、AXI ID 和方向。S0、S1 都使用 AXI ID=7，甚至各自分配内部 TxnID=7，也不会成为同一笔访问。目标 NI 的 local service tag、NoC 节点 DstID 和逐跳 VC 编号仍各自独立，不能互相替代。
+
+返回时同时检查 entry 有效、预期目标/来源、类型、长度及上下文，不只看一个数值 TxnID。正常情况下 retire 后才允许复用；有 late response 或状态丢失时，还须满足第 13 节的旧流量隔离条件。有限 epoch 回绕不能单独构成安全证明。
+
+### 6.5 Ordering：先把需要保持的顺序定义清楚
+
+本基线将 ordering domain 定义为 **源 NI/源端口、AXI ID、读或写方向**的组合。同一 domain 从 AR/AW admission 到 R/B retire 只允许一笔 transaction；即使下一笔去同一个目标，也先等待。不同 domain 可以并发，受总 entry、slot 和真实端口带宽限制。
+
+这个选择直接维持同 ID 的 read-response ordering 和 write-response ordering，并以更强的串行约束简化同方向访问的 issue 顺序。读与写分别建 domain：同一个数值的 ARID 与 AWID 不形成跨通道 fence。若 S0 必须写后读到新值，在本文受控 SRAM 场景中，先接收该写的成功 B，再发起相关读；不能只令读写 ID 相等。多个源并发改写同一地址仍需要上层同步，不能由 NI 的 ID 规则猜出业务先后。[R8](../SWITCH/sources/R8-axi-ordering-contract.md) A5/A6 说明顺序与 observation/completion 的区别。
+
+限制也要讲清：一个未能接纳的同 ID 请求占住上游 AR/AW 通道时，后面的不同 ID 请求可能无法越过它。已经接纳的其他 entry 仍可继续，但本文不声称任意输入排列下都没有 HOL。源端怎样组织独立请求，仍影响实际并行度。
+
+| 策略 | 为同一 domain 允许什么 | 必需状态与前提 | 代价 |
+| --- | --- | --- | --- |
+| 本文单笔在途 | 前一笔 retire 后再接下一笔 | domain busy、每笔返回容量与唯一关联 | 简单，但同 ID 延迟难以隐藏 |
+| 同 ID 同目标限制 | 可在一个目标保持多笔，旧事务未收敛前不换目标 | outstanding 计数、目标记录；从 NI 注入、目标服务到返回调度都须保持所需顺序 | 减少重排需求，跨目标时仍可能阻塞 |
+| 带 ROB 的 NI | 同 ID 可同时访问不同延迟目标，返回先入对应位置再按序交付 | sequence/reorder table、按返回大小预约的存储、提交指针；另行满足请求 issue/观察顺序 | 存储与控制更复杂，并可能出现等待早期响应的占用 |
+
+[FlooNoC §III-A / R7](../SWITCH/sources/R7-floonoc-paper.md)提供后两种行业比较。其静态路由和目标返回顺序假设必须一起看；在本文多 VC 网络中，仅说“都是 XY routing”不能推出同目标多笔必定按序。ROB 也不能修复已经错误执行的有副作用写顺序。本轮完整展开第一种策略，后两种保留条件和取舍，不把三者混成同一个基线。
+
+因此，本例虽然有 read-response buffer，却没有用于同 ID 多笔乱序提交的 ROB。buffer 解决数据落在哪里，ROB 还解决多笔结果按哪个先后交付。
+
+### 6.6 目标 NI：从最后一跳接管，到目标真正执行
+
+源 NI 的 response reservation 不会自动给远端分配 request 空间。目标 NI 另有有限 record；本轮每个目标 NI 使用 **2 个 record，每个含描述符、最多 256 B 的 payload 区及 response status**。一个 record 的数据区在写时接收请求 payload，在读时存放返回数据；同一 record 不同时承担两笔事务。
+
+最后一跳 Router 与 NI 之间的 Local 接收队列先按 flit credit 限制在途流量。NI 将 request head 从该队列转入新 record 前，必须先取得整个 record；没有 record 时 head 留在有容量保护的 Local 队列中，backpressure 经网络返回。取得 record 后，将该 packet 后续 flit 放入它，按实际转移归还槽 credit；合法 tail 完整接管后可归还 VC ownership，而 record 继续等待目标。这是**网络资源交给 NI 存储**，不是把尚未执行的请求丢掉。
+
+| 目标 record 阶段 | 必须已具备什么 | 等待对象与保留内容 |
+| --- | --- | --- |
+| REASSEMBLE | 已分配 record；packet 与 Local VC 关联固定 | 等其余 flit；保存来源、TxnID、操作、字节数与已到数据 |
+| WAIT_TARGET | 整包核对完成；读 response 容量或写 payload 已在 record 中 | 等目标 req_ready；描述符和数据不能改指向 |
+| EXECUTE | target request 已被接受 | 写按 beat 向目标交付，读按 beat 接回；local service tag 始终指向原 record |
+| SEND_RSP | 全部读结果或写 status 已取得 | 等 response VN 注入；保存返回目的、原 TxnID 和完整结果 |
+| FREE | response tail 被本地 Router 接管 | record 才能供新 request head 使用 |
+
+目标接口在本文采用行为明确的命令/数据交接：req handshake 交付操作、地址、长度和 local service tag；写数据另按 16 B beat 和 last 交接，读结果或写 status 带回该 tag。目标 NI 只有在完整 WriteReq 已重组后才发写命令，读命令发出前返回空间已经落实。描述符先被目标接纳，不等于数据可以立即覆盖。
+
+两个受控 SRAM 目标各自一次执行一笔访问；目标 NI 按完整请求就绪顺序选择待执行 record。正常写在全部数据接收、更新完成且对该控制器后续读可见后返回成功 status；读给出规定数量的数据后结束。目标暂不接纳时保持命令稳定，执行后若返回接口受阻则保持结果，不依赖先接新命令才能返回旧结果。真实缓存/UMC 若采用不同的完成点、多个 service tag 或乱序执行，必须重新核对该契约。
+
+R0 的读目标在开始返回前确定整笔 OKAY 或 SLVERR，所有 beat 使用同一 RRESP；失败读返回规定数量的占位数据，内容不作为有效读结果。这是受控目标的限制，不是 AXI 一般规则。若后续桥接的目标会逐 beat 混合报错，必须增加逐 beat status 保存/传输，不能把它压成一个不加说明的整包 status。
+
+[Garnet R22](../SWITCH/sources/R22-garnet-network-interface.md)中，tail 可能因协议 MessageBuffer 无空间而继续占住 VC。本基线在完整 record 接管后释放网络 VC，后续阻塞落在有限 record 中。释放点不同的原因是已接管容量不同，不能把模拟器中删除 flit 对象当作硬件 payload 可以丢弃。
+
+### 6.7 Response 接收与 retire：容量已经有了，端口仍可能等待
+
+源 NI 按返回键把 response 写入 admission 时预约的 slot，记录收到的 beat 数和整包检查结果。预约保证存储所有权，不表示写端口每拍无限可用；发生端口冲突时，Local 队列/credit 仍可短暂停顿。目标、网络和端点最终获得服务，是继续前进的环境条件。
+
+ReadRsp 完整后进入可交付集合。R 通道的 RR 选择一个就绪 entry，并保持该 burst 直到最后一个 beat handshake；本基线不交织不同 ID 的 R beats。RREADY=0 时，RVALID、RID、RDATA、RRESP、RLAST 与 beat 指针保持，不能因为另一个更早完成的 packet 到达就替换当前输出。最后一个 R handshake 才同时清除 domain busy、entry 和 read slot。
+
+B 通道独立选择已取得结果的写 entry，BREADY=0 时同样保持 BVALID/BID/BRESP。只有一次 B handshake 才 retire；BVALID 首次拉高和 B handshake 不能各释放一遍。R/B 独立保持状态，堵住 R 不要求暂停已经有 status 的 B。
+
+对合法输入，写 response 不能早于 AW 和全部 W 的接纳；正常成功 B 还须等受控目标定义的写完成。源 NI “收齐 W”“把 WriteReq 发走”都不是提前成功应答的理由。本基线选择 Non-bufferable 接口，回应责任落在目标；规范及属性范围见 [R8](../SWITCH/sources/R8-axi-ordering-contract.md) A3、A4、A6。
+
+### 6.8 错误也必须走完已经接下的 transaction
+
+正常 backpressure 表示暂时没有资源，尚未 handshake 的请求仍归源端。地址错误则是一个需要有确定结果的访问，不能通过永久压低 READY 冒充错误处理。
+
+| 情况 | 本基线的处理 | 何时才能 retire |
+| --- | --- | --- |
+| 子集内读地址未映射 | AR admission 时分配正常 entry/read slot，转本地 error responder；不注入 NoC，生成 AxLEN+1 个 R beat，RRESP=DECERR | 最后 R beat handshake |
+| 子集内写地址未映射 | AW 仍分配 entry、AW 关联及 payload slot；消费全部对应 W 后释放 payload，生成一个 DECERR B | 唯一 B handshake |
+| 受控目标读失败 | 经正常返回键传送完整长度的错误读结果；本例各 beat 为 SLVERR | 完整错误 R burst 被源端接收 |
+| 受控目标写失败 | 目标收尾全部写数据后给一个 SLVERR，按正常 WriteRsp 返回 | B handshake；错误不证明写完全无副作用 |
+| response 身份/长度不匹配、重复 tail、credit 损坏 | 停止把该内容当成正常结果，保存可用故障证据并进入第 13 节的恢复边界 | 不能凭一个伪造成功响应回收未知责任 |
+
+例如一个 256 B 读在地址解码时已知失败，仍要交付 16 个 R beat，只有最后一个 RLAST=1；一个 256 B 写即使在 AW 时已知失败，也仍要消费其 16 个 W beat 后再给一次 B。AXI 的错误收尾和不可提前终止规则见 [R8](../SWITCH/sources/R8-axi-ordering-contract.md) A3.4；不能把错误等同于任意 transaction cancel。
+
+本参考系统在集成时限制第 4.4 节的输入子集。其他合法 AXI 功能并未因表中错误路径而自动获得支持；接通用 AXI master 前，需要能力约束或覆盖其完整长度/属性的合法适配与 error responder。畸形 WLAST、违反稳定性等协议违约也不属于本轮正常完成保证。写错误可能已产生部分副作用，本轮不透明重发失败写。
+
+### 6.9 Packetization 与 memory child transaction 的边界
+
+在 R0 子集中，一笔读产生一个 ReadReq 和一个 ReadRsp，一笔写产生一个 WriteReq 和一个 WriteRsp；payload 按 16 B 分成 flit，没有因此生成更多目标内存请求。第 k 个 full-width beat 覆盖地址 A+16k 到 A+16k+15，0≤k<N；总覆盖恰为 16N 字节，tail/last 对应 k=N−1。
+
+入口核对整个地址范围由同一目标承担，并满足 4 KB 边界；源端保存原地址与长度，目标服务端取得对应范围。本文未把改动 route header 解释为修改内存地址，也未用 Router 的 next-hop 决定 HBM bank。
+
+若上层访问超过 256 B、跨目标映射粒度或实际控制器要求拆分，需要一个有明确归属的 splitter。它应保存 parent ID、每个 child 的 byte offset/length/目标、未完成集合及错误汇总，并在全部需要的 child 收敛后满足 parent 的 completion contract。该职责可能属于 SDMA、DF/CS 或扩展 NI，须由接口证据决定；当前 R0 不默默增加 splitter，也不把多个 child 的 B 分别冒充原写的唯一 B。U24 的完整地址路径按第 16.3 节接续。
+
+### 6.10 两个源与快慢目标：逐事件看资源怎样变化
+
+仍用 S0/S1 两个源、Tslow/Tfast 两个受控目标。以下地址仅为教学映射：0x1000 一带归 Tslow，0x8000 一带归 Tfast，例中每笔范围都落在单个目标；不代表目标 SoC interleave 位。
+
+S0 先接纳 A：ID=7、读 Tslow 的 256 B；再接纳 B：ID=8、读 Tfast 的 128 B。S0 的 C 使用 ID=7，是 A 之后的 16 B 读，必须等待 A retire。S1 也可用 ID=7 发起访问，其 table 和返回身份独立；同名 ID 不会让它等待 S0 的 A。
+
+下表只记 S0；E 表示已接纳且尚未 retire 的 entry 数，R/W 表示占用的 256 B read/write slot 数。事件编号不是 clock cycle，跨表行可以隔很多拍。
+
+| 事件 | 本次发生什么 | E | R | W | 尚未消失的责任 |
+| --- | --- | ---: | ---: | ---: | --- |
+| e0 | 初始 | 0 | 0 | 0 | 无 |
+| e1 | A 的 AR handshake，预约返回 | 1 | 1 | 0 | A 的 16 个 R beat 及最终交付 |
+| e2 | B 的 AR handshake，预约返回 | 2 | 2 | 0 | B 虽仅 128 B，仍独占第二个 slot |
+| e3 | C 出现，但 ID=7 read domain 忙 | 2 | 2 | 0 | C 未 handshake，NI 尚未为它分配 entry |
+| e4 | B 先返回完整 8 个数据 beat，RREADY=0 | 2 | 2 | 0 | B 保留数据和输出；A 的预约也不可挪给 C |
+| e5 | 独立 AW 通道接纳 D：ID=9、写 Tfast 的 256 B | 3 | 2 | 1 | 等 D 的全部 W；R 阻塞不取消 B status 的容量 |
+| e6 | D 的 16 个 W 收齐；随后 WriteReq tail 注入 | 3 | 2 | 0 | payload 已交给网络；D 的 entry/domain 仍等 B |
+| e7 | B 的第 8 个 R beat handshake，B retire | 2 | 1 | 0 | A 尚未 retire，C 仍因同 domain 等待 |
+| e8 | A 完整返回并交付，最后 R handshake | 1 | 0 | 0 | 此时 ID=7 read domain 才空闲 |
+| e9 | C 的 AR handshake | 2 | 1 | 0 | 为 C 新预约一个完整 slot |
+| e10 | 目标完成 D，D 的 B handshake | 1 | 1 | 0 | D 只 retire 一次；C 仍在途 |
+| e11 | C 返回一个 R beat 并被接收，C retire | 0 | 0 | 0 | 本表的四笔已接纳 transaction 全部收敛 |
+
+B 先回来是不同 ID 的合法完成次序。C 在 e7 以后已有空 slot，却仍须等 e8，说明容量和 ordering 是两个独立条件。D 在 e6 释放 payload 却没有释放 entry，说明“运输已交接”和“业务已完成”也不同。
+
+资源耗尽用同样台账继续检查：两个 read slot 都占用时，第三个不同 ID 的读仍不能 admission；两个 write slot 等待注入时，第三个写必须等待；两笔读加两笔写可以占满四个 entry，即使写 payload 后来已发走，只要 R/B 未 retire，新的 AR/AW 仍不能超额进入。目标两个 record 占满时，新 request head 留在受保护的接收队列，已接纳的返回仍按自己的资源推进。
+
+### 6.11 本轮结论与下一层问题
+
+源端 admission 固定返回落点，AW FIFO 固定写数据归属，domain busy 固定同类顺序，目标 record 固定执行与返回责任，R/B handshake 固定 retire。因而在声明的合法输入、无 transport 状态损坏且各参与者最终提供服务的条件下，可以逐笔追踪数据、错误和资源归还；这不等于已证明任意整网负载都能前进。
+
+逐事件复核及证据边界见[第三轮核查记录](../SWITCH/round3-review.md)。第 4 轮将把这些明确资源放入同一张端到端依赖图，并深化 drain/reset/epoch；第 5 轮再研究跨 die 增加的责任。目标 AMD 的实际 NI 结构、协议和容量仍待对应证据。
+
+> 可选深入问题：在上述行为不变时，transaction table 使用 CAM 还是索引 RAM、slot 怎样压缩、同拍能否复用刚释放的资源？只有这些选择改变接口、容量承诺或核心行为时，才升级为正文任务。
 
 ## 7. Router 内部：从队头到真正发送
 
@@ -567,6 +798,8 @@ flowchart TD
 
 修复应切断具体依赖，例如预留响应接收空间、保护响应资源、让消费响应不依赖发新请求。仅增加几个 VC 或加大 buffer，不会自动消除该环。
 
+第 6 节已经固定了源 read slot、写 entry 内的 B status、AW association、目标 record 和各自释放点，后续依赖分析应使用这些真实资源。上图是需要防止的反例，不能在采用独立预约后仍把它不加区分地画成本基线必然存在的环。完整片内组合与恢复条件留在第 4 轮核查。
+
 [R13](../SWITCH/sources/R13-channel-dependency-scope.md)保存了确定性路由定理的模型前提；不能把它当作任意自适应、共享池和一致性系统的通用证明。[R22](../SWITCH/sources/R22-garnet-network-interface.md)说明终点消费者也能继续持有网络资源。
 
 ### 11.3 无死锁、公平与有限完成时间
@@ -651,11 +884,13 @@ CDC 增加反馈可见延迟，也可能改变 credit 周转。它只能吸收�
 | 阶段 | 可以停止什么 | 仍应允许什么 |
 | --- | --- | --- |
 | 停止新事务接纳 | 新业务进入 | 已接纳业务的必要数据与状态推进 |
-| 停止新请求注入 | 不再发起新的业务访问 | 已接纳事务所需的写数据、响应生成/注入、credit 和恢复控制继续 |
+| 收敛已接纳请求的注入 | 新业务访问继续关闭 | 既有 GATHER_W/READY_REQ/ISSUING 的 W 接收与 request 注入；response、credit 和恢复控制继续 |
 | 排空与核对 | 等待 outstanding 收敛 | 端点消费、必要重放与错误收尾 |
 | 一致复位/重新初始化 | 按约定重建状态 | 在两侧状态和容量一致后重新开放 |
 
 不能先关掉返回和 credit，再等待请求自行排空。若一侧把 credit 重置为 D，另一侧却保留旧数据，新流量可能覆盖仍有效内容。
+
+结合第 6 节，停止 admission 后，已接纳但尚处于 GATHER_W、READY_REQ 或 ISSUING 的事务仍须按契约推进：继续收其 W，并允许其尚未完成的 request 注入，才能等待正常 response/retire。“停止新请求”不能误用为同时截断这些已承诺访问。若确要终止它们，必须有另行定义的 abort/恢复出口；本轮不新增 AXI cancel 语义。
 
 无法排空时要有明确的 abort/故障策略。旧请求是否可能已执行、晚到响应如何隔离、表项与 context 何时可复用，都必须说明。把计数器清成零不能代替这些责任。
 
@@ -795,7 +1030,7 @@ R0 每输出 16 B/cycle，假定 1 GHz，裸通路为 16 GB/s。256 B payload �
 
 ### 15.3 既有模型结果说明了什么
 
-下面复用已保存的第二轮结果，**本次重写没有重新运行网络测试，也没有改变模型**。模型例子从源注入到 sink 到达经过三个 Router 服务段；计数包含目标 Router 的 Local 弹出服务，不应误读为固定三条物理 Router 间连线。
+下面复用已保存的第二轮结果，**v2.2 重整及本次 v2.3 NI 修订均未重新运行网络测试，也未改变该模型**。模型例子从源注入到 sink 到达经过三个 Router 服务段；计数包含目标 Router 的 Local 弹出服务，不应误读为固定三条物理 Router 间连线。
 
 | 每 VC 深度 D | 反向归还延迟 | 首 flit 到达 edge | 尾 flit 到达 edge | 排空后下一模型 edge |
 | --- | --- | --- | --- | --- |
@@ -841,6 +1076,8 @@ Packet ownership 还有独立周转限制：新的短包可能已经有数据槽
 
 若希望达到 12 B/ns 的 payload 服务率，初步在途需求为 12 × 219 = 2628 B，除以每事务 256 B，向上取整为 **11 笔**。这只是理想初始估计，尚需 NI 返回区、ID、网关槽、控制器队列和实际服务率共同支持。
 
+第 6 节用于正确性演算的每源 4 entry、2 read slot 配置不满足这里至少 11 笔读的在途预算。219 ns 也没有纳入本轮逐 beat 上游 R 交付的具体时序；不能把两个不同用途的算例拼成该 NI 已达到 12 GB/s 的结论。端到端性能需要按第 6 轮统一资源、服务和测量边界后评估。
+
 在此大包格式下，LRP 的理想 payload 上限为 32 × 256/400 = **20.48 GB/s**，而单个 R0 NoC 输出约为 15.06 GB/s。由此可定位一个可能先到达的瓶颈，不能把 D2D 的 raw 32 GB/s 直接当作 SDMA 有效带宽。
 
 ### 15.6 有负载时怎样判断慢在哪里
@@ -861,16 +1098,20 @@ SDMA 命令可以产生多笔读和写。读数据需要落入有预约的缓冲
 
 Queue 数、NI 表项、TxnID 数、Router VC 数分别限制不同对象。软件上下文身份和隔离也要由可信属性、权限及资源策略落实，不能从 VC 编号直接推出。
 
+本轮将返回落点选在源 NI 的 read-response slot 中；上游 SDMA 的 R handshake 表示它已把相应 beat 接进自己的有效存储或消费通路。最后 R handshake 后，NI 才可释放 slot，SDMA 此时仍可能负有后续写入责任。若系统改由 SDMA buffer 直接承担 NI 的返回预约，必须有不可撤销的容量交接协议，不能同时把同一空间登记为两份独立容量。
+
 ### 16.2 完成点沿路径逐步变化
 
 | 事件 | 已经说明什么 | 仍未自动说明什么 |
 | --- | --- | --- |
 | 源端接纳命令 | 接下了工作责任 | 所有子请求已发出 |
+| 源 NI 的 AR/AW handshake | 第 6 节定义的 entry、数据/返回容量和关联责任已成立 | W 已全部到达、请求已注入或目标已执行 |
 | NI/Router 发出 packet | 运输开始或离开某段 | 目标已接收或执行 |
 | D2D ACK | 链路按约定接管传输内容 | 写对业务观察者可见 |
 | 目标接纳 | 进入目标执行责任 | 已达到规定完成点 |
 | 目标产生成功响应 | 满足该协议定义的完成条件 | 所有协议和观察域都采用同一种保证 |
-| 源端收到并处理完成 | 相应在途责任可按规则收敛 | 软件已经观察到记录或中断 |
+| 源 NI 收齐 response | 结果已落入匹配的 entry/slot | 上游已接收全部 R/B，或 ID 已可复用 |
+| 最后 R handshake / B handshake | 本笔 NI transaction retire，按契约释放 domain、entry 和相关 slot | 整个 SDMA copy、软件通知或所有观察域都已完成 |
 | 软件观察完成 | 规定通知路径已发生 | 不需要任何其他同步或缓存维护 |
 
 Fence 等待哪个事务集合、哪个可见性范围，由具体指令与系统约定决定。Router 可以承载相关消息，但不自动执行 GCR、cache flush、GPUVM/ATC 失效的完整语义。
@@ -890,6 +1131,8 @@ Fence 等待哪个事务集合、哪个可见性范围，由具体指令与系�
 
 完整逐地址演算仍按[专题方案](../HBM/address-interleaving-plan.md)在相关模块基础具备后集中完成。本稿先提供可用于对接的 SWITCH 接口责任，不声称已查明目标 GPU 的位图或全部实例连接。
 
+本轮已经固定的局部契约是：源 NI 接收已翻译地址，对整个 16–256 B 范围选择一个目标；Router 用 DstID 做 next-hop；源 table 保存原长度和返回身份；目标 NI 将地址范围交给服务端，数据按 byte coverage 返回。多目标或更长访问的 splitter、parent/child 管理与错误汇总责任见第 6.9 节，归属须由上游/DF 接口继续确认。目标 UMC 的 interleave、bank/row/column decode 不由本例地址窗口推定。
+
 ## 17. 证据、模型与后续阅读
 
 ### 17.1 哪些内容已经有执行证据
@@ -906,7 +1149,7 @@ iSLIP、共享池许可和链表入出队是局部独立检查，没有被替换
 python3 switch/examples/router_round2.py --report /tmp/round2_results.json
 ```
 
-本次只改写说明与引用、复核关键接口概念及算式，没有改变脚本，也没有把历史测试写成本次新跑。详细执行范围保存在[研究进度](RESEARCH_PROGRESS.md)。
+第三轮另行完成 NI 契约、资源生命周期和场景推演：AW/W 三种到达关系、domain/身份区分、容量耗尽、目标与返回 backpressure、DECERR/SLVERR 完整收尾。第 6.10 节的 12 行资源台账与字节/包长算式做了独立算术检查；完整记录、可复核输入和局限见[第三轮核查记录](../SWITCH/round3-review.md)。这些是文档级行为推演和台账检查，未把完整 AXI NI、ROB 或新的 D2D 机制实现到第二轮模型中；历史网络测试未重跑。实际范围和下一项任务见[研究进度](RESEARCH_PROGRESS.md)。
 
 ### 17.2 核心不变量应回到具体结构
 
@@ -917,10 +1160,13 @@ python3 switch/examples/router_round2.py --report /tmp/round2_results.json
 | 一次传输只发生一次 | 唯一 send_commit，bypass/普通路径互斥，重放去重 |
 | 数据不会用到新包覆盖的旧状态 | 流水快照、存储读返回身份和世代管理 |
 | 原请求能找到全部数据与错误 | NI 事务表、子请求范围、重组及完成收尾 |
+| W 不错配到另一笔写 | AW association FIFO 的队首绑定、beat 计数和 WLAST 核对 |
+| 返回到达不会提前回收源端身份 | domain busy、entry/read slot 保持到最后 R handshake 或 B handshake |
+| R/B 暂停时结果不被替换 | 各自锁定的输出对象、稳定的 data/status 和只在 handshake 推进的指针 |
 | 阻塞能恢复或明确终止 | 资源依赖分析、受保护容量、服务条件与错误升级 |
 | 复位不制造额外许可或误交旧响应 | 两侧状态协调、排空/abort 和身份复用规则 |
 
-这些性质帮助判断解释是否完整。并不是每项都必须在本次文字重整中另建仿真；实际修改机制后，再针对受影响性质安排验证。
+这些性质帮助判断解释是否完整。第三轮通过公开条文对照和有限事件轨迹检查 NI 局部契约；第 4 轮继续核全局等待与恢复，第 5 轮核跨 die 组合，不能把表中所有性质统一宣称为已形式化证明。
 
 ### 17.3 读资料时从当前问题进入
 
@@ -943,7 +1189,7 @@ python3 switch/examples/router_round2.py --report /tmp/round2_results.json
 
 仲裁电路实现、教学字段压缩、具体存储宏等更深细节，只有在影响结构、接口或行为时才升级为主线问题。本稿已在相关位置留“可选深入问题”，它们不计作未完成任务，也不阻塞论文轮次。
 
-后续研究仍依据[模块方案](../SWITCH/research-plan.md)。此次只重写现有成果，未重新复查六轮安排；第 1、2 轮完成和第 3–6 轮未完成的状态分别保留。
+后续研究依据[模块方案](../SWITCH/research-plan.md)。v2.3 把第三轮 NI 成果整合回现有主线；下一轮以第 6 节确定的资源和接口为起点，开展第 4 轮片内 progress/恢复，再进行第 5 轮 D2D、第 6 轮性能与模块收尾。完整 SDMA 系统复审仍在跨模块阶段；必要接口疑点在本模块及时核实，不能把目标事实缺口隐藏成参考设计的已知条件。
 
 ## 附录 A：贯穿全文的教学参数与边界
 
@@ -956,7 +1202,12 @@ python3 switch/examples/router_round2.py --report /tmp/round2_results.json
 | 私有队列 | 每 VC 八槽，基线为可取得队头的寄存器 FIFO；深度扫描另行注明 |
 | Packet 使用权 | 一个 input VC 同时属于一个 packet；output VC 等下游 tail-free 返回后复用 |
 | 流水 | RC、VA、SA 分开；发送提交后固定两拍 ST/LT |
-| 接口子集 | 16 B 对齐、16 B 倍数、最多 256 B 普通读写；不含原子、snoop、多播及所有 byte-enable 组合 |
+| 接口子集 | AXI4 参考；128 bit、INCR、AxSIZE=4、AxLEN=0–15、16 B 对齐、完整 WSTRB、不跨 4 KB 且单目标；Normal Non-cacheable Non-bufferable；具体范围见第 4.4 节 |
+| 源 NI 演算容量 | 每源 4 个 transaction entry；2 个 256 B read-response slot；2 个 256 B write-payload slot；AW FIFO 深度 4；每 entry 独立 completion status |
+| 源 NI ordering | domain=(源/端口、AXI ID、读写方向)；每 domain 一笔到 retire，不同 domain 有限并发；R 按整 burst 交付，不实现同 ID 多笔 ROB |
+| 目标 NI 演算容量 | 每目标 2 个 record，各含最多 256 B 数据区与描述符/status；每个受控 SRAM 一次执行一笔访问 |
+| NI 数据存储核算 | 每源裸 payload/response 数据容量为 2×256+2×256=1024 B；每目标为 2×256=512 B；不含元数据、Local 接收队列与输出寄存器，不能加进 Router FIFO 后冒称实际面积 |
+| NI 验证边界 | 文档契约、场景推演与独立台账算术检查；未接入既有 Router 执行模型；reset/epoch 切换及跨 die 故障仍待后续轮次深化 |
 | 地址与身份 | 已完成所需翻译的地址；节点、事务、上下文与逐跳 VC 身份分别保存 |
 | 包长度 | 读请求/写响应可为一 flit；256 B 写请求/读响应为十七 flit |
 | R1 范围 | 两 die 点对点，每包最多跨一次；PRE/POST 扩展为每输入八 VC |

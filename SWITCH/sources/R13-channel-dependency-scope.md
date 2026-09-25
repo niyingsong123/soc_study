@@ -54,9 +54,9 @@
 
 ## 当前 SWITCH 的正确使用方式
 
-第 3 轮可先建立“持有资源→等待资源”表，再为 routing/VC transitions 导出 CDG；把可达性、无环和公平性分开写。共享池需要把真实不可替代的容量/保留资源纳入模型，不能只给 VC 名称编号。
+按当前方案，第 4 轮基于第 3 轮 NI contract 建立“持有资源→等待资源”表，再为 routing/VC transitions 导出 CDG；把可达性、无环和公平性分开写。共享池需要把真实不可替代的容量/保留资源纳入模型，不能只给 VC 名称编号。
 
-第 6 轮及模块联系研究还需把 NI 返回队列、ROB、request/response/snoop 相互等待、远端 credit 及端点消费加入系统图。[R16](R16-remote-control-deadlock.md) 讨论组合后的跨边界依赖，[R22](R22-garnet-network-interface.md) 展示目的 NI 的 tail 等待，[R19](R19-booksim-buffer-state.md) 给出释放时点的实现例。一个 router 的 CDG 无环不能替整个 SoC 作证明；本次只完成资料总结，没有声称已验证目标 RTL。
+第 4 轮同时纳入 NI 返回队列、实际采用的 ordering 资源、request/response 等待和端点消费；第 5 轮加入 gateway、远端 credit 与 replay/control 依赖。只有所选协议确实包含 snoop/CompAck 等交互时才加入相应节点；完整系统复审在跨模块阶段继续。[R16](R16-remote-control-deadlock.md) 讨论组合后的跨边界依赖，[R22](R22-garnet-network-interface.md) 展示目的 NI 的 tail 等待，[R19](R19-booksim-buffer-state.md) 给出释放时点的实现例。一个 Router 的 CDG 无环不能替整个 SoC 作证明；本篇是资料总结，尚未验证目标 RTL。
 
 ---
 

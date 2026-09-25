@@ -4,7 +4,7 @@
 
 导读：保存 AXI 数据通路必须遵守的 VALID/READY、AW/W/B 依赖、burst/ID 和响应顺序规则；适合研究 bridge、NI、buffer 和“收到响应意味着什么”。
 来源：[Arm IHI 0022H，AMBA AXI and ACE Protocol Specification，2020](https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/IHI0022H_amba_axi_protocol_spec.pdf)。
-阅读状态：已取得完整规范，重点核读 A3 握手/通道关系、A5 ID、A6 ordering/observation/completion，并补核 A3.4 burst/error 与 A7.2 exclusive；本笔记只覆盖 AXI 主干，不宣称完整整理 ACE、AXI5 原子等全部扩展。
+阅读状态：此前已取得完整规范，重点核读 A3 握手/通道关系、A5 ID、A6 ordering/observation/completion，并补核 A3.4 burst/error 与 A7.2 exclusive。第三轮重新定位 A3.1–A3.3 的稳定性/组合路径与 AW/W/B 依赖、A3.4 的 burst/DECERR 收尾、A4.4 的 Normal Non-cacheable Non-bufferable，以及 A6.5–A6.6 的顺序/完成边界；A5 写数据关联复用既有选读记录。本笔记只覆盖 AXI 主干，不宣称完整整理 ACE、AXI5 原子等全部扩展。
 
 ## 单次传输与完整事务
 
@@ -60,6 +60,16 @@ exclusive read 建立地址与 ID 的监控，后续 exclusive write 需使用�
 exclusive burst 总字节数必须是 1/2/4/8/16/32/64/128 之一，起点按**总字节数**对齐，最多 16 beats、最多 128 bytes；属性还要保证请求抵达负责监控的部件。monitor 可以观察比请求更大的区域，最多 128 bytes，因此相邻字节被写也可能导致失败。ID 压缩、缓存提前响应和地址重映射都可能破坏监控身份，bridge 设计需显式分析。
 
 本次补核 A3.4、A7.1–A7.2 的相关正文。这里只覆盖 AXI 主干的 burst/错误/独占；ACE 额外信号、AXI5 atomics 的完整表和所有宽度转换组合不在当前选读范围。研究范围已明确时，不需要为了“全文精读”机械扩写无关章节。
+
+## 第三轮 NI 契约采用的条件
+
+规范 A3.1/A3.2 禁止 AXI 接口输入到输出的组合路径；A3.3.2 允许接收侧等待 AWVALID/WVALID 后给 READY，但发送侧不能用等待 READY 作为不产生相应 VALID 的理由。这支持“W 先出现时由源端稳定保持，NI 在 AW 接纳和 slot 预约后接收 W”的参考方案；并不要求每个 NI 都使用同一种缓存结构。为下一拍输出的 READY 必须计入资源承诺，不能让同时到来的 AR/AW 重复使用同一表项。
+
+A4.4 Table A4-5 中，Normal Non-cacheable Non-bufferable 的 ARCACHE/AWCACHE 都为 0b0010；该类型的正常读结果和写响应来自最终目标。第 6 节选择受控 SRAM、完整写 payload 后注入、目标写完成后应答，是具体参考契约；不外推到 Bufferable/cacheable 访问或所有 AXI 系统。
+
+本轮以 `(source/port, AXI ID, direction)` 定义参考 ordering domain，并限制单 domain 一笔到 retire；读写独立不代表可忽略跨通道业务依赖。Normal 访问的 observation 要结合 A6.5–A6.6，不能从相同数值的 ARID/AWID 推出写后读关系。多源 alias ID、原 ID 与内部 TxnID 的区分及最后 R/B handshake 的释放点，见[详细稿第 6 节](../../switch/switch_detailed_guide.md#6-ni把业务事务与网络传输接起来)。
+
+AXI 可以逐 R beat 携带不同 RRESP。当前 R0 目标只产生整笔一致的读 status，因此一个整包 status 足够表达它；通用 AXI-to-NoC bridge 若接收 mixed RRESP，必须保留逐 beat 结果或使用有依据的转换，不能套用这个受限格式。上述教学取舍不构成完整协议合规结论。
 
 ---
 

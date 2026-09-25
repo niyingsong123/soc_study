@@ -26,7 +26,7 @@ head 要完成路由与资源建立，body/tail 可继承已保存的 route/outV
 
 ## 如何用于当前方案
 
-SWITCH 第 3–4 轮应以“资源依赖 → 时序可达性 → 推测/旁路 → 正确性检查”组织。比较方案时同时报告时钟周期、head latency、steady-state 吞吐、credit round-trip 和 buffer 配置。论文中的百分比增益不能直接作为 AMD switch 预测值。[R2](../../SWITCH/sources/R2-low-latency-vc-router.md) 进一步讨论预计算仲裁，[R3](../../SWITCH/sources/R3-booksim-method.md) 说明仿真如何避免意外看见本拍尚未生效的结果。
+本篇支撑已完成的 Router 研究；第 4 轮仅在接口变化影响资源或时序条件时回查，第 6 轮用于性能归因和受控比较。分析相关优化时沿“资源依赖 → 时序可达性 → speculation/bypass → 正确性检查”展开，不重复新增一轮 Router 教程。比较方案时同时报告时钟周期、head latency、steady-state 吞吐、credit round-trip 和 buffer 配置。论文中的百分比增益不能直接作为 AMD SWITCH 预测值。[R2](../../SWITCH/sources/R2-low-latency-vc-router.md) 进一步讨论预计算仲裁，[R3](../../SWITCH/sources/R3-booksim-method.md) 说明仿真如何避免意外看见本拍尚未生效的结果。
 
 ## 延迟模型：怎样从组合模块形成流水级
 

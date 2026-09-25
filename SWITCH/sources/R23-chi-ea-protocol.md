@@ -68,7 +68,7 @@ DEACTIVATE 存在末尾 flit/credit 与状态变化的竞争，详细表允许�
 
 ## 与本项目研究的连接
 
-SWITCH 第 3 轮可借 TxnID/DBID、两类 credit 分别定位路由、事务表和 buffer；第 4 轮研究小包控制与宽数据流的资源竞争；第 6 轮把重试、CompAck、snoop、链路停启加入系统依赖图。[R13](R13-channel-dependency-scope.md) 的确定性路由定理不能单独证明这些协议依赖无环。DF/GC 使用本篇比较一致性责任和完成边界，仍需 AMD 原文确认具体实现。
+SWITCH 第 3 轮按需借 TxnID/DBID、两类 credit 比较 transaction table、端点资源和 link buffer 的责任；第 4 轮在相关协议对照中分析 retry、CompAck、snoop 和 link state 所增加的等待与恢复条件；第 5 轮沿已定义的接口研究跨 die control 进展。第 6 轮只评价实际模型包含的流量与机制。这些 CHI 交互不自动加入 R0，也不要求本轮完整实现 CHI。[R13](R13-channel-dependency-scope.md) 的确定性路由定理不能单独证明这些协议依赖无环。DF/GC 使用本篇比较一致性责任和完成边界，仍需 AMD 原文确认具体实现。
 
 ---
 

@@ -1,8 +1,10 @@
 # SWITCH 资料索引与逐篇技术笔记
 
-更新日期：2026-09-25。先读[详细稿 v2.2](../../switch/switch_detailed_guide.md)第 3–6 节的上下游、微架构、接口与完整事务，再根据当前问题用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
+更新日期：2026-09-25。先读[详细稿 v2.3](../../switch/switch_detailed_guide.md)第 3–6 节的上下游、微架构、接口与完整事务，再根据当前问题用下表判断需要哪篇笔记；第三轮已深化 NI，下一轮从已明确的 NI/目标资源进入片内 progress/恢复。笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
 
 本模块列出 34 个可复用来源，主笔记归档 21 篇。跨模块来源链接到唯一主笔记，计数不能跨模块直接相加。资料阅读不计为论文轮次完成。
+
+第三轮定向复核：R8 追加 AXI 接口、属性和受限参考契约的边界；R7 追加 ROB/无 ROB 比较所需的顺序假设；R22 复用既有代码阅读记录并区分 target record 接管方式。未新增来源，未把已有阅读记录当作本轮新跑仿真。论文及核查成果见[进度页](../../switch/RESEARCH_PROGRESS.md)。
 
 [模块上下文](../README.md) · [研究方案](../research-plan.md) · [全局来源编号](../../sources.md) · [研究范本](../../chip-study-plan.md)
 
@@ -11,8 +13,10 @@
 | 研究位置 | 推荐顺序 | 重点与适用轮次 |
 | --- | --- | --- |
 | 既有 Router 两轮的证据复查 | [R1](R1-pipelined-router-delay.md) → [R2](R2-low-latency-vc-router.md) → [R3](R3-booksim-method.md) → [R4](R4-garnet-overview.md) → [R5](R5-garnet-switch-allocator.md) → [R6](R6-garnet-input-output-credit.md) → [R18](R18-islip-matching.md) → [R19](R19-booksim-buffer-state.md) → [R20](R20-damq-buffer.md) → [R21](R21-elastistore.md) | 复用第 1–2 轮：固定 allocator/credit/free-buffer 语义；教材/论文的工作负载、工艺和吞吐例外不得遗漏。 |
-| NI、排序和协议映射 | [R7](R7-floonoc-paper.md) → [R8](R8-axi-ordering-contract.md) → [R23](R23-chi-ea-protocol.md) → [R9](R9-chi-model-user-guide.md) → [R12](R12-arm-system-architecture.md) → [R15](R15-floonoc-router-code.md) → [R22](R22-garnet-network-interface.md) → [IO3](../../PCIE/sources/IO3-linux-dma-api.md) → [FAB7](../../DF/sources/FAB7-amdgpu-fence-lifecycle.md) | 后续第 3 轮：R23 是正式 CHI E.a 选读，R9 是模型指南，R12 是架构介绍；FlooNoC 当前代码与旧论文不同；端点背压也影响 VC 回收。 |
-| D2D 交接、进展与评估 | [R10](R10-ucie-protocol-adapter.md) → [R11](R11-ucie11-streaming.md) → [R13](R13-channel-dependency-scope.md) → [R14](../../PHY/sources/R14-ucie-electrical-training.md) → [R16](R16-remote-control-deadlock.md) → [MEM8](../../PHY/sources/MEM8-ucie-official-qa.md) → [FAB1](../../DF/sources/FAB1-cdna3-iod-memory.md) | 后续第 4–6 轮：R13 已补正文、定理前提及 VC 构造；UCIe/Remote Control 的保证按层和前提使用，不为教学模型背书。 |
+| 第 3 轮：NI transaction contract | [R8](R8-axi-ordering-contract.md) → [R7](R7-floonoc-paper.md) → [R22](R22-garnet-network-interface.md)；按需比较 [R23](R23-chi-ea-protocol.md)、[R15](R15-floonoc-router-code.md) | admission、outstanding、ordering、response reservation 和 retire。R7 的 NI 在 §III-A，R15 当前代码不能冒充论文同版；R23 是 CHI 行业对照，不要求同时实现两套协议。 |
+| 第 4 轮：片内 progress 与恢复 | [R13](R13-channel-dependency-scope.md) → [R19](R19-booksim-buffer-state.md) → [R22](R22-garnet-network-interface.md)；涉及协议资源/链路停启时选读 [R23](R23-chi-ea-protocol.md) | NI、Router、目标及返回组成的资源依赖、环境进展条件、drain/reset/epoch。CDG 定理不代替端点和协议依赖分析；CHI 状态不直接移植到教学接口。 |
+| 第 5 轮：D2D gateway 与 replay | [R10](R10-ucie-protocol-adapter.md) → [R11](R11-ucie11-streaming.md) → [R16](R16-remote-control-deadlock.md)；PHY 边界按需读 [R14](../../PHY/sources/R14-ucie-electrical-training.md)、[MEM8](../../PHY/sources/MEM8-ucie-official-qa.md) | 三类容量、ACK/重传/去重、控制进展及两端状态交接；固定 UCIe 参考版本/模式，原创 LRP-64 不等于规范实现。 |
+| 第 6 轮：性能归因与模块收尾 | [R3](R3-booksim-method.md) → [R1](R1-pipelined-router-delay.md) → [R7](R7-floonoc-paper.md)，联读既有模型及报告 | 区分 offered/accepted/injected/delivered，定位 NI、Router、目标和 D2D 瓶颈；R7 的结果在 §VI-A/B。只评价模型实际覆盖的机制，不把公开论文结果当目标芯片预测。 |
 
 ## 每篇资料讲什么
 

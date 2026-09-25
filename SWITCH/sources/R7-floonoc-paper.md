@@ -1,6 +1,6 @@
 # R7：FlooNoC 论文：宽物理网络、AXI 并发流与端点重排
 
-更新日期：2026-09-24。
+更新日期：2026-09-25。
 
 导读：说明宽链路 NoC 如何把 AXI 排序放在 NI、用响应存储预约保证可接收，并比较带 ROB 与限制同 ID 目标的两种设计；适合作为 AMD switch 的行业对照。
 来源：[FlooNoC，arXiv:2409.17606v1](https://arxiv.org/html/2409.17606v1)，2024-09-26。
@@ -20,11 +20,21 @@ AXI 同一 TxnID 的响应需保持规定顺序，而不同目标有不同延迟
 
 W burst 等需要防止跨事务交织，可使用按 flit 标识的 wormhole 锁定。这里“单 flit 装下一个 beat”不等于整个 burst 单拍结束；packet/beat/burst 的单位应分开。
 
+## CF round 1 reuse check (2026-09-25)
+
+Revisited the original v1 HTML, especially III-A1/A2 and III-B, while drafting CF. Reconfirmed the NI ordering alternatives and the role of separate request/response paths. No new performance experiment or source figure review was performed. CF uses this as a public comparison, not as target topology or a general deadlock proof.
+
 ## 性能与可移植性
 
 宽线降低序列化和高频需求，但占用 routing metal、buffer/repeater 与宏块周边资源。论文在具体 SoC 与工艺布局中评价，不支持“现代 NoC 都应弃用 VC”的普遍结论。AMD 的一致性消息类别、die-to-die 宽度限制和 PHY 可靠性可能需要不同组织。
 
 后续方案应比较重排存储、ID 限制、独立物理网络和 VC 方案的面积/并发/死锁依赖，不只比较 wire width。代码版本 [R15](../../SWITCH/sources/R15-floonoc-router-code.md) 已演进出新功能，不能将其每一分支当成本文 2024 实验实现。
+
+## 第三轮复用时的边界
+
+本次回查原论文 §III-A、§III-A1/2，确认 response 空间预约、reorder table 移除及同 ID 目标限制的职责。论文以确定性路由和同目标响应顺序作为优化条件；迁移到多 VC、不同 target issue 或 response scheduler 后，必须重新证明完整路径上的顺序，不能只保留“XY”这个名称。
+
+R0 第三轮采用更保守的单 domain 单笔在途，其他 domain 有限并发，并为每笔读预约完整 response slot。该 slot 是返回落点，不包含同 ID 多笔按 sequence 提交的 ROB。FlooNoC 的 RoB-less 表示省去重排结构，不等于整个 NI、网络或消费者完全无 buffer；本文也不直接套用论文首响应免预约的优化。比较落点见[NI ordering](../../switch/switch_detailed_guide.md#65-ordering先把需要保持的顺序定义清楚)。
 
 ---
 

@@ -26,6 +26,8 @@ NI 一侧接协议 MessageBuffer，另一侧接 flit 和 credit 链路。注入�
 
 SWITCH 的 deadlock 方案必须纳入 NI、reorder/response buffer、协议 consumer；仅证明 router channel graph 无环不够。与 [R16](../../SWITCH/sources/R16-remote-control-deadlock.md) 的边界整包吸收、[R7](../../SWITCH/sources/R7-floonoc-paper.md) 的响应预约、[FAB7](../../DF/sources/FAB7-amdgpu-fence-lifecycle.md) 的软件完成一起建立多层资源图。此文件不含 AMD IH/DF 协议，只提供一个可核对的机制案例。
 
+第三轮复用此处已保存的固定版本阅读记录，没有重新运行 gem5。本文 R0 另行选择有限 target record：在完整 packet 被其真实存储接管后可释放 Local VC，record 则保持到 response 注入完成。与 Garnet 的差别是协议消费者何时已有可接管空间；不能把 tail 到达本身当成一切资源都可释放。此项是项目参考设计比较，不是对 Garnet 源码的新实现结论；具体流程见[目标 NI](../../switch/switch_detailed_guide.md#66-目标-ni从最后一跳接管到目标真正执行)。
+
 ---
 
 [本模块资料索引](README.md) · [模块研究方案](../research-plan.md) · [全局资料入口](../../sources.md)
