@@ -2,6 +2,10 @@
 
 更新日期：2026-09-25。按用户“按检查报告补齐”的要求执行；基线为 [1f09693](https://github.com/niyingsong123/soc_study/commit/1f096936670b0f3ade91493265939c87985aa469)，[2026-09-24 历史检查原文](https://github.com/niyingsong123/soc_study/blob/1f096936670b0f3ade91493265939c87985aa469/source-reading-audit.md)保留在 Git 历史中。
 
+## 用户后续调整的验收范围（U23）
+
+用户于 2026-09-25 明确：HBM 器件数据表不是重点，目标是理解并运用典型接口行为，尤其 PHY、CS、UMC 的职责与协作。因此 MEM9/MEM10 所缺厂商 datasheet 改为按需参考，不再计入当前必补任务；保留实际未取得的记录。规范选读仍按接口研究问题推进，详见 [当前范围](project-context.md#hbm-接口研究范围)。下表中的历史访问事实不因范围调整而变成已读。
+
 ## 当前结论
 
 **已补齐本次能够直接读取的主要机制、公式/实验、缺页与 CHI 正式协议资料，并同步笔记、索引、上下文和受影响方案；整体资料任务仍有明确的访问及原版核验缺口，不能称为全部精读完成。**
@@ -24,7 +28,7 @@
 | [R9](SWITCH/sources/R9-chi-model-user-guide.md)/[R12](SWITCH/sources/R12-arm-system-architecture.md)：缺正式 CHI | 新增 [R23](SWITCH/sources/R23-chi-ea-protocol.md)，从 Arm 官方完整 E.a PDF 选读事务/ID/完成/重试/一致性状态/链路 credit 与停启 | 正式协议来源缺口已关闭到所列范围；R9/R12 保持模型/介绍身份，不伪装成规范 |
 | [MEM4：DFI](PHY/sources/MEM4-dfi-version-boundary.md) | 核实官方下载到登录页；新增 [MEM16](PHY/sources/MEM16-dfi51-interface.md) 的 5.1 原文转录选读，整理 boot、写对齐、读有效期、控制权交接 | 局部推进；5.1 原版波形及 6.0 HBM profile 未取得，不能把旧版接口当 HBM 新规范 |
 | [MEM11：JESD238](HBM/sources/MEM11-jedec-scope-gap.md) | 找到 JESD238A 2023-01 原文转录，补 PC 共享/独立资源、行列命令接口、group timing 与 CK/DQS 边界 | 从纯入口推进到局部正文选读；完整原版图表/命令/维护/ECC 仍须补核，不再标为“完全没读正文”，也不标为全部完成 |
-| [MEM9](HBM/sources/MEM9-micron-hbm3e.md)/[MEM10](HBM/sources/MEM10-samsung-hbm3.md)：datasheet | 检查 Micron catalog/文档入口；Samsung 官方说明 datasheet 按请求提供；保存实际访问结果与需要匹配的料号/版本 | 器件数据表仍未取得。产品页总结不扩成命令、时序或 ODECC 规格 |
+| [MEM9](HBM/sources/MEM9-micron-hbm3e.md)/[MEM10](HBM/sources/MEM10-samsung-hbm3.md)：datasheet | 检查 Micron catalog/文档入口；Samsung 官方说明 datasheet 按请求提供；保存实际访问结果与需要匹配的料号/版本 | 器件数据表仍未取得；按 U23 已转为可选参考，不计当前必补项。产品页总结不扩成命令、时序或 ODECC 规格 |
 | [IO4：PCIe Base 5.0](PCIE/sources/IO4-base-spec-gap.md) | 沿官方入口核实下载文档 13005 跳到 PCI-SIG 会员登录 | 未关闭：当前无合法会话可读正文；无需重做已读 PG213/Linux/IOMMU 周边资料 |
 | [MG5：RSMU](RSMU/sources/MG5-rsmu-umc-index.md) | AMD 作者原始提交确认 remote SMU 名称及寄存器接口/错误/复位职责；保留字段编码、UMC mode 操作与 C01 参考位置 | 名称/公开职责证据已补；目标内部结构、实例和 SMU 层级仍未知，研究首轮已改为目标映射 |
 | [CF / IO10](CF/sources/IO10-gfx90-register-control.md) | 下钻 WAIT_REG_MEM helper 和 KIQ 失败清理；定向检索 Command Fabric/CF_IF 后仍未得到目标拓扑证据 | 可读机制已加深；目标 CF 直接资料缺口未关闭，不用 GRBM/SMN/KIQ 替代 |
@@ -37,18 +41,19 @@
 | --- | --- | --- |
 | 可访问 PCI-SIG Base 5.0 原文 | 与目标研究有关的 TLP 顺序/credit/completion、Data Link retry、恢复；固定修订号 | IO4，然后更新 PCIe/SWITCH 相关方案 |
 | 可访问官方 DFI 原版，尤其目标 HBM profile | 5.1 选读的波形/比例映射核验；6.0 HBM 的接口与状态规则另按版本整理 | MEM16、MEM4；PHY/UMC |
-| 匹配版本 JESD238A 或目标实际规范、器件 datasheet | 原版图表、命令时序/刷新/训练/错误保护；料号与 speed bin 对齐，不用网页表格拼凑 | MEM11、MEM9/MEM10；HBM/UMC/PHY |
+| 与典型行为有关的 JESD238A 或目标接口规范章节 | 按问题核对命令约束、刷新/训练与外部错误行为；先用符号和明确代际的公开例子建立模型，精确 checker 所需原版图表另行核验 | MEM11、MEM16；HBM/UMC/PHY |
+| 可选：具体 HBM 料号 datasheet | 仅在确需器件数值、电气或专属机制时查阅；当前不追索，不阻塞主线。未来使用时再核料号、speed bin 与修订 | MEM9/MEM10；保留背景笔记 |
 | PG150 2025 图像可读 | 与已核 2022 Fig.38-5 比较阶段/灰色项/分支；无需重写 gate 搜索说明 | MEM15 |
 | 本地可访问独立 SDMA 项目 | 只读 glossary、shaobo、open-questions，核对原定义、读写/CF_IF/DF_IF 与最新未决项，只回写 SoC 接口结论 | L1–L3；需要时修正 CF/UTCL1/UTCL2/HUBS |
 | 目标芯片顶层、IP 版本及接口资料 | CF 真实结构；RSMU 公开证据的目标映射；其他同名模块的实例归属 | 对应模块现有笔记/方案，不另起重复台账 |
 
-这些限制不阻塞使用已经补好的公开参考规划，但阻塞相应的目标实现结论或规范图表验收。本次没有自动联系厂商、注册账号、修改外部项目或上传原始资料；也不把访问失败泛化为该资料永远不可得。
+上述必要规范/目标证据的限制不阻塞使用已有公开参考规划，但限制相应的目标实现或规范图表结论；可选器件资料已按 U23 从当前必补范围移出。本次没有自动联系厂商、注册账号、修改外部项目或上传原始资料；也不把访问失败泛化为该资料永远不可得。
 
 ## 复核范围和验证记录
 
 技术复核集中在检查报告列明的缺项：本次回读了新增公式/参数/结果的原文，直接核看关键页图，对 CHI、AXI、IOMMU 和代码只标实际所读章节/函数。R2/R7、R9/R12、MEM12 等已有相关范围说明继续保留，不因文件短就判不合格，也不因已有文件就宣称全原文已验收。
 
-提交前检查通过：103 篇主笔记的编号唯一、导读和来源/阅读状态齐全，19 个模块的逐篇索引与主笔记一致，资料入口和方案入口存在；2,613 个仓库内相对路径引用均能定位到文件。工作基线的 168 个 Markdown 文件已逐一核对 GitHub blob 哈希。本次共变更 82 个 Markdown 文件，其中新增 2 篇主笔记，没有上传原始资料或缓存文件。
+2026-09-25 补齐提交 7fd0d17 的检查记录（不是后续范围调整的变更计数）：103 篇主笔记的编号唯一、导读和来源/阅读状态齐全，19 个模块的逐篇索引与主笔记一致，资料入口和方案入口存在；2,613 个仓库内相对路径引用均能定位到文件。工作基线的 168 个 Markdown 文件已逐一核对 GitHub blob 哈希。本次共变更 82 个 Markdown 文件，其中新增 2 篇主笔记，没有上传原始资料或缓存文件。
 
 验证边界：6 个指向外部本地项目的链接保留为待本地核验；本次未全量验证标题锚点或外部网址实时可达性，也未对其余原有笔记重新逐段核对全部外部原文。上述检查证明索引与文件结构一致，不能替代每份资料的技术正确性验收。
 

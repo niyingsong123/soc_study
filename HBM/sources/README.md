@@ -1,5 +1,7 @@
 # HBM 资料索引与逐篇技术笔记
 
+当前选读重点：以可见接口行为为中心：逻辑层级及共享资源、命令与数据、行冲突、刷新及恢复、错误边界。器件内部只保留解释这些行为所需的内容，厂商数据表降为可选背景。 见 [U23 范围与验收](../../project-context.md#hbm-接口研究范围)。已有来源及阅读状态保留，优先复用机制笔记。
+
 更新日期：2026-09-25。先读模块整体微架构与当前问题，再用下表判断需要哪篇笔记；笔记保留机制、条件、状态/接口、版本和待核实边界，精确字段或新版本问题再回原文。
 
 本模块列出 18 个可复用来源，主笔记归档 4 篇。跨模块来源链接到唯一主笔记，计数不能跨模块直接相加。资料阅读不计为论文轮次完成。
@@ -10,7 +12,7 @@
 
 | 研究位置 | 推荐顺序 | 重点与适用轮次 |
 | --- | --- | --- |
-| 器件组织与数量级 | [MEM9](MEM9-micron-hbm3e.md) → [MEM10](MEM10-samsung-hbm3.md) → [MEM1](../../UMC/sources/MEM1-pg276-hbm-controller.md) | 第 1 轮：区分 stack 层数、channel/PC、容量和原始带宽；修正 GB/Gb，保留厂商测试条件。 |
+| 接口层级与共享资源 | [MEM1](../../UMC/sources/MEM1-pg276-hbm-controller.md) → [MEM13](MEM13-ramulator-hbm3-model.md) → [MEM11](MEM11-jedec-scope-gap.md) | 第 1 轮：channel/PC/bank、访问粒度及共享资源；MEM9/MEM10 降为按需容量/带宽参考。 |
 | 命令、时序和维护 | [MEM13](MEM13-ramulator-hbm3-model.md) → [MEM12](../../UMC/sources/MEM12-ramulator-hbm-controller.md) → [MEM2](../../UMC/sources/MEM2-ramulator2-paper.md) → [MEM11](MEM11-jedec-scope-gap.md) | 第 2–3 轮：用模型理解层级约束，完整 JEDEC 未读时不能以模型命令表声称标准合规。 |
 | 保护域与持续性能 | [MEM1](../../UMC/sources/MEM1-pg276-hbm-controller.md) → [MEM3](../../UMC/sources/MEM3-amdgpu-ras.md) → [MEM14](../../UMC/sources/MEM14-umc810-ras-address.md) → [MG11](../../RSMU/sources/MG11-umc67-ras-comparison.md) | 第 3–4 轮：ODECC、parity、UMC ECC、poison 和页面隔离不是同一个保证；采样窗口可能有间隙。 |
 

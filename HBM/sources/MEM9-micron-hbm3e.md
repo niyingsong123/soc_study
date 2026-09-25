@@ -6,6 +6,8 @@
 来源：[Micron HBM3E 产品页及 FAQ](https://www.micron.com/products/memory/hbm/hbm3e)，读取日期 2026-09-24。
 阅读状态：已读产品说明及 FAQ；部分时间表仍为历史表述，不据此判定当前供货；未取得 datasheet。
 
+研究用途（U23）：本篇保留为产品背景及数量级参考。厂商器件 datasheet 与内部实现细节仅按需查阅，不是当前 HBM 典型接口行为研究的必补项；相关实际未读状态不变。主线优先读 [MEM1](../../UMC/sources/MEM1-pg276-hbm-controller.md)、[MEM13](MEM13-ramulator-hbm3-model.md)、[MEM11](MEM11-jedec-scope-gap.md)。
+
 ## 把指标落到结构上
 
 页面列出 8-high 24 GB 与 12-high 36 GB，说明容量可随堆叠层数变化；列出 16 channels、32 pseudo-channels 和 1024 个数据 I/O。通道划分与容量应分开建表，不能认为堆叠层数增加便按同一比例增加外部位宽。

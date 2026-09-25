@@ -6,6 +6,8 @@
 来源：[Samsung HBM3 产品页](https://semiconductor.samsung.com/dram/hbm/hbm3/)，读取日期 2026-09-24。
 阅读状态：已读速度、容量、功耗和可靠性正文；正式 datasheet 需另行取得，当前未读。
 
+研究用途（U23）：本篇保留为产品背景及数量级参考。厂商器件 datasheet 与内部实现细节仅按需查阅，不是当前 HBM 典型接口行为研究的必补项；相关实际未读状态不变。主线优先读 [MEM1](../../UMC/sources/MEM1-pg276-hbm-controller.md)、[MEM13](MEM13-ramulator-hbm3-model.md)、[MEM11](MEM11-jedec-scope-gap.md)。
+
 ## 已有产品级证据
 
 页面给出最高 6.4 Gbit/s、约 819 GB/s，以及 12 层、每层 16 Gb、总容量 24 GB 的产品描述。带宽与容量分别描述传输接口和存储数量；12 层不能误解为 12 个独立封装 stack。容量核算需注意 Gb 与 GB；带宽核算需注意四舍五入和原始接口口径。

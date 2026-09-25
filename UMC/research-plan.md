@@ -1,8 +1,12 @@
 # UMC 微架构研究与论文规划
 
-依据范本 v1.4；方案 v1.1，2026-09-24。当前完成研究规划与相关资料初读，**论文轮次尚未开始**。下一步执行第 1 轮：固定代表性内存访问及 UMC 两侧接口，建立可工作的读写闭环。
+依据范本 v1.4；方案 v1.2，2026-09-25。当前完成研究规划与相关资料初读，**论文轮次尚未开始**。下一步执行第 1 轮：固定代表性内存访问及 UMC 两侧接口，建立可工作的读写闭环。
 
 资料集：[MEM1–MEM4](../sources.md#mem1)，另复用 [P1](../sources.md) 的 AMD 命名与 [MG5](../sources.md#mg5) 的特定 UMC 驱动代码。先读本方案骨架，再看资料简介及已读范围，按每轮链接回到原文。后续正文集中写入本目录一份技术稿，逐轮更新受影响章节与本页状态。
+
+## 当前范围与运用标准（U23）
+
+重点解释请求缓冲、地址映射、bank/行状态、命令可发性、读写切换、刷新与返回；能用符号时序解释为什么等待、何时推进，不以取得 HBM 料号数据表为前置。 按 [项目上下文](../project-context.md#hbm-接口研究范围) 的场景/状态/等待条件验收；厂商器件数据表不是必读或阻塞项，轮次完成状态保持不变。
 
 ## 逐篇笔记与本方案的研究落点
 
@@ -67,7 +71,7 @@ flowchart TD
 | 轮次与范围 | 前置、核心问题及阅读位置 | 文档产出与完成条件 |
 | --- | --- | --- |
 | 1：接口到返回的工作模型 | 前置为上游物理地址/请求标识约定及 HBM 最小命令知识。读 [PG276 Address Map](https://docs.amd.com/r/en-US/pg276-axi-hbm/HBM-Address-Map-and-Protocol-Considerations)、[PHY Only Mode](https://docs.amd.com/r/en-US/pg276-axi-hbm/PHY-Only-Mode) 和 Ramulator II-A。区分系统交织与本地地址拆分。 | 形成整体图、职责/接口表、读写各一条完整过程及完成语义待决点。验收：每个请求和数据有去向，每项占用有释放条件；不依赖虚构协议字段。  技术笔记：[MEM1](sources/MEM1-pg276-hbm-controller.md)。 |
-| 2：缓冲、调度与时序合法性 | 前置为第 1 轮请求生命周期。读 [PG276 Reordering](https://docs.amd.com/r/en-US/pg276-axi-hbm/HBM-Reordering-Options) 与 Ramulator II-B。研究同 bank 不同行、跨 bank、读写切换和同地址依赖；精确时序值待匹配器件手册。 | 增补队列/状态职责图与少量命令时间线。验收：说明为什么此刻可以/不可以发命令，区分吞吐优化与正确性约束，并保留公平性问题。  技术笔记：[MEM1](sources/MEM1-pg276-hbm-controller.md)。 |
+| 2：缓冲、调度与时序合法性 | 前置为第 1 轮请求生命周期。读 [PG276 Reordering](https://docs.amd.com/r/en-US/pg276-axi-hbm/HBM-Reordering-Options) 与 Ramulator II-B。研究同 bank 不同行、跨 bank、读写切换和同地址依赖；先用符号时序表达合法性；匹配器件手册中的精确数值仅在具体问题需要时补查。 | 增补队列/状态职责图与少量命令时间线。验收：说明为什么此刻可以/不可以发命令，区分吞吐优化与正确性约束，并保留公平性问题。  技术笔记：[MEM1](sources/MEM1-pg276-hbm-controller.md)。 |
 | 3：刷新、低功耗和持续进展 | 前置为第 2 轮资源竞争与状态。读 [PG276 Refresh/Power](https://docs.amd.com/r/en-US/pg276-axi-hbm/Reorder-Refresh-and-Power-Savings-Options-Tab) 的 Refresh、Power Saving 段。研究正常流量如何让出资源，恢复前有哪些约束。 | 把维护请求并入主图，形成刷新与低功耗的进入/等待/恢复流程。验收：不会把刷新描述为独立后台且不影响带宽；不会把 self-refresh 等同普通 clock gating。  技术笔记：[MEM1](sources/MEM1-pg276-hbm-controller.md)。 |
 | 4：数据完整性与 RAS | 前置为读写返回和维护路径。读 [PG276 Error Protection](https://docs.amd.com/r/en-US/pg276-axi-hbm/Data-Path-Error-Protection)、[Linux RAS](https://docs.kernel.org/6.12/gpu/amdgpu/ras.html) 和 [UMC v6.1 驱动](https://github.com/torvalds/linux/blob/v6.12/drivers/gpu/drm/amd/amdgpu/umc_v6_1.c) 的 error count/address 查询（MG5）。 | 形成保护域、错误传播及驱动观测表，解释部分写/RMW、scrub 的条件。验收：区分 CE/UE、poison、坏页处置及目标未证实项；不把驱动寄存器访问顺序当调度硬件。  技术笔记：[MEM1](sources/MEM1-pg276-hbm-controller.md)、[MEM3](sources/MEM3-amdgpu-ras.md)、[MG5](../RSMU/sources/MG5-rsmu-umc-index.md)。 |
 | 5：整体验证与技术稿收束 | 前置为前四轮和相邻 PHY/HBM 的接口结果。复读最相关来源与 [PG276 Activity Monitor](https://docs.amd.com/r/en-US/pg276-axi-hbm/Activity-Monitor)（计数细节待查），必要时再选固定版本模型。 | 用连续流、小随机访问、混合读写、刷新重叠解释瓶颈；更新整体图而非另写并行教程。验收：性能结论能回指具体资源/证据，反压与错误仍闭环，模型限制明确。  技术笔记：[MEM1](sources/MEM1-pg276-hbm-controller.md)。 |
